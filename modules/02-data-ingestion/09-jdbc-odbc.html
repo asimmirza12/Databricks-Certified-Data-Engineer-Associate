@@ -1,0 +1,295 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>02-09 Reading databases with JDBC and ODBC · DE Associate course</title>
+<link rel="stylesheet" href="../../assets/course.css">
+<script src="../../assets/course.js"></script>
+</head>
+<body data-lesson="02-09">
+
+<aside class="disclaimer" aria-label="Disclaimer"><strong>Learning resource only.</strong> This is an independent, unofficial study guide made for learning purposes. It is not affiliated with, endorsed by or sponsored by Databricks. Databricks features change often, so always check the details in the <a href="https://docs.databricks.com">official Databricks documentation</a> and the official exam guide on databricks.com before relying on anything here. Databricks and related names are trademarks of their respective owners.</aside>
+
+<main class="wrap">
+
+<header class="hero">
+  <div class="eyebrow">Module 02 · Data Ingestion and Loading · Lesson 9 of 13</div>
+  <h1>Reading databases with JDBC and ODBC in notebooks</h1>
+  <p class="lede">When no ready-made connector fits, you can read a database yourself from a notebook. It takes a dozen lines, and a little care to make it fast and safe.</p>
+  <dl class="where">
+    <div><dt>Module</dt><dd>02 Data Ingestion and Loading (21% of the exam)</dd></div>
+    <div><dt>Exam objective</dt><dd>2.5 Pull data in a notebook over JDBC/ODBC or a REST API, land it in storage or a table, and schedule it with Lakeflow Jobs. This lesson covers JDBC and ODBC.</dd></div>
+    <div><dt>Time to read</dt><dd>About 13 minutes</dd></div>
+    <div><dt>Before this</dt><dd><a href="01-ingestion-patterns.html">02-01 Ingestion patterns</a> · <a href="../00-foundations/05-what-is-spark.html">00-05 What is Apache Spark?</a></dd></div>
+  </dl>
+</header>
+
+<section id="idea">
+  <div class="sec-num">The idea</div>
+  <h2>A standard plug for talking to databases</h2>
+  <p>Databases come from many makers, but programs need one common way to talk to them. Two long-established standards provide it.</p>
+  <ul>
+    <li><a href="../../glossary.html#jdbc">JDBC</a> is the standard used by programs that run on Java technology. Spark is one of them, so JDBC is Spark's natural way to reach a database.</li>
+    <li><a href="../../glossary.html#odbc">ODBC</a> is an older, language-neutral standard that does the same job. Reporting tools and Python libraries often use it.</li>
+  </ul>
+  <p>Both work the same way: a small piece of software called a <strong>driver</strong> translates between the standard and one specific database. You give an address, a user name and a password, send a SQL query, and get rows back.</p>
+  <p>In a Databricks notebook, the usual route is Spark's built-in JDBC reader. You tell it where the database is and which table or query you want. It returns a DataFrame, which you save to a bronze table or to files in a volume. Then you schedule the notebook with Lakeflow Jobs.</p>
+  <p>This is the do-it-yourself path. It gives total control and it works with nearly any database. In exchange, you are responsible for what a managed connector would have done: finding what changed, running in parallel, and keeping the password safe.</p>
+  <div class="analogy">
+    <span class="tag">Everyday analogy</span>
+    <p><strong>Travel plug adaptors.</strong> Every country has its own wall socket, but your charger has one plug. An adaptor for each country lets the same charger work anywhere. The charger is Spark, the socket is a database, and the adaptor is the JDBC driver for that database.</p>
+  </div>
+</section>
+
+<section id="how">
+  <div class="sec-num">How it works</div>
+  <h2>One connection, or several at once</h2>
+  <p>By default Spark reads a database table through a single connection. One executor asks for all the rows and the others stand idle. For a large table that is slow.</p>
+  <div class="stage">
+    <svg class="tall" viewBox="0 0 360 330" role="img" aria-label="Top: one connection reads the whole table with one task. Bottom: four connections each read a range of the id column in parallel.">
+      <defs>
+        <path id="j0" d="M110 62 H250"/>
+        <path id="j1" d="M110 196 C 170 196, 190 176, 250 176"/><path id="j2" d="M110 214 C 170 214, 190 208, 250 208"/><path id="j3" d="M110 232 C 170 232, 190 240, 250 240"/><path id="j4" d="M110 250 C 170 250, 190 272, 250 272"/>
+      </defs>
+      <g class="wire"><use href="#j0"/><use href="#j1"/><use href="#j2"/><use href="#j3"/><use href="#j4"/></g>
+      <text class="t-b" x="10" y="20">Default: one connection</text>
+      <rect class="box-soft" x="10" y="32" width="100" height="60" rx="8"/><text class="t-b" x="60" y="58" text-anchor="middle">Database</text><text class="t-m" x="60" y="76" text-anchor="middle">orders</text>
+      <rect class="box" x="250" y="40" width="100" height="44" rx="8"/><text x="300" y="66" text-anchor="middle">1 task</text>
+      <text class="t-m" x="180" y="52" text-anchor="middle">all rows</text>
+      <text class="t-b" x="10" y="142">With partitioning options: several at once</text>
+      <rect class="box-soft" x="10" y="166" width="100" height="116" rx="8"/><text class="t-b" x="60" y="216" text-anchor="middle">Database</text><text class="t-m" x="60" y="234" text-anchor="middle">orders</text>
+      <g class="box"><rect x="250" y="164" width="100" height="24" rx="4"/><rect x="250" y="196" width="100" height="24" rx="4"/><rect x="250" y="228" width="100" height="24" rx="4"/><rect x="250" y="260" width="100" height="24" rx="4"/></g>
+      <text class="t-m" x="300" y="181" text-anchor="middle">id 1 to 250k</text><text class="t-m" x="300" y="213" text-anchor="middle">250k to 500k</text><text class="t-m" x="300" y="245" text-anchor="middle">500k to 750k</text><text class="t-m" x="300" y="277" text-anchor="middle">750k and up</text>
+      <text class="t-m" x="180" y="312" text-anchor="middle">Each task sends its own query for one range of the id column.</text>
+      <g class="mover">
+        <circle r="5" class="dot"><animateMotion dur="3.2s" repeatCount="indefinite"><mpath href="#j0"/></animateMotion></circle>
+        <circle r="5" class="dot-ok"><animateMotion dur="1.4s" repeatCount="indefinite"><mpath href="#j1"/></animateMotion></circle>
+        <circle r="5" class="dot-ok"><animateMotion dur="1.4s" begin="-0.3s" repeatCount="indefinite"><mpath href="#j2"/></animateMotion></circle>
+        <circle r="5" class="dot-ok"><animateMotion dur="1.4s" begin="-0.7s" repeatCount="indefinite"><mpath href="#j3"/></animateMotion></circle>
+        <circle r="5" class="dot-ok"><animateMotion dur="1.4s" begin="-1s" repeatCount="indefinite"><mpath href="#j4"/></animateMotion></circle>
+      </g>
+    </svg>
+  </div>
+  <p>Four options, always used together, turn on parallel reading:</p>
+  <ul>
+    <li><code>partitionColumn</code>: a numeric column to split on, ideally evenly spread and indexed, such as an ID.</li>
+    <li><code>lowerBound</code> and <code>upperBound</code>: the range of that column you expect.</li>
+    <li><code>numPartitions</code>: how many pieces, and therefore how many simultaneous connections.</li>
+  </ul>
+  <p class="note trap">The bounds only decide where to cut. They do <strong>not</strong> filter. Rows below the lower bound all go into the first piece, and rows above the upper bound all go into the last piece. Every row is still read.</p>
+</section>
+
+<section id="demo">
+  <div class="sec-num">Try it</div>
+  <h2>Split a million rows</h2>
+  <p>The table has 1,000,000 orders with IDs from 1 to 1,000,000. Change the number of partitions, then deliberately set the upper bound too low and see where the rows pile up.</p>
+  <div class="stage">
+    <div class="ctrls">
+      <label class="tog">numPartitions: <select id="dNum"><option>1</option><option selected>4</option><option>8</option></select></label>
+      <label class="tog">upperBound: <select id="dUp"><option value="1000000">1,000,000 (matches the data)</option><option value="100000">100,000 (far too low)</option></select></label>
+      <button id="dRun" type="button" class="primary">Read the table</button>
+      <button id="dReset" type="button">Clear log</button>
+    </div>
+    <div class="panes">
+      <div class="pane"><h4>Rows read by each connection</h4><div id="pParts"></div></div>
+      <div class="pane"><h4>Time for the read</h4><div class="big" id="pTime">-</div><p class="cap" id="pWhy"></p>
+        <h4>Rows read in total</h4><div class="big" id="pTot">-</div></div>
+    </div>
+    <div class="log" id="dLog" role="log" aria-label="What happened"></div>
+    <p class="cap">Model: one connection reads 10,000 rows a second, and lowerBound is 1. The cut points are worked out the way Spark does it.</p>
+  </div>
+</section>
+
+<section id="code">
+  <div class="sec-num">Code</div>
+  <h2>A JDBC ingestion notebook</h2>
+<pre><code><span class="c-c"># Never type a password into a notebook. Fetch it from a secret store at run time.</span>
+user     = dbutils.secrets.get(scope=<span class="c-s">"bakery-secrets"</span>, key=<span class="c-s">"orders-db-user"</span>)
+password = dbutils.secrets.get(scope=<span class="c-s">"bakery-secrets"</span>, key=<span class="c-s">"orders-db-password"</span>)
+
+jdbc_url = <span class="c-s">"jdbc:postgresql://orders-db.bakery.example:5432/sales"</span>
+
+orders = (spark.read
+    .format(<span class="c-s">"jdbc"</span>)
+    .option(<span class="c-s">"url"</span>, jdbc_url)
+    .option(<span class="c-s">"dbtable"</span>, <span class="c-s">"public.orders"</span>)         <span class="c-c"># the table to read</span>
+    .option(<span class="c-s">"user"</span>, user)
+    .option(<span class="c-s">"password"</span>, password)
+    .option(<span class="c-s">"partitionColumn"</span>, <span class="c-s">"order_id"</span>)      <span class="c-c"># split on this numeric column</span>
+    .option(<span class="c-s">"lowerBound"</span>, 1)
+    .option(<span class="c-s">"upperBound"</span>, 1000000)
+    .option(<span class="c-s">"numPartitions"</span>, 4)                <span class="c-c"># 4 queries at the same time</span>
+    .option(<span class="c-s">"fetchsize"</span>, 100000)               <span class="c-c"># rows fetched per round trip</span>
+    .load())
+
+<span class="c-c"># Land it in bronze as a Unity Catalog table.</span>
+orders.write.mode(<span class="c-s">"overwrite"</span>).saveAsTable(<span class="c-s">"bakery.bronze.orders_db_raw"</span>)</code></pre>
+  <p>That is a full load. For an incremental load, send a query with a high-water mark instead of a table name:</p>
+<pre><code><span class="c-c"># Find the newest change we already hold.</span>
+last = spark.sql(<span class="c-s">"SELECT coalesce(max(updated_at), '1900-01-01') FROM bakery.bronze.orders_db_raw"</span>).first()[0]
+
+changed = (spark.read.format(<span class="c-s">"jdbc"</span>)
+    .option(<span class="c-s">"url"</span>, jdbc_url)
+    <span class="c-c"># "query" is run by the database itself, so only changed rows travel over the network.</span>
+    .option(<span class="c-s">"query"</span>, f<span class="c-s">"SELECT * FROM public.orders WHERE updated_at &gt; '{last}'"</span>)
+    .option(<span class="c-s">"user"</span>, user).option(<span class="c-s">"password"</span>, password)
+    .load())
+
+changed.write.mode(<span class="c-s">"append"</span>).saveAsTable(<span class="c-s">"bakery.bronze.orders_db_raw"</span>)</code></pre>
+  <p>Unity Catalog can hold the login for you. A JDBC <a href="../../glossary.html#connection">connection</a> stores the address and credentials once, and people with the <code>USE CONNECTION</code> privilege read through it without ever seeing the password:</p>
+<pre><code>orders = (spark.read.format(<span class="c-s">"jdbc"</span>)
+    .option(<span class="c-s">"databricks.connection"</span>, <span class="c-s">"bakery_orders_db"</span>)   <span class="c-c"># a Unity Catalog connection</span>
+    .option(<span class="c-s">"dbtable"</span>, <span class="c-s">"public.orders"</span>)
+    .load())</code></pre>
+  <p class="note">ODBC from a notebook follows the same pattern with a Python ODBC library and the database's ODBC driver installed on the compute. Because Spark speaks JDBC natively, JDBC is the usual choice inside notebooks. Verify driver set-up in the docs for your compute type.</p>
+</section>
+
+<section id="whatif">
+  <div class="sec-num">What if I change this?</div>
+  <h2>The options that matter</h2>
+  <div class="tbl"><table class="whatif">
+    <tr><th>Change</th><th>Effect</th></tr>
+    <tr><td>Leave out the four partitioning options</td><td>One connection, one task. Fine for small tables, slow for big ones.</td></tr>
+    <tr><td>Raise <code>numPartitions</code></td><td>More queries run at once and the read gets faster, until the source database cannot cope with the extra load.</td></tr>
+    <tr><td>Set <code>upperBound</code> far below the real maximum</td><td>No rows are lost. But everything above the bound lands in the last piece, so one task does almost all the work.</td></tr>
+    <tr><td>Choose a <code>partitionColumn</code> with uneven values</td><td>Some pieces are huge and others nearly empty. The read is only as fast as the largest piece.</td></tr>
+    <tr><td>Use <code>query</code> instead of <code>dbtable</code></td><td>The SQL you write is run by the source database, and only its result is sent. Use it to filter at the source.</td></tr>
+    <tr><td>Raise <code>fetchsize</code></td><td>Fewer round trips, faster reads. Too high and the reading machine may run short of memory.</td></tr>
+    <tr><td>Write with <code>mode("overwrite")</code> on an incremental read</td><td>The table is replaced by just the changed rows. Use <code>append</code> or a <code>MERGE</code>.</td></tr>
+    <tr><td>Put the password in the notebook as text</td><td>Everyone who can open the notebook, or its history, can read it. Use secrets or a connection.</td></tr>
+  </table></div>
+</section>
+
+<section id="compare">
+  <div class="sec-num">Compare</div>
+  <h2>Ways to get at a database</h2>
+  <div class="tbl"><table>
+    <tr><th></th><th>JDBC in a notebook</th><th>Managed database connector</th><th>Lakehouse Federation</th></tr>
+    <tr><td>What it does</td><td>Copies rows into your tables with code you write</td><td>Copies rows into your tables for you</td><td>Queries the database in place. Nothing is copied.</td></tr>
+    <tr><td>Change tracking</td><td>Yours to build, usually a high-water mark</td><td>Built in (CDC)</td><td>Not needed: you always see live data</td></tr>
+    <tr><td>Catches deletes</td><td>Only with a full load</td><td>Yes</td><td>Yes, as it reads the source directly</td></tr>
+    <tr><td>Load on the source</td><td>During each scheduled read</td><td>Low and steady</td><td>On every query you run</td></tr>
+    <tr><td>Best for</td><td>Sources with no connector, or special logic</td><td>Ongoing replication of supported databases</td><td>Occasional look-ups and exploring before you ingest</td></tr>
+  </table></div>
+  <p><a href="../../glossary.html#lakehouse-federation">Lakehouse Federation</a> is the Databricks feature for running queries against an outside database as though its tables were in Unity Catalog. It is not ingestion, but it often appears as a wrong answer, or the right one, in "should we copy this data?" questions.</p>
+</section>
+
+<section id="scenarios">
+  <div class="sec-num">Real life</div>
+  <h2>JDBC notebooks in the wild</h2>
+  <div class="tbl"><table>
+    <tr><th>Scenario</th><th>What happens</th><th>Fix</th></tr>
+    <tr><td>A 300-million-row read takes five hours</td><td>It is going through a single connection</td><td>Add the four partitioning options on an indexed numeric column</td></tr>
+    <tr><td>The database team complains the nightly load slows their application</td><td><code>numPartitions</code> is 64, so 64 heavy queries hit the database at once</td><td>Lower it, read from a replica, or run at a quieter time</td></tr>
+    <tr><td>Seven of eight tasks finish in seconds and one runs for an hour</td><td>The bounds do not match the data, so one piece holds nearly everything</td><td>Set the bounds from the real minimum and maximum of the column</td></tr>
+    <tr><td>A password is found in a notebook's revision history</td><td>It has been exposed to everyone with access</td><td>Change the password, then use <code>dbutils.secrets</code> or a Unity Catalog connection</td></tr>
+    <tr><td>Rows deleted in the source stay in bronze for ever</td><td>A high-water mark cannot see deletes</td><td>A periodic full load, or a managed CDC connector</td></tr>
+  </table></div>
+</section>
+
+<section id="traps">
+  <div class="sec-num">Don't confuse these</div>
+  <h2>JDBC traps</h2>
+  <div class="grid2">
+    <div class="card trap"><span class="tag">Bounds are not filters</span><p><code>lowerBound</code> and <code>upperBound</code> set the cut points for parallel reading. They never exclude rows. To exclude rows, use <code>query</code> with a <code>WHERE</code>.</p></div>
+    <div class="card trap"><span class="tag">dbtable vs query</span><p><code>dbtable</code> names a table. <code>query</code> is a SQL statement the source runs. Use one of them, not both.</p></div>
+    <div class="card trap"><span class="tag">JDBC out vs JDBC in</span><p>Here JDBC lets Databricks read <em>from</em> another database. Separately, reporting tools use JDBC or ODBC drivers to connect <em>to</em> Databricks. Same standard, opposite direction.</p></div>
+    <div class="card trap"><span class="tag">Ingesting vs federating</span><p>JDBC ingestion copies data into Delta tables. Lakehouse Federation leaves it where it is and queries it live.</p></div>
+  </div>
+</section>
+
+<section id="quiz">
+  <div class="sec-num">Check yourself</div>
+  <h2>Quiz</h2>
+  <div class="quiz">
+    <fieldset>
+      <legend>1. A JDBC read sets <code>lowerBound</code> 1 and <code>upperBound</code> 100,000, but IDs go up to 1,000,000. What happens to rows above 100,000?</legend>
+      <label><input type="radio"> They are skipped</label>
+      <label><input type="radio" data-correct> They are all read by the last partition</label>
+      <label><input type="radio"> The read fails</label>
+      <p class="explain" hidden>Bounds only place the cut points. Rows outside them fall into the first or last piece, which then becomes much larger than the rest.</p>
+    </fieldset>
+    <fieldset>
+      <legend>2. Which set of options makes Spark read a database table in parallel?</legend>
+      <label><input type="radio"> <code>fetchsize</code> and <code>query</code></label>
+      <label><input type="radio" data-correct> <code>partitionColumn</code>, <code>lowerBound</code>, <code>upperBound</code>, <code>numPartitions</code></label>
+      <label><input type="radio"> <code>dbtable</code> and <code>user</code></label>
+      <p class="explain" hidden>All four go together. Without them there is a single connection.</p>
+    </fieldset>
+    <fieldset>
+      <legend>3. What is the safe way to supply a database password in a notebook?</legend>
+      <label><input type="radio"> Type it in a cell and delete the cell afterwards</label>
+      <label><input type="radio"> Keep it in a comment</label>
+      <label><input type="radio" data-correct> Read it with <code>dbutils.secrets.get</code>, or use a Unity Catalog connection</label>
+      <p class="explain" hidden>Secrets and connections keep credentials out of code and out of the notebook's history.</p>
+    </fieldset>
+    <fieldset>
+      <legend>4. In the demo with the bound that matched the data, what happened to the read time when you went from 1 partition to 4?</legend>
+      <label><input type="radio" data-correct> It dropped to about a quarter</label>
+      <label><input type="radio"> It stayed the same</label>
+      <label><input type="radio"> It went up fourfold</label>
+      <p class="explain" hidden>Four equal pieces read at once finish in roughly a quarter of the time of one piece holding everything.</p>
+    </fieldset>
+    <fieldset>
+      <legend>5. An analyst needs to look up a few rows in an outside database once a week. Nothing needs to be stored. What fits?</legend>
+      <label><input type="radio"> A managed CDC connector</label>
+      <label><input type="radio" data-correct> Lakehouse Federation</label>
+      <label><input type="radio"> A nightly JDBC full load</label>
+      <p class="explain" hidden>Federation queries the source in place. Copying the whole table for an occasional look-up would be wasted effort.</p>
+    </fieldset>
+  </div>
+</section>
+
+<section id="wrap">
+  <div class="sec-num">Wrap up</div>
+  <h2>Key takeaways</h2>
+  <ul>
+    <li>JDBC and ODBC are standard ways to talk to databases. Spark uses JDBC.</li>
+    <li>A JDBC read is single-connection unless you set the four partitioning options.</li>
+    <li>Bounds decide the split. They do not filter rows.</li>
+    <li><code>query</code> pushes your SQL to the source, which is how incremental reads stay small.</li>
+    <li>Keep credentials in secrets or a Unity Catalog connection, and schedule the notebook with Lakeflow Jobs.</li>
+  </ul>
+  <h3>Glossary terms used</h3>
+  <p><a href="../../glossary.html#jdbc">JDBC</a> · <a href="../../glossary.html#odbc">ODBC</a> · <a href="../../glossary.html#secret">secret</a> · <a href="../../glossary.html#connection">connection</a> · <a href="../../glossary.html#high-water-mark">high-water mark</a> · <a href="../../glossary.html#lakehouse-federation">Lakehouse Federation</a> · <a href="../../glossary.html#partition">partition</a></p>
+  <h3>Official docs</h3>
+  <ul>
+    <li><a href="https://docs.databricks.com/aws/en/connect/jdbc-connection">JDBC connection in Unity Catalog</a></li>
+    <li><a href="https://docs.databricks.com/aws/en/archive/connectors/jdbc">Query databases using JDBC</a></li>
+    <li><a href="https://docs.databricks.com/aws/en/security/secrets/">Secret management</a></li>
+    <li><a href="https://docs.databricks.com/aws/en/query-federation/">Lakehouse Federation</a></li>
+  </ul>
+  <p class="cap">Last verified: 16 November 2026</p>
+</section>
+
+</main>
+
+<script>
+(function () {
+  var C = window.Course, $ = function (id) { return document.getElementById(id); }, L = $('dLog');
+  var ROWS = 1000000, LOWER = 1, RATE = 10000;
+  $('dRun').onclick = function () {
+    var n = +$('dNum').value, upper = +$('dUp').value, stride = Math.floor((upper - LOWER) / n), parts = [];
+    /* Spark's rule: piece 0 takes everything below the first cut, the last piece everything from the last cut up. */
+    for (var i = 0; i < n; i++) {
+      var from = i === 0 ? 1 : LOWER + i * stride, to = i === n - 1 ? ROWS + 1 : LOWER + (i + 1) * stride;
+      parts.push(Math.max(0, Math.min(to, ROWS + 1) - Math.min(from, ROWS + 1)));
+    }
+    var big = Math.max.apply(null, parts), total = parts.reduce(function (a, b) { return a + b; }, 0);
+    $('pParts').innerHTML = parts.map(function (p, i) {
+      return '<div class="item' + (p === big && n > 1 && big > 2 * total / n ? ' hot' : '') + '"><span>connection ' + (i + 1) + '</span><span>' + p.toLocaleString() + '</span></div><div class="meter"><i style="width:' + (100 * p / big) + '%"></i></div>';
+    }).join('');
+    var secs = Math.round(big / RATE);
+    $('pTime').textContent = secs + ' s'; $('pTot').textContent = total.toLocaleString();
+    var uneven = n > 1 && big > 2 * total / n;
+    $('pWhy').textContent = n === 1 ? 'One connection read every row.' : uneven ? 'Uneven: the last connection got everything above the upper bound.' : 'Even split: all connections finished together.';
+    C.log(L, uneven ? 'bad' : 'ok', 'numPartitions ' + n + ', upperBound ' + upper.toLocaleString() + ': ' + total.toLocaleString() + ' rows read in ' + secs + ' s. Largest piece ' + big.toLocaleString() + ' rows.' + (uneven ? ' No rows were lost, but the work was badly shared.' : ''));
+    C.bump($('pTime'));
+  };
+  $('dReset').onclick = function () { L.innerHTML = ''; };
+  C.log(L, 'skip', 'Choose the options and press "Read the table".');
+})();
+</script>
+</body>
+</html>

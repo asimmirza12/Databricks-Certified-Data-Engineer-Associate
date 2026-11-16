@@ -1,0 +1,293 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>02-04 COPY INTO · DE Associate course</title>
+<link rel="stylesheet" href="../../assets/course.css">
+<script src="../../assets/course.js"></script>
+</head>
+<body data-lesson="02-04">
+
+<aside class="disclaimer" aria-label="Disclaimer"><strong>Learning resource only.</strong> This is an independent, unofficial study guide made for learning purposes. It is not affiliated with, endorsed by or sponsored by Databricks. Databricks features change often, so always check the details in the <a href="https://docs.databricks.com">official Databricks documentation</a> and the official exam guide on databricks.com before relying on anything here. Databricks and related names are trademarks of their respective owners.</aside>
+
+<main class="wrap">
+
+<header class="hero">
+  <div class="eyebrow">Module 02 · Data Ingestion and Loading · Lesson 4 of 13</div>
+  <h1>COPY INTO: simple incremental file loading</h1>
+  <p class="lede">One SQL statement that loads files from a folder into a table and remembers which files it has already loaded. Run it as often as you like: each file goes in once.</p>
+  <dl class="where">
+    <div><dt>Module</dt><dd>02 Data Ingestion and Loading (21% of the exam)</dd></div>
+    <div><dt>Exam objective</dt><dd>2.2 Load new files from cloud storage into governed tables with COPY INTO, without loading the same file twice.</dd></div>
+    <div><dt>Time to read</dt><dd>About 12 minutes</dd></div>
+    <div><dt>Before this</dt><dd><a href="02-volumes-and-local-files.html">02-02 Uploading local files and volumes</a></dd></div>
+  </dl>
+</header>
+
+<section id="idea">
+  <div class="sec-num">The idea</div>
+  <h2>A load you can safely run twice</h2>
+  <p><a href="../../glossary.html#copy-into">COPY INTO</a> is a SQL command. You give it a target table, a folder of files and the file format. It reads the files and appends their rows to the table.</p>
+  <p>Its special quality is memory. The table keeps a record of every file that <code>COPY INTO</code> has loaded into it. On the next run, files already on that record are skipped and only new files are loaded.</p>
+  <p>A task that gives the same end result however many times you run it is called <a href="../../glossary.html#idempotent">idempotent</a>. <code>COPY INTO</code> is idempotent. That matters in practice: if a scheduled run fails halfway or is started twice by mistake, you simply run it again and nothing is duplicated.</p>
+  <div class="analogy">
+    <span class="tag">Everyday analogy</span>
+    <p><strong>Ticking off deliveries on a clipboard.</strong> A shop assistant unpacks boxes from the stock room and ticks each box number on a clipboard. Sent back to "unpack the stock room" a second time, they check the clipboard, see every box is ticked and unpack nothing. When three new boxes arrive, only those three are unpacked. The clipboard is the table's record of loaded files.</p>
+  </div>
+</section>
+
+<section id="how">
+  <div class="sec-num">How it works</div>
+  <h2>Check the record, load what is missing</h2>
+  <div class="stage">
+    <svg class="tall" viewBox="0 0 360 330" role="img" aria-label="Files in a folder are compared with the table's record of loaded files. Files already on the record are skipped. New files are loaded and added to the record.">
+      <defs><path id="y1" d="M60 150 C 60 190, 150 190, 170 222"/><path id="y2" d="M300 96 C 330 130, 320 180, 250 222"/></defs>
+      <g class="wire"><use href="#y1"/><use href="#y2"/><path d="M110 60 H250"/></g>
+      <g class="mover">
+        <circle r="5" class="dot-ok"><animateMotion dur="2.2s" repeatCount="indefinite"><mpath href="#y2"/></animateMotion></circle>
+      </g>
+      <rect class="box-soft" x="10" y="10" width="340" height="140" rx="8"/>
+      <text class="t-m" x="22" y="28">VOLUME FOLDER</text>
+      <g class="box"><rect x="22" y="38" width="200" height="26" rx="4"/><rect x="22" y="70" width="200" height="26" rx="4"/></g>
+      <rect class="box-acc" x="22" y="102" width="200" height="26" rx="4"/>
+      <text class="mono" x="30" y="56">prices_2026-11-14.csv</text><text class="mono" x="30" y="88">prices_2026-11-15.csv</text><text class="mono" x="30" y="120">prices_2026-11-16.csv</text>
+      <text class="t-m" x="286" y="56" text-anchor="middle">on the record:</text><text class="t-m" x="286" y="72" text-anchor="middle">skip</text>
+      <text class="t-b" x="286" y="110" text-anchor="middle">new:</text><text class="t-b" x="286" y="126" text-anchor="middle">load</text>
+      <rect class="box" x="60" y="222" width="240" height="96" rx="8"/>
+      <text class="t-b" x="180" y="244" text-anchor="middle">Table bakery.bronze.prices_raw</text>
+      <text class="t-m" x="180" y="264" text-anchor="middle">rows from all three files</text>
+      <rect class="box-acc" x="76" y="276" width="208" height="30" rx="6"/><text class="t-m" x="180" y="296" text-anchor="middle">record of loaded files (kept with the table)</text>
+    </svg>
+    <p class="cap">Only the new file travels to the table. Because the record lives with the table, there is no separate checkpoint folder to manage.</p>
+  </div>
+  <p>The statement has four working parts:</p>
+  <ul>
+    <li><strong>The target</strong>: the table to load into. It must exist already.</li>
+    <li><strong>The source</strong>: a folder, usually a volume path.</li>
+    <li><code>FILEFORMAT</code>: CSV, JSON, Parquet, Avro and others.</li>
+    <li>Two option lists. <code>FORMAT_OPTIONS</code> tell the reader how to understand the files, such as "the first line is a header". <code>COPY_OPTIONS</code> change how the command itself behaves, such as "reload everything".</li>
+  </ul>
+</section>
+
+<section id="demo">
+  <div class="sec-num">Try it</div>
+  <h2>Run COPY INTO again and again</h2>
+  <p>Run the command twice and watch the second run do nothing. Let a new file arrive and run again. Then tick <code>force</code> and see why it is dangerous. Try a file pattern and a dry run.</p>
+  <div class="stage">
+    <div class="ctrls">
+      <button id="dNew" type="button">A supplier drops a new file</button>
+      <label class="tog">PATTERN: <select id="dPat"><option value="">(all files)</option><option value="north">'*north*'</option><option value="south">'*south*'</option></select></label>
+      <label class="tog"><input type="checkbox" id="dForce"> COPY_OPTIONS ('force' = 'true')</label>
+    </div>
+    <div class="ctrls">
+      <button id="dRun" type="button" class="primary">Run COPY INTO</button>
+      <button id="dVal" type="button">Run with VALIDATE (check only)</button>
+      <button id="dReset" type="button">Reset</button>
+    </div>
+    <div class="panes">
+      <div class="pane"><h4>Files in the volume</h4><div id="pFiles"></div></div>
+      <div class="pane"><h4>Rows in the table</h4><div class="big" id="pRows"></div><p class="cap" id="pDup"></p></div>
+    </div>
+    <div class="log" id="dLog" role="log" aria-label="What happened"></div>
+    <p class="cap">Each file holds 100 rows in this demo.</p>
+  </div>
+</section>
+
+<section id="code">
+  <div class="sec-num">Code</div>
+  <h2>The statement, piece by piece</h2>
+<pre><code><span class="c-c">-- The target must exist. An empty table with no columns is allowed:</span>
+<span class="c-c">-- COPY INTO can work the columns out from the files (see mergeSchema below).</span>
+<span class="c-k">CREATE TABLE IF NOT EXISTS</span> bakery.bronze.prices_raw;
+
+<span class="c-k">COPY INTO</span> bakery.bronze.prices_raw
+<span class="c-k">FROM</span> <span class="c-s">'/Volumes/bakery/landing/supplier_drop/prices/'</span>     <span class="c-c">-- the folder to load from</span>
+<span class="c-k">FILEFORMAT</span> = CSV
+<span class="c-k">FORMAT_OPTIONS</span> (
+  <span class="c-s">'header'</span> = <span class="c-s">'true'</span>,          <span class="c-c">-- first line holds column names</span>
+  <span class="c-s">'inferSchema'</span> = <span class="c-s">'true'</span>      <span class="c-c">-- work out column types from the data</span>
+)
+<span class="c-k">COPY_OPTIONS</span> (
+  <span class="c-s">'mergeSchema'</span> = <span class="c-s">'true'</span>      <span class="c-c">-- let the table take on the columns found in the files</span>
+);</code></pre>
+  <p>You can narrow which files are considered, and transform columns on the way in:</p>
+<pre><code><span class="c-c">-- Only files whose names match a pattern, with a little shaping during the load.</span>
+<span class="c-k">COPY INTO</span> bakery.bronze.prices_raw
+<span class="c-k">FROM</span> (
+  <span class="c-k">SELECT</span> item, <span class="c-k">CAST</span>(price <span class="c-k">AS DECIMAL</span>(10,2)) <span class="c-k">AS</span> price, _metadata.file_path <span class="c-k">AS</span> source_file
+  <span class="c-k">FROM</span> <span class="c-s">'/Volumes/bakery/landing/supplier_drop/prices/'</span>
+)
+<span class="c-k">FILEFORMAT</span> = CSV
+<span class="c-k">PATTERN</span> = <span class="c-s">'prices_2026-11-*.csv'</span>
+<span class="c-k">FORMAT_OPTIONS</span> (<span class="c-s">'header'</span> = <span class="c-s">'true'</span>);</code></pre>
+<pre><code><span class="c-c">-- A dry run: check that the first 20 rows parse and fit the table. Nothing is written.</span>
+<span class="c-k">COPY INTO</span> bakery.bronze.prices_raw
+<span class="c-k">FROM</span> <span class="c-s">'/Volumes/bakery/landing/supplier_drop/prices/'</span>
+<span class="c-k">FILEFORMAT</span> = CSV
+<span class="c-k">VALIDATE</span> 20 <span class="c-k">ROWS</span>
+<span class="c-k">FORMAT_OPTIONS</span> (<span class="c-s">'header'</span> = <span class="c-s">'true'</span>);</code></pre>
+  <p class="note">To load from a volume you need <code>READ VOLUME</code> on it, plus the usual <code>USE CATALOG</code> and <code>USE SCHEMA</code>, and permission to write to the target table.</p>
+</section>
+
+<section id="whatif">
+  <div class="sec-num">What if I change this?</div>
+  <h2>Every important option</h2>
+  <div class="tbl"><table class="whatif">
+    <tr><th>Change</th><th>Effect</th></tr>
+    <tr><td>Run the same statement a second time</td><td>Nothing is loaded. All files are on the record already.</td></tr>
+    <tr><td><code>COPY_OPTIONS ('force' = 'true')</code></td><td>The record is ignored and every matching file is loaded again. Rows that were already in the table are now there twice. The default is false.</td></tr>
+    <tr><td><code>COPY_OPTIONS ('mergeSchema' = 'true')</code></td><td>The table's schema may grow to include columns found in the files. Needed when the target was created with no columns.</td></tr>
+    <tr><td><code>PATTERN = '...'</code></td><td>Only files whose names match are considered. Others are left alone and stay unloaded.</td></tr>
+    <tr><td><code>FILES = ('a.csv', 'b.csv')</code></td><td>Only the named files are considered. Use <code>FILES</code> or <code>PATTERN</code>, not both.</td></tr>
+    <tr><td><code>VALIDATE</code>, optionally with a number of rows</td><td>The data is checked against the table but not written. Good before a first load.</td></tr>
+    <tr><td>Leave out <code>'header' = 'true'</code> for CSV files that have a header line</td><td>The header line is loaded as a row of data, and columns get placeholder names.</td></tr>
+    <tr><td>Add a <code>SELECT</code> in the <code>FROM</code></td><td>You can pick, rename and cast columns during the load.</td></tr>
+  </table></div>
+</section>
+
+<section id="compare">
+  <div class="sec-num">Compare</div>
+  <h2>COPY INTO or Auto Loader?</h2>
+  <p>Both load new files only. Auto Loader is the subject of the next three lessons. Here is the short version.</p>
+  <div class="tbl"><table>
+    <tr><th></th><th>COPY INTO</th><th>Auto Loader</th></tr>
+    <tr><td>Written in</td><td>SQL</td><td>Python or SQL (as a streaming table)</td></tr>
+    <tr><td>Where "files already loaded" is remembered</td><td>With the target table</td><td>In a checkpoint location you provide</td></tr>
+    <tr><td>Comfortable number of files</td><td>Thousands</td><td>Millions and more</td></tr>
+    <tr><td>Schema changes over time</td><td>Basic, with <code>mergeSchema</code></td><td>Rich: inference, evolution modes, rescued data</td></tr>
+    <tr><td>Reload a few chosen files</td><td>Easy: name them and use <code>force</code></td><td>Harder</td></tr>
+    <tr><td>Can run continuously</td><td>No. Each run is a batch.</td><td>Yes</td></tr>
+  </table></div>
+  <p class="note">Databricks recommends Auto Loader over <code>COPY INTO</code> where it is available, and streaming tables as the scalable choice for SQL users. <code>COPY INTO</code> remains a good fit for simple, modest loads, and it is named in the exam guide.</p>
+</section>
+
+<section id="scenarios">
+  <div class="sec-num">Real life</div>
+  <h2>COPY INTO at work</h2>
+  <div class="tbl"><table>
+    <tr><th>Scenario</th><th>What happens</th><th>Fix</th></tr>
+    <tr><td>A supplier drops one price file a day, and the SQL team owns the load</td><td>A small, steady trickle of files</td><td><code>COPY INTO</code> on a daily schedule</td></tr>
+    <tr><td>The nightly job is accidentally triggered twice</td><td>The second run finds nothing new</td><td>Nothing to fix. That is idempotency working.</td></tr>
+    <tr><td>Someone "fixes" a failed load by adding <code>force</code> and leaves it in</td><td>Every run reloads every file and the table fills with duplicates</td><td>Remove <code>force</code>. Use it only for a deliberate, one-off reload.</td></tr>
+    <tr><td>A corrected version of yesterday's file must be loaded again</td><td>A plain run may skip it, because that file has been loaded before</td><td>Delete yesterday's rows, then run once with <code>FILES</code> naming that file and <code>force</code></td></tr>
+    <tr><td>The folder now receives 50,000 files an hour</td><td>Each run spends longer and longer working out what is new</td><td>Move to Auto Loader</td></tr>
+  </table></div>
+</section>
+
+<section id="traps">
+  <div class="sec-num">Don't confuse these</div>
+  <h2>COPY INTO traps</h2>
+  <div class="grid2">
+    <div class="card trap"><span class="tag">FORMAT_OPTIONS vs COPY_OPTIONS</span><p><code>FORMAT_OPTIONS</code> describe the files: header, delimiter, type inference. <code>COPY_OPTIONS</code> steer the command: <code>force</code>, <code>mergeSchema</code>.</p></div>
+    <div class="card trap"><span class="tag">force vs overwrite</span><p><code>force</code> does not replace the table's contents. It adds the files' rows again on top of what is there.</p></div>
+    <div class="card trap"><span class="tag">COPY INTO vs INSERT INTO</span><p><code>INSERT INTO ... SELECT</code> from files loads them every time it runs. <code>COPY INTO</code> skips files it has loaded before.</p></div>
+    <div class="card trap"><span class="tag">Two places for mergeSchema</span><p>In <code>COPY_OPTIONS</code> it lets the <em>table</em> gain columns. In <code>FORMAT_OPTIONS</code> it combines differing schemas across the <em>files</em> being read.</p></div>
+  </div>
+</section>
+
+<section id="quiz">
+  <div class="sec-num">Check yourself</div>
+  <h2>Quiz</h2>
+  <div class="quiz">
+    <fieldset>
+      <legend>1. You run the same <code>COPY INTO</code> twice with no new files in between. What does the second run do?</legend>
+      <label><input type="radio"> Loads every file again</label>
+      <label><input type="radio" data-correct> Loads nothing</label>
+      <label><input type="radio"> Fails with an error</label>
+      <p class="explain" hidden>Files that were already loaded are skipped. This is what makes the command safe to retry.</p>
+    </fieldset>
+    <fieldset>
+      <legend>2. Which option makes <code>COPY INTO</code> load files it has already loaded?</legend>
+      <label><input type="radio"> <code>'mergeSchema' = 'true'</code></label>
+      <label><input type="radio" data-correct> <code>'force' = 'true'</code></label>
+      <label><input type="radio"> <code>VALIDATE</code></label>
+      <p class="explain" hidden><code>force</code> switches off the "already loaded" check. <code>mergeSchema</code> is about columns, and <code>VALIDATE</code> writes nothing at all.</p>
+    </fieldset>
+    <fieldset>
+      <legend>3. Where does <code>'header' = 'true'</code> belong?</legend>
+      <label><input type="radio" data-correct> <code>FORMAT_OPTIONS</code></label>
+      <label><input type="radio"> <code>COPY_OPTIONS</code></label>
+      <label><input type="radio"> <code>PATTERN</code></label>
+      <p class="explain" hidden>It describes how to read the files, so it is a format option.</p>
+    </fieldset>
+    <fieldset>
+      <legend>4. A folder will receive millions of files and their columns change often. Which tool is the better fit?</legend>
+      <label><input type="radio"> <code>COPY INTO</code></label>
+      <label><input type="radio" data-correct> Auto Loader</label>
+      <label><input type="radio"> The upload page</label>
+      <p class="explain" hidden><code>COPY INTO</code> suits thousands of files with a stable shape. Auto Loader is built for very large numbers of files and changing schemas.</p>
+    </fieldset>
+    <fieldset>
+      <legend>5. In the demo, what did the <code>VALIDATE</code> run change in the table?</legend>
+      <label><input type="radio" data-correct> Nothing</label>
+      <label><input type="radio"> It loaded the new files</label>
+      <label><input type="radio"> It removed duplicate rows</label>
+      <p class="explain" hidden><code>VALIDATE</code> checks that the data would load. It writes no rows and does not mark files as loaded.</p>
+    </fieldset>
+  </div>
+</section>
+
+<section id="wrap">
+  <div class="sec-num">Wrap up</div>
+  <h2>Key takeaways</h2>
+  <ul>
+    <li><code>COPY INTO</code> loads files from a folder into an existing table with one SQL statement.</li>
+    <li>It skips files it has already loaded, so it is idempotent and safe to rerun.</li>
+    <li><code>FORMAT_OPTIONS</code> describe the files. <code>COPY_OPTIONS</code> steer the command.</li>
+    <li><code>force</code> reloads everything and creates duplicates. <code>VALIDATE</code> checks without writing.</li>
+    <li>Good for thousands of files. For millions, or changing schemas, use Auto Loader.</li>
+  </ul>
+  <h3>Glossary terms used</h3>
+  <p><a href="../../glossary.html#copy-into">COPY INTO</a> · <a href="../../glossary.html#idempotent">idempotent</a> · <a href="../../glossary.html#volume">volume</a> · <a href="../../glossary.html#schema-evolution">schema evolution</a> · <a href="../../glossary.html#auto-loader">Auto Loader</a></p>
+  <h3>Official docs</h3>
+  <ul>
+    <li><a href="https://docs.databricks.com/aws/en/ingestion/cloud-object-storage/copy-into/">Get started using COPY INTO</a></li>
+    <li><a href="https://docs.databricks.com/aws/en/sql/language-manual/delta-copy-into">COPY INTO reference</a></li>
+    <li><a href="https://docs.databricks.com/aws/en/ingestion/cloud-object-storage/copy-into/unity-catalog">COPY INTO with volumes or external locations</a></li>
+    <li><a href="https://docs.databricks.com/aws/en/ingestion/cloud-object-storage/copy-into/examples">Common loading patterns with COPY INTO</a></li>
+  </ul>
+  <p class="cap">Last verified: 16 November 2026</p>
+</section>
+
+</main>
+
+<script>
+(function () {
+  var C = window.Course, $ = function (id) { return document.getElementById(id); }, L = $('dLog');
+  var PER = 100, files, loaded, rows, day;   /* loaded: name -> times loaded */
+  function match() { var p = $('dPat').value; return files.filter(function (f) { return f.indexOf(p) >= 0; }); }
+  function draw() {
+    var m = match();
+    $('pFiles').innerHTML = files.map(function (f) {
+      var times = loaded[f] || 0;
+      return '<div class="item' + (m.indexOf(f) < 0 ? ' off' : '') + '"><span>' + f + '</span><span>' + (times ? 'loaded' + (times > 1 ? ' x' + times : '') : 'new') + '</span></div>';
+    }).join('');
+    $('pRows').textContent = rows;
+    var dup = Object.keys(loaded).reduce(function (a, f) { return a + (loaded[f] - 1) * PER; }, 0);
+    $('pDup').textContent = dup ? dup + ' of these rows are duplicates' : 'no duplicates';
+  }
+  $('dNew').onclick = function () {
+    var f = 'prices_' + (day % 2 ? 'north' : 'south') + '_2026-11-' + String(day++).padStart(2, '0') + '.csv';
+    files.push(f); C.log(L, 'skip', 'New file in the volume: ' + f); draw();
+  };
+  $('dPat').onchange = draw;
+  function plan() { var force = $('dForce').checked; return match().filter(function (f) { return force || !loaded[f]; }); }
+  $('dRun').onclick = function () {
+    var todo = plan(), again = todo.filter(function (f) { return loaded[f]; }).length;
+    todo.forEach(function (f) { loaded[f] = (loaded[f] || 0) + 1; rows += PER; });
+    C.log(L, again ? 'bad' : todo.length ? 'ok' : 'skip', 'COPY INTO: ' + match().length + ' file(s) matched, ' + todo.length + ' loaded (' + todo.length * PER + ' rows)' +
+      (again ? ', of which ' + again + ' had been loaded before: DUPLICATES created.' : todo.length ? '.' : '. Nothing new, so nothing to do.'));
+    draw(); C.bump($('pRows'));
+  };
+  $('dVal').onclick = function () { var todo = plan(); C.log(L, 'skip', 'VALIDATE: ' + todo.length + ' file(s) would be loaded and their rows fit the table. Nothing was written, and no file was marked as loaded.'); };
+  function reset() {
+    files = ['prices_north_2026-11-14.csv', 'prices_south_2026-11-15.csv']; loaded = {}; rows = 0; day = 16; $('dForce').checked = false; $('dPat').value = '';
+    L.innerHTML = ''; C.log(L, 'skip', 'Two files are waiting. The table is empty.'); draw();
+  }
+  $('dReset').onclick = reset;
+  reset();
+})();
+</script>
+</body>
+</html>

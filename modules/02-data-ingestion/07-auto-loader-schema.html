@@ -1,0 +1,307 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>02-07 Auto Loader schema inference, enforcement and evolution · DE Associate course</title>
+<link rel="stylesheet" href="../../assets/course.css">
+<script src="../../assets/course.js"></script>
+</head>
+<body data-lesson="02-07">
+
+<aside class="disclaimer" aria-label="Disclaimer"><strong>Learning resource only.</strong> This is an independent, unofficial study guide made for learning purposes. It is not affiliated with, endorsed by or sponsored by Databricks. Databricks features change often, so always check the details in the <a href="https://docs.databricks.com">official Databricks documentation</a> and the official exam guide on databricks.com before relying on anything here. Databricks and related names are trademarks of their respective owners.</aside>
+
+<main class="wrap">
+
+<header class="hero">
+  <div class="eyebrow">Module 02 · Data Ingestion and Loading · Lesson 7 of 13</div>
+  <h1>Auto Loader schema inference, enforcement and evolution</h1>
+  <p class="lede">Files change shape. A source adds a column, or sends words where a number should be. This lesson is about what Auto Loader does at that moment, and how you choose its reaction.</p>
+  <dl class="where">
+    <div><dt>Module</dt><dd>02 Data Ingestion and Loading (21% of the exam)</dd></div>
+    <div><dt>Exam objective</dt><dd>2.3 Use Auto Loader, including how it finds files and how it handles a schema that is enforced or allowed to change. This lesson covers schemas.</dd></div>
+    <div><dt>Time to read</dt><dd>About 15 minutes</dd></div>
+    <div><dt>Before this</dt><dd><a href="05-auto-loader-basics.html">02-05 Auto Loader basics</a> · <a href="../01-databricks-platform/02-delta-lake-in-depth.html">01-02 Delta Lake in depth</a></dd></div>
+  </dl>
+</header>
+
+<section id="idea">
+  <div class="sec-num">The idea</div>
+  <h2>Three questions about the shape of the data</h2>
+  <p><strong>1. What is the schema to begin with?</strong> You can state it yourself. Or you can let Auto Loader work it out by sampling the first files. That is <a href="../../glossary.html#schema-inference">schema inference</a>. What it finds is saved in the schema location, so later runs reuse it.</p>
+  <p><strong>2. What happens when a file has a column that is not in the schema?</strong> This is the choice between enforcement and evolution. Enforcement means the schema stays as it is. Evolution means the schema is allowed to grow. Auto Loader has four settings for this, called schema evolution modes.</p>
+  <p><strong>3. What happens to data that does not fit?</strong> It need not be lost. Auto Loader can put anything that does not match the schema into a spare column called the <a href="../../glossary.html#rescued-data">rescued data column</a>, named <code>_rescued_data</code>. The row still loads, and the awkward part is kept beside it for you to deal with later.</p>
+  <div class="analogy">
+    <span class="tag">Everyday analogy</span>
+    <p><strong>A form with fixed boxes.</strong> People are sent a form with boxes for name, date and amount. One day a form comes back with an extra note scribbled in the margin. You have four choices. Redesign the form to add a box for it (evolve). Leave the form alone and copy the note into a "remarks" box (rescue). Reject the form until someone decides what to do (fail). Or ignore the note (none). The "remarks" box is the rescued data column.</p>
+  </div>
+</section>
+
+<section id="how">
+  <div class="sec-num">How it works</div>
+  <h2>A new column arrives: four possible reactions</h2>
+  <div class="stage">
+    <svg class="tall" viewBox="0 0 360 410" role="img" aria-label="A file with an unexpected column reaches Auto Loader. Depending on the schema evolution mode, the schema grows after a restart, the value goes to the rescued data column, the stream stops, or the value is ignored.">
+      <defs><path id="h0" d="M180 56 V84"/><path id="h1" d="M180 132 C 180 160, 90 160, 90 180"/><path id="h2" d="M180 132 C 180 160, 270 160, 270 180"/><path id="h3" d="M180 132 C 150 200, 100 250, 90 286"/><path id="h4" d="M180 132 C 210 200, 260 250, 270 286"/></defs>
+      <g class="wire"><use href="#h0"/><use href="#h1"/><use href="#h2"/><use href="#h3"/><use href="#h4"/></g>
+      <g class="mover">
+        <circle r="5" class="dot"><animateMotion dur="1.4s" repeatCount="indefinite"><mpath href="#h0"/></animateMotion></circle>
+        <circle r="5" class="dot-ok"><animateMotion dur="2.2s" repeatCount="indefinite"><mpath href="#h1"/></animateMotion></circle>
+        <circle r="5" class="dot-ok"><animateMotion dur="2.2s" begin="-1.1s" repeatCount="indefinite"><mpath href="#h2"/></animateMotion></circle>
+      </g>
+      <rect class="box-soft" x="40" y="8" width="280" height="48" rx="8"/>
+      <text class="t-b" x="180" y="28" text-anchor="middle">New file</text><text class="mono" x="180" y="46" text-anchor="middle">{"order_id":104, "price":3.0, "loyalty":"gold"}</text>
+      <rect class="box-acc" x="70" y="84" width="220" height="48" rx="8"/>
+      <text class="t-b" x="180" y="104" text-anchor="middle">Auto Loader</text><text class="t-m" x="180" y="122" text-anchor="middle">schema so far: order_id, price</text>
+      <rect class="box" x="8" y="180" width="164" height="84" rx="8"/>
+      <text class="t-b" x="90" y="200" text-anchor="middle">addNewColumns</text><text class="t-m" x="90" y="218" text-anchor="middle">stream stops once,</text><text class="t-m" x="90" y="234" text-anchor="middle">schema gains "loyalty",</text><text class="t-m" x="90" y="250" text-anchor="middle">restart and carry on</text>
+      <rect class="box" x="188" y="180" width="164" height="84" rx="8"/>
+      <text class="t-b" x="270" y="200" text-anchor="middle">rescue</text><text class="t-m" x="270" y="218" text-anchor="middle">schema unchanged,</text><text class="t-m" x="270" y="234" text-anchor="middle">"loyalty" goes into</text><text class="t-m" x="270" y="250" text-anchor="middle">_rescued_data</text>
+      <rect class="box" x="8" y="286" width="164" height="84" rx="8"/>
+      <text class="t-b" x="90" y="306" text-anchor="middle">failOnNewColumns</text><text class="t-m" x="90" y="324" text-anchor="middle">stream stops and</text><text class="t-m" x="90" y="340" text-anchor="middle">stays stopped until</text><text class="t-m" x="90" y="356" text-anchor="middle">a person acts</text>
+      <rect class="box" x="188" y="286" width="164" height="84" rx="8"/>
+      <text class="t-b" x="270" y="306" text-anchor="middle">none</text><text class="t-m" x="270" y="324" text-anchor="middle">schema unchanged,</text><text class="t-m" x="270" y="340" text-anchor="middle">"loyalty" is dropped,</text><text class="t-m" x="270" y="356" text-anchor="middle">stream carries on</text>
+      <text class="t-m" x="180" y="396" text-anchor="middle">Set with cloudFiles.schemaEvolutionMode</text>
+    </svg>
+  </div>
+  <p>The default depends on one thing. If you let Auto Loader infer the schema, the default mode is <code>addNewColumns</code>. If you supply the schema yourself, the default is <code>none</code>.</p>
+  <h3>How inference treats types</h3>
+  <p>When Auto Loader infers a schema from JSON or CSV files, it reads every column as text (a string) by default. It does not guess that <code>price</code> is a number. This is deliberately cautious: text can hold anything, so nothing fails. You have two ways to get real types:</p>
+  <ul>
+    <li><code>cloudFiles.inferColumnTypes</code> set to true makes it guess types from the data.</li>
+    <li><code>cloudFiles.schemaHints</code> lets you state the types of just the columns you care about, and leave the rest inferred. These are <a href="../../glossary.html#schema-hints">schema hints</a>.</li>
+  </ul>
+  <p>Formats that carry their own schema, such as Parquet and Avro, do not have this problem. Their types are read from the files.</p>
+</section>
+
+<section id="demo">
+  <div class="sec-num">Try it</div>
+  <h2>Send awkward files at each mode</h2>
+  <p>Pick a mode. Send a normal file, then one with a new column, then one with a bad price. Watch the schema, the table and whether the stream is still running. Restart it when it stops.</p>
+  <div class="stage">
+    <div class="ctrls">
+      <label class="tog">schemaEvolutionMode: <select id="dMode"><option>addNewColumns</option><option>rescue</option><option>failOnNewColumns</option><option>none</option></select></label>
+      <label class="tog"><input type="checkbox" id="dHint"> schemaHints: price DOUBLE</label>
+    </div>
+    <div class="ctrls">
+      <button id="fOk" type="button">Send a normal file</button>
+      <button id="fNew" type="button">Send a file with a new column</button>
+      <button id="fBad" type="button">Send a file with price "three"</button>
+      <button id="dRestart" type="button" class="primary">Restart the stream</button>
+      <button id="dReset" type="button">Reset</button>
+    </div>
+    <div class="panes">
+      <div class="pane"><h4>Stream</h4><div class="big" id="pState"></div><p class="cap" id="pWait"></p>
+        <h4>Schema in the schema location</h4><div id="pSchema"></div></div>
+      <div class="pane"><h4>Bronze table</h4><div id="pRows"></div></div>
+    </div>
+    <div class="log" id="dLog" role="log" aria-label="What happened"></div>
+    <p class="cap">Changing the mode or the hint resets the demo, as it would mean a new stream. In mode <code>none</code> this demo has no rescued data column, which is the behaviour unless you add one with the <code>rescuedDataColumn</code> option.</p>
+  </div>
+</section>
+
+<section id="code">
+  <div class="sec-num">Code</div>
+  <h2>Setting the schema behaviour</h2>
+<pre><code>checkpoint = <span class="c-s">"/Volumes/bakery/ops/checkpoints/web_orders_raw"</span>
+
+orders = (spark.readStream.format(<span class="c-s">"cloudFiles"</span>)
+    .option(<span class="c-s">"cloudFiles.format"</span>, <span class="c-s">"json"</span>)
+    .option(<span class="c-s">"cloudFiles.schemaLocation"</span>, checkpoint)          <span class="c-c"># inferred schema is stored here</span>
+    .option(<span class="c-s">"cloudFiles.schemaHints"</span>,                         <span class="c-c"># types for the columns that matter</span>
+            <span class="c-s">"price DECIMAL(10,2), order_ts TIMESTAMP"</span>)
+    .option(<span class="c-s">"cloudFiles.schemaEvolutionMode"</span>, <span class="c-s">"rescue"</span>)       <span class="c-c"># never change the schema, never stop</span>
+    .load(<span class="c-s">"/Volumes/bakery/landing/web_orders/"</span>))
+
+(orders.writeStream
+    .option(<span class="c-s">"checkpointLocation"</span>, checkpoint)
+    .trigger(availableNow=<span class="c-k">True</span>)
+    .toTable(<span class="c-s">"bakery.bronze.web_orders_raw"</span>))</code></pre>
+  <p>With <code>addNewColumns</code>, the target table must also be allowed to grow. That is the <code>mergeSchema</code> write option from lesson 01-02:</p>
+<pre><code>(orders.writeStream
+    .option(<span class="c-s">"checkpointLocation"</span>, checkpoint)
+    .option(<span class="c-s">"mergeSchema"</span>, <span class="c-s">"true"</span>)        <span class="c-c"># let the Delta table accept the new column</span>
+    .trigger(availableNow=<span class="c-k">True</span>)
+    .toTable(<span class="c-s">"bakery.bronze.web_orders_raw"</span>))</code></pre>
+  <p>Later, in silver, you pick useful values back out of the rescued data column:</p>
+<pre><code><span class="c-c">-- _rescued_data holds the unmatched fields as JSON text. Pull one out with the : operator.</span>
+<span class="c-k">SELECT</span> order_id,
+       price,
+       _rescued_data:loyalty::string <span class="c-k">AS</span> loyalty
+<span class="c-k">FROM</span> bakery.bronze.web_orders_raw
+<span class="c-k">WHERE</span> _rescued_data <span class="c-k">IS NOT NULL</span>;</code></pre>
+</section>
+
+<section id="whatif">
+  <div class="sec-num">What if I change this?</div>
+  <h2>Each mode and option</h2>
+  <div class="tbl"><table class="whatif">
+    <tr><th>Change</th><th>Effect</th></tr>
+    <tr><td><code>schemaEvolutionMode = addNewColumns</code> (default when the schema is inferred)</td><td>On a new column the stream fails once with an "unknown field" error, after saving the wider schema. When restarted it carries on, and the column is there. Old rows show NULL in it. A job with automatic retries restarts it for you.</td></tr>
+    <tr><td><code>schemaEvolutionMode = rescue</code></td><td>The schema never changes and the stream never stops for this reason. New columns land in <code>_rescued_data</code>.</td></tr>
+    <tr><td><code>schemaEvolutionMode = failOnNewColumns</code></td><td>The stream fails and keeps failing until you update the schema yourself or remove the offending file. The strictest setting.</td></tr>
+    <tr><td><code>schemaEvolutionMode = none</code> (default when you supply the schema)</td><td>New columns are ignored and the stream carries on. Their data is lost unless you set <code>rescuedDataColumn</code>.</td></tr>
+    <tr><td>No <code>schemaHints</code> and no <code>inferColumnTypes</code>, with JSON or CSV</td><td>Every inferred column is a string. Nothing fails, and nothing is a number until you convert it in silver.</td></tr>
+    <tr><td><code>cloudFiles.inferColumnTypes = true</code></td><td>Types are guessed from the sampled files. Convenient, but a guess made from early files may not suit later ones.</td></tr>
+    <tr><td>A value does not match its column's type</td><td>The column gets NULL for that row, and the original value is kept in <code>_rescued_data</code> if that column exists.</td></tr>
+    <tr><td>A field arrives as <code>Price</code> when the schema has <code>price</code></td><td>Treated as a mismatch of letter case and sent to <code>_rescued_data</code>.</td></tr>
+  </table></div>
+</section>
+
+<section id="compare">
+  <div class="sec-num">Compare</div>
+  <h2>The four modes</h2>
+  <div class="tbl"><table>
+    <tr><th></th><th>addNewColumns</th><th>rescue</th><th>failOnNewColumns</th><th>none</th></tr>
+    <tr><td>Schema grows?</td><td>Yes</td><td>No</td><td>No</td><td>No</td></tr>
+    <tr><td>Stream stops?</td><td>Once, then restart</td><td>No</td><td>Yes, until fixed</td><td>No</td></tr>
+    <tr><td>New column's data</td><td>Kept, in a new column</td><td>Kept, in <code>_rescued_data</code></td><td>Not loaded</td><td>Dropped</td></tr>
+    <tr><td>Needs a person?</td><td>No, if the job retries</td><td>No</td><td>Yes</td><td>No</td></tr>
+    <tr><td>Choose it when</td><td>You want new columns to appear by themselves</td><td>You want a fixed schema and no data loss</td><td>Any change must be reviewed first</td><td>Extra columns truly do not matter</td></tr>
+  </table></div>
+  <h3>Enforcement or evolution?</h3>
+  <div class="grid2">
+    <div class="card"><span class="tag">Enforcement</span><p>The schema is a contract. <code>failOnNewColumns</code> and <code>none</code> enforce it strictly. <code>rescue</code> enforces it too, while keeping what does not fit.</p></div>
+    <div class="card"><span class="tag">Evolution</span><p>The schema follows the data. <code>addNewColumns</code> is the evolving mode.</p></div>
+  </div>
+</section>
+
+<section id="scenarios">
+  <div class="sec-num">Real life</div>
+  <h2>Schema drift on a Monday morning</h2>
+  <div class="tbl"><table>
+    <tr><th>Scenario</th><th>What happens</th><th>Fix</th></tr>
+    <tr><td>The website team adds a <code>gift_note</code> field without telling anyone</td><td>In <code>addNewColumns</code> mode the stream fails once overnight</td><td>Give the job automatic retries. The retry picks up the new schema and the column appears.</td></tr>
+    <tr><td>A regulated table must never change without sign-off</td><td>An automatic new column would break the rule</td><td><code>failOnNewColumns</code>, or <code>rescue</code> to keep loading while the change is reviewed</td></tr>
+    <tr><td>A dashboard breaks because <code>price</code> is text</td><td>JSON columns were inferred as strings</td><td>Add a schema hint for <code>price</code>, or cast it in silver</td></tr>
+    <tr><td>A supplier sometimes sends "n/a" as a price</td><td>With a numeric type, that row's price is NULL</td><td>Look in <code>_rescued_data</code>: the original "n/a" is kept there for investigation</td></tr>
+    <tr><td>A downstream table suddenly has three unknown columns</td><td><code>addNewColumns</code> let them through unnoticed</td><td>Use <code>rescue</code> in bronze and add columns to silver on purpose</td></tr>
+  </table></div>
+</section>
+
+<section id="traps">
+  <div class="sec-num">Don't confuse these</div>
+  <h2>Schema traps</h2>
+  <div class="grid2">
+    <div class="card trap"><span class="tag">addNewColumns fails first</span><p>It does not glide over a new column. The stream stops once so that the new schema takes effect on restart. Many people expect no failure at all.</p></div>
+    <div class="card trap"><span class="tag">rescue vs none</span><p>Both keep the schema fixed and the stream running. <code>rescue</code> keeps the unexpected data. <code>none</code> throws it away.</p></div>
+    <div class="card trap"><span class="tag">Two defaults</span><p>Inferred schema: default <code>addNewColumns</code>. Supplied schema: default <code>none</code>.</p></div>
+    <div class="card trap"><span class="tag">Auto Loader vs read_files types</span><p>Auto Loader infers JSON and CSV columns as strings by default. <code>read_files</code> infers real types by default.</p></div>
+  </div>
+</section>
+
+<section id="quiz">
+  <div class="sec-num">Check yourself</div>
+  <h2>Quiz</h2>
+  <div class="quiz">
+    <fieldset>
+      <legend>1. Auto Loader infers the schema and you set no evolution mode. A file arrives with a new column. What happens?</legend>
+      <label><input type="radio"> The column is silently ignored</label>
+      <label><input type="radio" data-correct> The stream fails once, and after a restart the column is part of the schema</label>
+      <label><input type="radio"> The stream fails for good</label>
+      <p class="explain" hidden>The default with an inferred schema is <code>addNewColumns</code>: record the wider schema, stop, and continue with it after a restart.</p>
+    </fieldset>
+    <fieldset>
+      <legend>2. Which mode keeps the schema fixed, keeps the stream running, and loses no data?</legend>
+      <label><input type="radio"> <code>none</code></label>
+      <label><input type="radio"> <code>failOnNewColumns</code></label>
+      <label><input type="radio" data-correct> <code>rescue</code></label>
+      <p class="explain" hidden><code>rescue</code> puts unexpected columns into <code>_rescued_data</code>. <code>none</code> also keeps running but drops them.</p>
+    </fieldset>
+    <fieldset>
+      <legend>3. By default, what type does Auto Loader give a JSON field containing <code>4.50</code>?</legend>
+      <label><input type="radio" data-correct> String</label>
+      <label><input type="radio"> Double</label>
+      <label><input type="radio"> Decimal</label>
+      <p class="explain" hidden>JSON and CSV columns are inferred as strings unless you turn on <code>inferColumnTypes</code> or give schema hints.</p>
+    </fieldset>
+    <fieldset>
+      <legend>4. In the demo with the price hint on, where did the value "three" end up?</legend>
+      <label><input type="radio"> In the price column</label>
+      <label><input type="radio" data-correct> In <code>_rescued_data</code>, with price shown as NULL</label>
+      <label><input type="radio"> Nowhere. The whole file was rejected.</label>
+      <p class="explain" hidden>A value that does not fit its column's type is rescued. The row still loads, with NULL in the typed column.</p>
+    </fieldset>
+    <fieldset>
+      <legend>5. What does <code>cloudFiles.schemaHints</code> do?</legend>
+      <label><input type="radio"> Replaces the whole schema</label>
+      <label><input type="radio" data-correct> Sets the types of the columns you name, leaving the rest inferred</label>
+      <label><input type="radio"> Lists columns to drop</label>
+      <p class="explain" hidden>Hints are a middle path: you fix the important types without writing out every column.</p>
+    </fieldset>
+  </div>
+</section>
+
+<section id="wrap">
+  <div class="sec-num">Wrap up</div>
+  <h2>Key takeaways</h2>
+  <ul>
+    <li>Auto Loader can infer the schema and stores it in the schema location.</li>
+    <li>JSON and CSV columns are inferred as strings unless you ask for types or give hints.</li>
+    <li>Four evolution modes: <code>addNewColumns</code>, <code>rescue</code>, <code>failOnNewColumns</code>, <code>none</code>.</li>
+    <li><code>addNewColumns</code> fails once and continues after a restart. It is the default when the schema is inferred.</li>
+    <li><code>_rescued_data</code> keeps new columns, type mismatches and case mismatches that do not fit.</li>
+  </ul>
+  <h3>Glossary terms used</h3>
+  <p><a href="../../glossary.html#schema-inference">schema inference</a> · <a href="../../glossary.html#schema-enforcement">schema enforcement</a> · <a href="../../glossary.html#schema-evolution">schema evolution</a> · <a href="../../glossary.html#rescued-data">rescued data column</a> · <a href="../../glossary.html#schema-hints">schema hints</a> · <a href="../../glossary.html#schema-location">schema location</a></p>
+  <h3>Official docs</h3>
+  <ul>
+    <li><a href="https://docs.databricks.com/aws/en/ingestion/cloud-object-storage/auto-loader/schema">Schema inference and evolution in Auto Loader</a></li>
+    <li><a href="https://docs.databricks.com/aws/en/ingestion/cloud-object-storage/auto-loader/options">Auto Loader options</a></li>
+    <li><a href="https://docs.databricks.com/aws/en/tables/update-schema">Update a table schema</a></li>
+  </ul>
+  <p class="cap">Last verified: 16 November 2026</p>
+</section>
+
+</main>
+
+<script>
+(function () {
+  var C = window.Course, $ = function (id) { return document.getElementById(id); }, L = $('dLog');
+  var schema, pending, rows, running, waiting, nextId;   /* waiting: file that stopped the stream. pending: column to add on restart */
+  function hasRescue() { return $('dMode').value !== 'none'; }
+  function draw() {
+    $('pState').textContent = running ? 'Running' : 'FAILED';
+    $('pWait').textContent = waiting ? 'One file is waiting to be processed.' : '';
+    var cols = schema.slice(); if (hasRescue()) cols.push('_rescued_data');
+    $('pSchema').innerHTML = cols.map(function (c) { return '<div class="item"><span>' + c + '</span><span>' + (c === 'price' && $('dHint').checked ? 'DOUBLE' : c === '_rescued_data' ? 'spare' : 'STRING') + '</span></div>'; }).join('');
+    $('pRows').innerHTML = C.table(rows.map(function (r) { var o = {}; cols.forEach(function (c) { o[c] = r[c] === undefined ? null : r[c]; }); return o; }));
+  }
+  /* Load one file according to the current schema. Returns false if the stream must stop. */
+  function load(file) {
+    var mode = $('dMode').value, typed = $('dHint').checked, row = {}, rescued = {}, extra = Object.keys(file).filter(function (k) { return schema.indexOf(k) < 0; });
+    if (extra.length && mode === 'addNewColumns') { pending = extra; C.log(L, 'bad', 'New column "' + extra[0] + '": schema updated in the schema location, stream FAILED with an unknown-field error. Restart it.'); return false; }
+    if (extra.length && mode === 'failOnNewColumns') { C.log(L, 'bad', 'New column "' + extra[0] + '": stream FAILED. It will fail again on restart until someone changes the schema or removes the file.'); return false; }
+    schema.forEach(function (k) { if (file[k] !== undefined) row[k] = file[k]; });
+    extra.forEach(function (k) { rescued[k] = file[k]; });
+    if (typed && isNaN(Number(file.price))) { rescued.price = file.price; row.price = null; }
+    var kept = Object.keys(rescued).length && hasRescue();
+    if (kept) row._rescued_data = JSON.stringify(rescued);
+    rows.push(row);
+    var lost = Object.keys(rescued).length && !hasRescue();
+    C.log(L, lost ? 'bad' : 'ok', 'Loaded order ' + file.order_id + '.' + (kept ? ' Parts that did not fit were kept in _rescued_data.' : lost ? ' "' + Object.keys(rescued)[0] + '" did not fit and was DROPPED.' : extra.length === 0 && !typed && isNaN(Number(file.price)) ? ' price is a STRING column, so "three" loaded as text.' : ''));
+    return true;
+  }
+  function send(file) {
+    if (!running) { C.log(L, 'skip', 'The stream is stopped. The file waits in the folder. Restart the stream first.'); return; }
+    if (!load(file)) { running = false; waiting = file; }
+    draw();
+  }
+  $('fOk').onclick = function () { send({ order_id: nextId++, price: '4.50' }); };
+  $('fNew').onclick = function () { send({ order_id: nextId++, price: '3.00', loyalty: 'gold' }); };
+  $('fBad').onclick = function () { send({ order_id: nextId++, price: 'three' }); };
+  $('dRestart').onclick = function () {
+    if (running) { C.log(L, 'skip', 'The stream is already running.'); return; }
+    if (pending) { schema = schema.concat(pending); pending = null; C.log(L, 'ok', 'Restarted with the updated schema: ' + schema.join(', ') + '.'); }
+    else C.log(L, 'skip', 'Restarted with the same schema.');
+    running = true; var f = waiting; waiting = null;
+    if (f && !load(f)) { running = false; waiting = f; }
+    draw();
+  };
+  function reset() { schema = ['order_id', 'price']; pending = null; rows = []; running = true; waiting = null; nextId = 101; L.innerHTML = ''; C.log(L, 'skip', 'Stream started. Schema inferred from the first files: order_id, price.'); draw(); }
+  $('dReset').onclick = $('dMode').onchange = $('dHint').onchange = reset;
+  reset();
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,301 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>02-01 Ingestion patterns · DE Associate course</title>
+<link rel="stylesheet" href="../../assets/course.css">
+<script src="../../assets/course.js"></script>
+</head>
+<body data-lesson="02-01">
+
+<aside class="disclaimer" aria-label="Disclaimer"><strong>Learning resource only.</strong> This is an independent, unofficial study guide made for learning purposes. It is not affiliated with, endorsed by or sponsored by Databricks. Databricks features change often, so always check the details in the <a href="https://docs.databricks.com">official Databricks documentation</a> and the official exam guide on databricks.com before relying on anything here. Databricks and related names are trademarks of their respective owners.</aside>
+
+<main class="wrap">
+
+<header class="hero">
+  <div class="eyebrow">Module 02 · Data Ingestion and Loading · Lesson 1 of 13</div>
+  <h1>Ingestion patterns: batch, streaming, incremental</h1>
+  <p class="lede">Ingestion is copying data from where it is made into your bronze tables. Before choosing a tool, choose a pattern: how much to copy each time, and how to notice what changed.</p>
+  <dl class="where">
+    <div><dt>Module</dt><dd>02 Data Ingestion and Loading (21% of the exam)</dd></div>
+    <div><dt>Exam objective</dt><dd>2.1 Explain the ways data can be brought in (all at once, continuously, or only what is new) and load it from local files and from both kinds of Lakeflow Connect connector. This lesson covers the patterns.</dd></div>
+    <div><dt>Time to read</dt><dd>About 13 minutes</dd></div>
+    <div><dt>Before this</dt><dd><a href="../00-foundations/04-batch-vs-streaming.html">00-04 Batch vs streaming</a> · <a href="../00-foundations/10-medallion-architecture.html">00-10 Medallion architecture</a></dd></div>
+  </dl>
+</header>
+
+<section id="idea">
+  <div class="sec-num">The idea</div>
+  <h2>How much to copy, and how to know what changed</h2>
+  <p>Lesson 00-04 introduced batch, streaming and incremental processing. For ingestion, the same ideas turn into three practical patterns.</p>
+  <ul>
+    <li><strong>Full load.</strong> Copy everything from the source every time and replace what you had. Also called a <a href="../../glossary.html#snapshot">snapshot</a> load.</li>
+    <li><strong>Incremental load.</strong> Copy only what is new or changed since the last run.</li>
+    <li><strong>Streaming load.</strong> Stay connected and copy each change shortly after it happens.</li>
+  </ul>
+  <p>Full load is easy and always correct, but it re-reads everything. Incremental and streaming are efficient, but they only work if you can answer one question: <strong>what changed since last time?</strong> There are three common ways to find out.</p>
+  <ul>
+    <li><strong>New files.</strong> When data arrives as files, "what is new" means "which files have I not loaded yet". The tool keeps a list of files it has seen.</li>
+    <li><strong>A <a href="../../glossary.html#high-water-mark">high-water mark</a>.</strong> When the source is a table with a column that only grows, such as an ID or a "last updated" time, you remember the largest value you have loaded and ask for rows above it.</li>
+    <li><strong><a href="../../glossary.html#cdc">Change data capture</a> (CDC).</strong> The source database keeps its own log of every insert, update and delete. You read that log and replay it.</li>
+  </ul>
+  <div class="analogy">
+    <span class="tag">Everyday analogy</span>
+    <p><strong>Keeping a copy of a friend's address book.</strong> Full load: photocopy the whole book every week. Simple, slow, never wrong. High-water mark: each week copy only entries added after the last one you have. Fast, but you miss it when a friend changes an old entry or crosses one out. CDC: your friend keeps a notepad of every change ("added Sam", "changed Ana's number", "removed Raj") and you copy from the notepad. Fast and complete.</p>
+  </div>
+</section>
+
+<section id="how">
+  <div class="sec-num">How it works</div>
+  <h2>Three ways to find the changes</h2>
+  <div class="stage">
+    <svg class="tall" viewBox="0 0 360 330" role="img" aria-label="Three lanes. New files: a file tracker passes only unseen files. High-water mark: only rows above the remembered value pass. Change data capture: a change log of inserts, updates and deletes is replayed.">
+      <defs><path id="i1" d="M96 52 H270"/><path id="i2" d="M96 158 H270"/><path id="i3" d="M96 264 H270"/></defs>
+      <g class="wire"><use href="#i1"/><use href="#i2"/><use href="#i3"/></g>
+      <text class="t-b" x="10" y="20">New files</text><text class="t-m" x="84" y="20">"have I seen this file before?"</text>
+      <text class="t-b" x="10" y="126">High-water mark</text><text class="t-m" x="124" y="126">"rows above 105, please"</text>
+      <text class="t-b" x="10" y="232">Change data capture</text><text class="t-m" x="150" y="232">"replay the change log"</text>
+      <g class="mover">
+        <rect class="dot" x="-9" y="-7" width="18" height="14" rx="2"><animateMotion dur="2.4s" repeatCount="indefinite"><mpath href="#i1"/></animateMotion></rect>
+        <circle r="5" class="dot"><animateMotion dur="2.4s" begin="-0.8s" repeatCount="indefinite"><mpath href="#i2"/></animateMotion></circle>
+        <circle r="5" class="dot-ok"><animateMotion dur="1.6s" repeatCount="indefinite"><mpath href="#i3"/></animateMotion></circle>
+        <circle r="5" class="dot"><animateMotion dur="1.6s" begin="-0.8s" repeatCount="indefinite"><mpath href="#i3"/></animateMotion></circle>
+      </g>
+      <g>
+        <rect class="box-soft" x="10" y="32" width="86" height="40" rx="6"/><text x="53" y="57" text-anchor="middle">Folder</text>
+        <rect class="box-acc" x="140" y="34" width="86" height="36" rx="6"/><text class="t-m" x="183" y="56" text-anchor="middle">files seen list</text>
+        <rect class="box" x="270" y="32" width="80" height="40" rx="6"/><text x="310" y="57" text-anchor="middle">Bronze</text>
+        <rect class="box-soft" x="10" y="138" width="86" height="40" rx="6"/><text x="53" y="163" text-anchor="middle">Table</text>
+        <rect class="box-acc" x="140" y="140" width="86" height="36" rx="6"/><text class="t-m" x="183" y="162" text-anchor="middle">last value: 105</text>
+        <rect class="box" x="270" y="138" width="80" height="40" rx="6"/><text x="310" y="163" text-anchor="middle">Bronze</text>
+        <rect class="box-soft" x="10" y="244" width="86" height="40" rx="6"/><text x="53" y="269" text-anchor="middle">Database</text>
+        <rect class="box-acc" x="140" y="246" width="86" height="36" rx="6"/><text class="t-m" x="183" y="268" text-anchor="middle">change log</text>
+        <rect class="box" x="270" y="244" width="80" height="40" rx="6"/><text x="310" y="269" text-anchor="middle">Bronze</text>
+      </g>
+      <text class="t-m" x="180" y="312" text-anchor="middle">The middle box is what each pattern must remember between runs.</text>
+    </svg>
+  </div>
+  <p>Once you have the changes, you apply them to the target table. New rows are simply appended. Changed rows need an <a href="../../glossary.html#merge">upsert</a>: update the row if it exists, insert it if it does not. Deleted rows must be deleted from the target too, which only CDC or a full load can tell you about.</p>
+  <h3>Where the data comes from</h3>
+  <div class="grid3">
+    <div class="card"><span class="tag">Local files</span><p>A file on your own computer, uploaded through the Databricks UI. Good for one-off and small data. Lesson 02-02.</p></div>
+    <div class="card"><span class="tag">Standard connectors</span><p>Building blocks you configure yourself to read files in cloud storage, message streams and more. Auto Loader and <code>COPY INTO</code> belong here. Lessons 02-04 to 02-07.</p></div>
+    <div class="card"><span class="tag">Managed connectors</span><p>Ready-made, fully managed pipelines for business applications and databases, such as Salesforce or SQL Server. Lessons 02-03 and 02-08.</p></div>
+  </div>
+  <p>The second and third are the two halves of <a href="../../glossary.html#lakeflow-connect">Lakeflow Connect</a>, the Databricks name for its ingestion tools.</p>
+</section>
+
+<section id="demo">
+  <div class="sec-num">Try it</div>
+  <h2>Change the source, then see what each pattern catches</h2>
+  <p>Make changes to the source table: add a customer, update one, delete one. Then run a load with each pattern and compare the target with the source. Reset between patterns.</p>
+  <div class="stage">
+    <div class="ctrls">
+      <button id="sAdd" type="button">Source: add a customer</button>
+      <button id="sUpd" type="button">Source: change a city</button>
+      <button id="sDel" type="button">Source: delete a customer</button>
+    </div>
+    <div class="ctrls">
+      <label class="tog">Pattern: <select id="dMode">
+        <option value="full">Full load (replace everything)</option>
+        <option value="hwm">Incremental: high-water mark on id</option>
+        <option value="upd">Incremental: high-water mark on updated_at, with upsert</option>
+        <option value="cdc">Change data capture</option>
+      </select></label>
+      <button id="dRun" type="button" class="primary">Run the load</button>
+      <button id="dReset" type="button">Reset</button>
+    </div>
+    <div class="panes">
+      <div class="pane"><h4>Source table</h4><div id="pSrc"></div></div>
+      <div class="pane"><h4>Target (bronze)</h4><div id="pTgt"></div><p class="cap" id="pDiff"></p></div>
+      <div class="pane"><h4>Remembered between runs</h4><div id="pMem"></div><h4>Rows read from source so far</h4><div class="big" id="pRead">0</div></div>
+    </div>
+    <div class="log" id="dLog" role="log" aria-label="What happened"></div>
+  </div>
+</section>
+
+<section id="code">
+  <div class="sec-num">Code</div>
+  <h2>The same table, loaded three ways</h2>
+<pre><code><span class="c-c">-- 1. FULL LOAD: replace the target with everything in the source.</span>
+<span class="c-k">CREATE OR REPLACE TABLE</span> bakery.bronze.customers <span class="c-k">AS</span>
+<span class="c-k">SELECT</span> * <span class="c-k">FROM</span> bakery.landing.customers_export;</code></pre>
+<pre><code><span class="c-c">-- 2. INCREMENTAL with a high-water mark: only rows changed since the newest one we hold.</span>
+<span class="c-k">MERGE INTO</span> bakery.bronze.customers <span class="c-k">AS</span> t
+<span class="c-k">USING</span> (
+  <span class="c-k">SELECT</span> * <span class="c-k">FROM</span> bakery.landing.customers_export
+  <span class="c-k">WHERE</span> updated_at &gt; (<span class="c-k">SELECT</span> coalesce(<span class="c-k">max</span>(updated_at), <span class="c-s">'1900-01-01'</span>) <span class="c-k">FROM</span> bakery.bronze.customers)
+) <span class="c-k">AS</span> s
+<span class="c-k">ON</span> t.customer_id = s.customer_id
+<span class="c-k">WHEN MATCHED THEN UPDATE SET</span> *      <span class="c-c">-- the row exists: overwrite it</span>
+<span class="c-k">WHEN NOT MATCHED THEN INSERT</span> *;     <span class="c-c">-- the row is new: add it</span></code></pre>
+<pre><code><span class="c-c"># 3. INCREMENTAL on files, as a stream that can also run continuously.</span>
+<span class="c-c"># "cloudFiles" is Auto Loader. It remembers which files it has already loaded (lesson 02-05).</span>
+(spark.readStream.format(<span class="c-s">"cloudFiles"</span>)
+    .option(<span class="c-s">"cloudFiles.format"</span>, <span class="c-s">"json"</span>)
+    .option(<span class="c-s">"cloudFiles.schemaLocation"</span>, <span class="c-s">"/Volumes/bakery/ops/checkpoints/customers"</span>)
+    .load(<span class="c-s">"/Volumes/bakery/landing/crm_files/customers/"</span>)
+    .writeStream
+    .option(<span class="c-s">"checkpointLocation"</span>, <span class="c-s">"/Volumes/bakery/ops/checkpoints/customers"</span>)
+    .trigger(availableNow=<span class="c-k">True</span>)      <span class="c-c"># load what is new, then stop</span>
+    .toTable(<span class="c-s">"bakery.bronze.customers_raw"</span>))</code></pre>
+  <p class="note">You rarely write CDC by hand. A managed connector reads the source's change log and applies the inserts, updates and deletes for you (lesson 02-08).</p>
+</section>
+
+<section id="whatif">
+  <div class="sec-num">What if I change this?</div>
+  <h2>Choosing a pattern, and its price</h2>
+  <div class="tbl"><table class="whatif">
+    <tr><th>Change</th><th>Effect</th></tr>
+    <tr><td>Full load on a table that has grown to a billion rows</td><td>Still correct, but every run reads a billion rows to pick up a few thousand changes.</td></tr>
+    <tr><td>High-water mark on an ID column</td><td>New rows are caught. Changes to existing rows are missed, because their ID did not grow.</td></tr>
+    <tr><td>High-water mark on a "last updated" column</td><td>New and changed rows are caught. Rows deleted at the source are still missed: a deleted row has no "last updated" value to find.</td></tr>
+    <tr><td>Append instead of upsert when using "last updated"</td><td>Every changed row is added again, so the target holds the old and the new version side by side.</td></tr>
+    <tr><td>Switch to CDC</td><td>Inserts, updates and deletes are all captured. It needs the source database to have change logging turned on.</td></tr>
+    <tr><td>The source application does not maintain "last updated" reliably</td><td>The high-water mark silently skips changes. Fall back to full load or CDC.</td></tr>
+  </table></div>
+</section>
+
+<section id="compare">
+  <div class="sec-num">Compare</div>
+  <h2>The patterns side by side</h2>
+  <div class="tbl"><table>
+    <tr><th></th><th>Full load</th><th>High-water mark</th><th>New-file tracking</th><th>CDC</th></tr>
+    <tr><td>Reads each run</td><td>Everything</td><td>Rows above the mark</td><td>Unseen files</td><td>Entries in the change log</td></tr>
+    <tr><td>Catches new rows</td><td>Yes</td><td>Yes</td><td>Yes</td><td>Yes</td></tr>
+    <tr><td>Catches updates</td><td>Yes</td><td>Only with a reliable "last updated" column</td><td>Only if sent as new files</td><td>Yes</td></tr>
+    <tr><td>Catches deletes</td><td>Yes</td><td>No</td><td>No</td><td>Yes</td></tr>
+    <tr><td>Remembers between runs</td><td>Nothing</td><td>One value</td><td>The list of files seen</td><td>A position in the log</td></tr>
+    <tr><td>Typical Databricks tool</td><td><code>CREATE OR REPLACE TABLE</code></td><td>JDBC notebook, query-based connector</td><td>Auto Loader, <code>COPY INTO</code></td><td>Managed database connector</td></tr>
+  </table></div>
+</section>
+
+<section id="scenarios">
+  <div class="sec-num">Real life</div>
+  <h2>Matching pattern to situation</h2>
+  <div class="tbl"><table>
+    <tr><th>Scenario</th><th>What happens</th><th>Fix</th></tr>
+    <tr><td>A 200-row table of shop addresses changes a few times a year</td><td>Any pattern works. Building change tracking is wasted effort.</td><td>Full load. Small tables do not need to be clever.</td></tr>
+    <tr><td>Tills drop a new JSON file every few minutes</td><td>Thousands of files build up</td><td>New-file tracking with Auto Loader</td></tr>
+    <tr><td>Customers who closed their account still appear in reports</td><td>The load uses a high-water mark, which cannot see deletes</td><td>Use CDC, or a periodic full load to reconcile</td></tr>
+    <tr><td>An orders table has 400 million rows and rows change status for days after creation</td><td>Full load is too slow, and an ID mark misses the status changes</td><td>CDC, or a "last updated" mark with upsert</td></tr>
+    <tr><td>Fraud checks need each card payment within seconds</td><td>A scheduled load is too slow however it finds changes</td><td>A streaming load that runs continuously</td></tr>
+  </table></div>
+</section>
+
+<section id="traps">
+  <div class="sec-num">Don't confuse these</div>
+  <h2>Pattern words</h2>
+  <div class="grid2">
+    <div class="card trap"><span class="tag">Incremental vs streaming</span><p>Incremental says <em>how much</em> is read: only the new part. Streaming says <em>when</em>: continuously. A stream that runs once and stops is incremental without being continuous.</p></div>
+    <div class="card trap"><span class="tag">High-water mark vs watermark</span><p>A high-water mark is the last value you loaded. A "watermark" in Spark streaming is a setting for how late data may arrive. Different things.</p></div>
+    <div class="card trap"><span class="tag">CDC vs Change Data Feed</span><p>CDC reads changes out of a <em>source database</em>. Change Data Feed is a Delta table feature that lets you read changes made to a <em>Delta table</em>.</p></div>
+    <div class="card trap"><span class="tag">Append vs upsert</span><p>Append always adds rows. Upsert updates a matching row or inserts a new one. Changed data needs upsert, or you get duplicates.</p></div>
+  </div>
+</section>
+
+<section id="quiz">
+  <div class="sec-num">Check yourself</div>
+  <h2>Quiz</h2>
+  <div class="quiz">
+    <fieldset>
+      <legend>1. Which pattern can detect a row that was deleted at the source, without re-reading the whole table?</legend>
+      <label><input type="radio"> High-water mark on an ID</label>
+      <label><input type="radio"> High-water mark on "last updated"</label>
+      <label><input type="radio" data-correct> Change data capture</label>
+      <p class="explain" hidden>Only the source's change log records a delete. A high-water mark looks for rows above a value, and a deleted row is simply not there.</p>
+    </fieldset>
+    <fieldset>
+      <legend>2. In the demo, you changed a city and ran the "high-water mark on id" load. What happened?</legend>
+      <label><input type="radio"> The city was updated in the target</label>
+      <label><input type="radio" data-correct> Nothing. The change was missed.</label>
+      <label><input type="radio"> The row was duplicated</label>
+      <p class="explain" hidden>The row's ID did not increase, so it was below the mark and never read.</p>
+    </fieldset>
+    <fieldset>
+      <legend>3. A small reference table of 150 rows changes rarely. What is the sensible pattern?</legend>
+      <label><input type="radio" data-correct> Full load</label>
+      <label><input type="radio"> CDC with a managed connector</label>
+      <label><input type="radio"> A continuous stream</label>
+      <p class="explain" hidden>Re-reading 150 rows costs almost nothing and is always correct. Save the machinery for large or fast-changing data.</p>
+    </fieldset>
+    <fieldset>
+      <legend>4. What must a new-file ingestion tool remember between runs?</legend>
+      <label><input type="radio"> The largest ID in the table</label>
+      <label><input type="radio" data-correct> Which files it has already loaded</label>
+      <label><input type="radio"> The source database's change log</label>
+      <p class="explain" hidden>For files, "what is new" means "what have I not seen". Auto Loader and <code>COPY INTO</code> both keep that record for you.</p>
+    </fieldset>
+  </div>
+</section>
+
+<section id="wrap">
+  <div class="sec-num">Wrap up</div>
+  <h2>Key takeaways</h2>
+  <ul>
+    <li>Full load is simple and complete, but re-reads everything.</li>
+    <li>Incremental load needs a way to know what changed: new files, a high-water mark, or CDC.</li>
+    <li>High-water marks miss deletes. Marks on an ID also miss updates.</li>
+    <li>CDC captures inserts, updates and deletes from the source's own change log.</li>
+    <li>Changed rows need an upsert, not an append.</li>
+  </ul>
+  <h3>Glossary terms used</h3>
+  <p><a href="../../glossary.html#ingestion">ingestion</a> · <a href="../../glossary.html#snapshot">snapshot</a> · <a href="../../glossary.html#incremental">incremental</a> · <a href="../../glossary.html#high-water-mark">high-water mark</a> · <a href="../../glossary.html#cdc">change data capture</a> · <a href="../../glossary.html#merge">upsert / MERGE</a> · <a href="../../glossary.html#lakeflow-connect">Lakeflow Connect</a></p>
+  <h3>Official docs</h3>
+  <ul>
+    <li><a href="https://docs.databricks.com/aws/en/ingestion/overview">What is Lakeflow Connect?</a></li>
+    <li><a href="https://docs.databricks.com/aws/en/ingestion/">Ingest with SQL and Spark APIs</a></li>
+    <li><a href="https://docs.databricks.com/aws/en/delta/merge">Upsert with MERGE</a></li>
+  </ul>
+  <p class="cap">Last verified: 16 November 2026</p>
+</section>
+
+</main>
+
+<script>
+(function () {
+  var C = window.Course, $ = function (id) { return document.getElementById(id); }, L = $('dLog');
+  var CITIES = ['Leeds', 'York', 'Hull', 'Bath'], src, tgt, changes, clock, nextId, mem, read;
+  function copy(r) { return { id: r.id, name: r.name, city: r.city, updated_at: r.updated_at }; }
+  function same() {
+    var a = JSON.stringify(src.map(copy)), b = JSON.stringify(tgt.slice().sort(function (x, y) { return x.id - y.id; }).map(copy));
+    return a === b;
+  }
+  function draw() {
+    $('pSrc').innerHTML = C.table(src); $('pTgt').innerHTML = C.table(tgt);
+    $('pDiff').textContent = same() ? 'Target matches the source.' : 'Target does NOT match the source.';
+    $('pMem').innerHTML = '<div class="item"><span>max id loaded</span><span>' + mem.id + '</span></div><div class="item"><span>max updated_at loaded</span><span>' + mem.at + '</span></div><div class="item"><span>change log position</span><span>' + mem.log + ' of ' + changes.length + '</span></div>';
+    $('pRead').textContent = read;
+  }
+  $('sAdd').onclick = function () { var r = { id: nextId++, name: 'Customer ' + (nextId - 1), city: CITIES[nextId % 4], updated_at: ++clock }; src.push(r); changes.push({ op: 'insert', row: copy(r) }); C.log(L, 'skip', 'Source: inserted id ' + r.id + ' at time ' + clock + '.'); draw(); };
+  $('sUpd').onclick = function () {
+    if (!src.length) return; var r = src[0]; r.city = CITIES[(CITIES.indexOf(r.city) + 1) % 4]; r.updated_at = ++clock; changes.push({ op: 'update', row: copy(r) });
+    C.log(L, 'skip', 'Source: id ' + r.id + ' moved to ' + r.city + ' at time ' + clock + '.'); draw();
+  };
+  $('sDel').onclick = function () { if (src.length < 2) return; var r = src.splice(1, 1)[0];   /* remove an existing customer, not the newest */ clock++; changes.push({ op: 'delete', row: copy(r) }); C.log(L, 'skip', 'Source: deleted id ' + r.id + '.'); draw(); };
+  function upsert(r) { var i = tgt.findIndex(function (t) { return t.id === r.id; }); if (i >= 0) tgt[i] = copy(r); else tgt.push(copy(r)); }
+  $('dRun').onclick = function () {
+    var mode = $('dMode').value, got;
+    if (mode === 'full') { got = src.length; tgt = src.map(copy); }
+    else if (mode === 'hwm') { var a = src.filter(function (r) { return r.id > mem.id; }); got = a.length; a.forEach(function (r) { tgt.push(copy(r)); }); }
+    else if (mode === 'upd') { var b = src.filter(function (r) { return r.updated_at > mem.at; }); got = b.length; b.forEach(upsert); }
+    else { var c = changes.slice(mem.log); got = c.length; c.forEach(function (ch) { if (ch.op === 'delete') tgt = tgt.filter(function (t) { return t.id !== ch.row.id; }); else upsert(ch.row); }); }
+    read += got;
+    mem.id = Math.max.apply(null, [mem.id].concat(tgt.map(function (r) { return r.id; })));
+    mem.at = Math.max.apply(null, [mem.at].concat(tgt.map(function (r) { return r.updated_at; })));
+    mem.log = changes.length;
+    C.log(L, same() ? 'ok' : 'bad', $('dMode').selectedOptions[0].text + ': read ' + got + ' row(s). ' + (same() ? 'Target matches the source.' : 'Target is now WRONG: compare the two tables.'));
+    draw(); C.bump($('pTgt'));
+  };
+  function reset() {
+    src = [{ id: 101, name: 'Ana', city: 'Leeds', updated_at: 1 }, { id: 102, name: 'Raj', city: 'York', updated_at: 2 }, { id: 103, name: 'Sam', city: 'Hull', updated_at: 3 }];
+    tgt = src.map(copy); changes = []; clock = 3; nextId = 104; read = 0; mem = { id: 103, at: 3, log: 0 }; L.innerHTML = '';
+    C.log(L, 'skip', 'Source and target start in step, with three customers.'); draw();
+  }
+  $('dReset').onclick = reset;
+  reset();
+})();
+</script>
+</body>
+</html>

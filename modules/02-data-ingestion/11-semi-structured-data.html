@@ -1,0 +1,333 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>02-11 Semi-structured data · DE Associate course</title>
+<link rel="stylesheet" href="../../assets/course.css">
+<script src="../../assets/course.js"></script>
+</head>
+<body data-lesson="02-11">
+
+<aside class="disclaimer" aria-label="Disclaimer"><strong>Learning resource only.</strong> This is an independent, unofficial study guide made for learning purposes. It is not affiliated with, endorsed by or sponsored by Databricks. Databricks features change often, so always check the details in the <a href="https://docs.databricks.com">official Databricks documentation</a> and the official exam guide on databricks.com before relying on anything here. Databricks and related names are trademarks of their respective owners.</aside>
+
+<main class="wrap">
+
+<header class="hero">
+  <div class="eyebrow">Module 02 · Data Ingestion and Loading · Lesson 11 of 13</div>
+  <h1>Semi-structured data: JSON, nested fields, VARIANT</h1>
+  <p class="lede">Real data is rarely a flat grid. An order contains a customer, who has an address, and a list of items. This lesson shows how to store that shape and how to reach inside it.</p>
+  <dl class="where">
+    <div><dt>Module</dt><dd>02 Data Ingestion and Loading (21% of the exam)</dd></div>
+    <div><dt>Exam objective</dt><dd>2.7 Bring semi-structured and unstructured data (such as nested JSON) into governed Delta tables. This lesson covers semi-structured data.</dd></div>
+    <div><dt>Time to read</dt><dd>About 14 minutes</dd></div>
+    <div><dt>Before this</dt><dd><a href="../00-foundations/03-file-formats.html">00-03 File formats</a> · <a href="07-auto-loader-schema.html">02-07 Auto Loader schema</a></dd></div>
+  </dl>
+</header>
+
+<section id="idea">
+  <div class="sec-num">The idea</div>
+  <h2>Boxes inside boxes</h2>
+  <p><a href="../../glossary.html#semi-structured-data">Semi-structured data</a> has labels, but not a fixed, flat shape. JSON is the usual example. A JSON record can contain three kinds of thing that a simple table column cannot:</p>
+  <ul>
+    <li>A record inside a record, such as a customer with a name and a city. Data inside other data is called <a href="../../glossary.html#nested">nested</a>.</li>
+    <li>A list of values, such as the items in a basket. One order may have one item, another may have twenty.</li>
+    <li>Fields that are sometimes there and sometimes not, such as an optional gift note.</li>
+  </ul>
+  <p>Delta tables can hold all of this. You have two broad choices when you ingest it.</p>
+  <ul>
+    <li><strong>Give it a full schema.</strong> Spark has column types made for nesting: a <a href="../../glossary.html#struct">struct</a> is a record with named fields, an <a href="../../glossary.html#array">array</a> is a list, and a map is a set of key and value pairs. Queries are fast and the shape is checked. But every field must be declared, and the schema must change when the data does.</li>
+    <li><strong>Store it as <a href="../../glossary.html#variant">VARIANT</a>.</strong> VARIANT is a column type that holds a whole semi-structured value, whatever its shape. No schema is needed up front. You pull out the fields you want when you query. It is stored in an efficient binary form, so it is much faster than keeping JSON as plain text.</li>
+  </ul>
+  <div class="analogy">
+    <span class="tag">Everyday analogy</span>
+    <p><strong>Packing for a house move.</strong> One way is a labelled crate for every category, with a slot for each item: orderly, quick to find things, and useless when you own something that has no slot. The other way is sturdy boxes that take whatever you put in, with a contents note on the lid: nothing is ever refused, and you unpack only what you need. Structs and arrays are the crates. VARIANT is the box.</p>
+  </div>
+</section>
+
+<section id="how">
+  <div class="sec-num">How it works</div>
+  <h2>One nested record, two ways to keep it</h2>
+  <div class="stage">
+    <svg class="tall" viewBox="0 0 360 400" role="img" aria-label="A JSON order with a nested customer and a list of items is stored either as typed struct and array columns, or as a single VARIANT column. Exploding the items array turns one order into one row per item.">
+      <defs><path id="n1" d="M100 128 V164"/><path id="n2" d="M260 128 V164"/><path id="n3" d="M100 240 V282"/></defs>
+      <g class="wire"><use href="#n1"/><use href="#n2"/><use href="#n3"/></g>
+      <g class="mover">
+        <circle r="5" class="dot"><animateMotion dur="1.6s" repeatCount="indefinite"><mpath href="#n1"/></animateMotion></circle>
+        <circle r="5" class="dot-ok"><animateMotion dur="1.6s" begin="-0.8s" repeatCount="indefinite"><mpath href="#n2"/></animateMotion></circle>
+        <circle r="5" class="dot"><animateMotion dur="1.6s" begin="-0.4s" repeatCount="indefinite"><mpath href="#n3"/></animateMotion></circle>
+      </g>
+      <rect class="box-soft" x="20" y="8" width="320" height="120" rx="8"/>
+      <text class="mono" x="32" y="28">{ "order_id": 501,</text>
+      <text class="mono" x="32" y="46">  "customer": { "name": "Ana", "city": "Leeds" },</text>
+      <text class="mono" x="32" y="64">  "items": [ { "sku": "LOAF", "qty": 2 },</text>
+      <text class="mono" x="32" y="82">             { "sku": "BUN",  "qty": 6 } ],</text>
+      <text class="mono" x="32" y="100">  "gift_note": "Happy birthday" }</text>
+      <text class="t-m" x="180" y="120" text-anchor="middle">a record inside a record, and a list</text>
+      <rect class="box" x="10" y="164" width="180" height="76" rx="8"/>
+      <text class="t-b" x="100" y="184" text-anchor="middle">Typed columns</text>
+      <text class="t-m" x="100" y="202" text-anchor="middle">customer: STRUCT</text><text class="t-m" x="100" y="218" text-anchor="middle">items: ARRAY of STRUCT</text><text class="t-m" x="100" y="232" text-anchor="middle">schema fixed in advance</text>
+      <rect class="box-acc" x="200" y="164" width="150" height="76" rx="8"/>
+      <text class="t-b" x="275" y="184" text-anchor="middle">One VARIANT column</text>
+      <text class="t-m" x="275" y="202" text-anchor="middle">the whole record,</text><text class="t-m" x="275" y="218" text-anchor="middle">any shape,</text><text class="t-m" x="275" y="232" text-anchor="middle">no schema needed</text>
+      <rect class="box" x="10" y="282" width="180" height="84" rx="8"/>
+      <text class="t-b" x="100" y="302" text-anchor="middle">After explode(items)</text>
+      <g class="wire"><path d="M20 312 H180 M20 338 H180"/></g>
+      <text class="mono" x="24" y="330">501  LOAF  2</text><text class="mono" x="24" y="356">501  BUN   6</text>
+      <text class="t-m" x="275" y="300" text-anchor="middle">Read a field at</text><text class="t-m" x="275" y="316" text-anchor="middle">query time:</text>
+      <text class="mono" x="275" y="340" text-anchor="middle">raw:customer.city</text>
+      <text class="t-m" x="180" y="390" text-anchor="middle">One order with two items becomes two rows.</text>
+    </svg>
+  </div>
+  <h3>Reaching inside</h3>
+  <ul>
+    <li>For a struct, use a dot: <code>customer.city</code>.</li>
+    <li>For an array, use a position in square brackets, counting from 0: <code>items[0]</code> is the first item.</li>
+    <li>For a VARIANT column, or a text column that contains JSON, start with a colon: <code>raw:customer.city</code>. Then say what type you want with a double colon: <code>raw:order_id::int</code>.</li>
+    <li>To turn a list into rows, use <a href="../../glossary.html#explode">explode</a>. Each element of the array becomes its own row, with the other columns repeated.</li>
+  </ul>
+</section>
+
+<section id="demo">
+  <div class="sec-num">Try it</div>
+  <h2>Reach into a nested order</h2>
+  <p>The order below is stored in a VARIANT column called <code>raw</code>. Pick a path and see what comes back. Try a field that is missing, and one with the wrong capital letter. Then explode the items.</p>
+  <div class="stage">
+    <div class="ctrls">
+      <label class="tog">Path: <select id="dPath">
+        <option>raw:order_id</option>
+        <option>raw:customer.name</option>
+        <option>raw:customer.city</option>
+        <option>raw:items[0].sku</option>
+        <option>raw:items[1].qty</option>
+        <option>raw:items[5].sku</option>
+        <option>raw:gift_note</option>
+        <option>raw:loyalty_card</option>
+        <option>raw:Customer.name</option>
+      </select></label>
+      <label class="tog">Cast: <select id="dCast"><option value="">(none)</option><option>::string</option><option>::int</option></select></label>
+      <button id="dGo" type="button" class="primary">Run</button>
+      <button id="dExp" type="button">Explode the items</button>
+      <button id="dReset" type="button">Clear</button>
+    </div>
+    <div class="panes">
+      <div class="pane"><h4>Column raw (VARIANT)</h4><pre class="filetext" id="pDoc"></pre></div>
+      <div class="pane"><h4>Result</h4><div class="big" id="pRes">-</div><p class="cap" id="pType"></p><div id="pRows"></div></div>
+    </div>
+    <div class="log" id="dLog" role="log" aria-label="What happened"></div>
+  </div>
+</section>
+
+<section id="code">
+  <div class="sec-num">Code</div>
+  <h2>Ingesting and querying nested data</h2>
+  <p>First, the VARIANT route. Auto Loader can put each whole record into one VARIANT column:</p>
+<pre><code>checkpoint = <span class="c-s">"/Volumes/bakery/ops/checkpoints/web_orders_variant"</span>
+
+<span class="c-c"># The target table must already have a VARIANT column with this name.</span>
+spark.sql(<span class="c-s">"CREATE TABLE IF NOT EXISTS bakery.bronze.web_orders_variant (raw VARIANT)"</span>)
+
+(spark.readStream.format(<span class="c-s">"cloudFiles"</span>)
+    .option(<span class="c-s">"cloudFiles.format"</span>, <span class="c-s">"json"</span>)
+    .option(<span class="c-s">"singleVariantColumn"</span>, <span class="c-s">"raw"</span>)          <span class="c-c"># whole record into one VARIANT column</span>
+    .load(<span class="c-s">"/Volumes/bakery/landing/web_orders/"</span>)
+    .writeStream
+    .option(<span class="c-s">"checkpointLocation"</span>, checkpoint)
+    .trigger(availableNow=<span class="c-k">True</span>)
+    .toTable(<span class="c-s">"bakery.bronze.web_orders_variant"</span>))</code></pre>
+<pre><code><span class="c-c">-- Pull out fields at query time. ":" navigates, "::" converts to a type.</span>
+<span class="c-k">SELECT</span> raw:order_id::int          <span class="c-k">AS</span> order_id,
+       raw:customer.name::string  <span class="c-k">AS</span> customer_name,
+       raw:items[0].sku::string   <span class="c-k">AS</span> first_item,
+       raw:gift_note::string      <span class="c-k">AS</span> gift_note      <span class="c-c">-- NULL when the field is absent</span>
+<span class="c-k">FROM</span> bakery.bronze.web_orders_variant;
+
+<span class="c-c">-- Turn JSON text you already have into VARIANT.</span>
+<span class="c-k">SELECT</span> parse_json(<span class="c-s">'{"order_id": 501, "customer": {"name": "Ana"}}'</span>) <span class="c-k">AS</span> raw;</code></pre>
+  <p>Second, the typed route. In silver you usually flatten the nesting into ordinary columns and rows:</p>
+<pre><code><span class="c-k">from</span> pyspark.sql <span class="c-k">import</span> functions <span class="c-k">as</span> F
+
+orders = spark.table(<span class="c-s">"bakery.bronze.web_orders_typed"</span>)   <span class="c-c"># customer is a STRUCT, items an ARRAY</span>
+
+order_lines = (orders
+    .select(
+        <span class="c-s">"order_id"</span>,
+        F.col(<span class="c-s">"customer.name"</span>).alias(<span class="c-s">"customer_name"</span>),   <span class="c-c"># dot reaches into a struct</span>
+        F.explode(<span class="c-s">"items"</span>).alias(<span class="c-s">"item"</span>))                <span class="c-c"># one row per element of the array</span>
+    .select(<span class="c-s">"order_id"</span>, <span class="c-s">"customer_name"</span>, <span class="c-s">"item.sku"</span>, <span class="c-s">"item.qty"</span>))
+
+order_lines.write.mode(<span class="c-s">"overwrite"</span>).saveAsTable(<span class="c-s">"bakery.silver.order_lines"</span>)</code></pre>
+<pre><code><span class="c-c">-- The same flattening in SQL.</span>
+<span class="c-k">SELECT</span> order_id, customer.name <span class="c-k">AS</span> customer_name, item.sku, item.qty
+<span class="c-k">FROM</span> bakery.bronze.web_orders_typed
+<span class="c-k">LATERAL VIEW</span> explode(items) exploded <span class="c-k">AS</span> item;</code></pre>
+</section>
+
+<section id="whatif">
+  <div class="sec-num">What if I change this?</div>
+  <h2>Small differences that change the result</h2>
+  <div class="tbl"><table class="whatif">
+    <tr><th>Change</th><th>Effect</th></tr>
+    <tr><td>Ask a VARIANT for a field that does not exist</td><td>You get NULL, not an error. Convenient, and it also hides typing mistakes.</td></tr>
+    <tr><td>Write <code>raw:Customer</code> when the field is <code>customer</code></td><td>NULL. Paths into VARIANT are case sensitive.</td></tr>
+    <tr><td>Leave off the <code>::type</code> cast</td><td>The result is still a VARIANT. It displays like the value, but should be cast before you compare, add or join on it.</td></tr>
+    <tr><td>Cast to a type the value cannot become, such as <code>"Ana"::int</code></td><td>An error. Use <code>try_cast</code> or <code>try_variant_get</code> to get NULL instead.</td></tr>
+    <tr><td><code>explode</code> a row whose array is empty or NULL</td><td>That row disappears from the result. <code>explode_outer</code> keeps it, with NULL for the item.</td></tr>
+    <tr><td>Use <code>singleVariantColumn</code></td><td>Each record is stored whole. There is no schema to evolve, and the rescued data column is not used.</td></tr>
+    <tr><td><code>parse_json</code> on text that is not valid JSON</td><td>An error. <code>try_parse_json</code> returns NULL for bad records instead.</td></tr>
+    <tr><td>Keep the JSON as a plain STRING column</td><td>It works, and <code>:</code> can still navigate it, but every query has to re-read the text. VARIANT is faster.</td></tr>
+  </table></div>
+</section>
+
+<section id="compare">
+  <div class="sec-num">Compare</div>
+  <h2>Three ways to keep nested data</h2>
+  <div class="tbl"><table>
+    <tr><th></th><th>Typed: STRUCT and ARRAY</th><th>VARIANT</th><th>JSON as STRING</th></tr>
+    <tr><td>Schema needed up front</td><td>Yes, every field</td><td>No</td><td>No</td></tr>
+    <tr><td>A new field appears in the data</td><td>Schema must evolve</td><td>Just stored</td><td>Just stored</td></tr>
+    <tr><td>Query speed</td><td>Fastest</td><td>Fast</td><td>Slowest</td></tr>
+    <tr><td>Wrong types caught at load</td><td>Yes</td><td>No, found at query time</td><td>No</td></tr>
+    <tr><td>Reach a field with</td><td><code>customer.city</code></td><td><code>raw:customer.city::string</code></td><td><code>raw:customer.city</code></td></tr>
+    <tr><td>Good for</td><td>Stable, well-known shapes, and silver tables</td><td>Bronze data whose shape varies or changes often</td><td>Rarely the best choice now</td></tr>
+  </table></div>
+  <h3>The nesting types</h3>
+  <div class="grid3">
+    <div class="card"><span class="tag">STRUCT</span><p>A record with a fixed set of named fields. <code>customer.name</code>.</p></div>
+    <div class="card"><span class="tag">ARRAY</span><p>An ordered list of values of one type. <code>items[0]</code>. Turn it into rows with <code>explode</code>.</p></div>
+    <div class="card"><span class="tag">MAP</span><p>Keys and values, where the keys are not known in advance. <code>attributes['colour']</code>.</p></div>
+  </div>
+  <p class="note">The objective mentions getting this data in "via Lakeflow Connect and other managed connectors". Managed connectors land nested source fields as these same types, or as VARIANT, in the destination streaming tables. What you learned here is how to read them afterwards.</p>
+</section>
+
+<section id="scenarios">
+  <div class="sec-num">Real life</div>
+  <h2>Nested data at work</h2>
+  <div class="tbl"><table>
+    <tr><th>Scenario</th><th>What happens</th><th>Fix</th></tr>
+    <tr><td>A partner's JSON gains and loses fields every few weeks</td><td>A typed bronze table keeps breaking or needing changes</td><td>Ingest as VARIANT in bronze. Pick out stable fields into typed silver columns.</td></tr>
+    <tr><td>A report needs one row per item sold, but the table has one row per order</td><td>The items are inside an array</td><td><code>explode</code> the array</td></tr>
+    <tr><td>After exploding, orders with no items have vanished from the count</td><td><code>explode</code> drops rows with empty arrays</td><td>Use <code>explode_outer</code></td></tr>
+    <tr><td>A query returns NULL for every customer name</td><td>The path says <code>raw:Customer.Name</code> and the data says <code>customer.name</code></td><td>Match the capital letters exactly</td></tr>
+    <tr><td>A dashboard filtering on <code>raw:order_id</code> is slow</td><td>The field is dug out of every record on every query</td><td>Extract fields you query often into their own typed columns</td></tr>
+  </table></div>
+</section>
+
+<section id="traps">
+  <div class="sec-num">Don't confuse these</div>
+  <h2>Nested data traps</h2>
+  <div class="grid2">
+    <div class="card trap"><span class="tag">Dot vs colon</span><p>A dot reaches into a STRUCT column: <code>customer.name</code>. A colon starts a path into VARIANT or JSON text: <code>raw:customer.name</code>.</p></div>
+    <div class="card trap"><span class="tag">: vs ::</span><p>One colon navigates. Two colons convert to a type. <code>raw:qty::int</code> means "find qty, then make it an integer".</p></div>
+    <div class="card trap"><span class="tag">explode vs explode_outer</span><p><code>explode</code> drops rows whose array is empty or NULL. <code>explode_outer</code> keeps them.</p></div>
+    <div class="card trap"><span class="tag">VARIANT vs _rescued_data</span><p>VARIANT is a way to store whole records on purpose. The rescued data column catches leftovers that did not fit a schema. With a single VARIANT column there are no leftovers.</p></div>
+  </div>
+</section>
+
+<section id="quiz">
+  <div class="sec-num">Check yourself</div>
+  <h2>Quiz</h2>
+  <div class="quiz">
+    <fieldset>
+      <legend>1. A VARIANT column <code>raw</code> holds an order. How do you get the customer's city as text?</legend>
+      <label><input type="radio"> <code>raw.customer.city</code></label>
+      <label><input type="radio" data-correct> <code>raw:customer.city::string</code></label>
+      <label><input type="radio"> <code>raw[customer][city]</code></label>
+      <p class="explain" hidden>A colon starts the path into a VARIANT, dots continue it, and <code>::string</code> converts the result.</p>
+    </fieldset>
+    <fieldset>
+      <legend>2. What does <code>explode</code> do to an array column?</legend>
+      <label><input type="radio" data-correct> Makes one row for each element of the array</label>
+      <label><input type="radio"> Joins the elements into one text value</label>
+      <label><input type="radio"> Deletes the column</label>
+      <p class="explain" hidden>An order with three items becomes three rows, with the order's other columns repeated on each.</p>
+    </fieldset>
+    <fieldset>
+      <legend>3. In the demo, what did <code>raw:loyalty_card</code> return?</legend>
+      <label><input type="radio"> An error</label>
+      <label><input type="radio" data-correct> NULL</label>
+      <label><input type="radio"> An empty string</label>
+      <p class="explain" hidden>A path that finds nothing gives NULL. No error is raised for a missing field.</p>
+    </fieldset>
+    <fieldset>
+      <legend>4. Incoming JSON changes shape often and you do not want ingestion to break. What is the best bronze design?</legend>
+      <label><input type="radio"> A fully typed table with STRUCT columns</label>
+      <label><input type="radio" data-correct> A single VARIANT column</label>
+      <label><input type="radio"> One STRING column per possible field</label>
+      <p class="explain" hidden>VARIANT accepts any shape with no schema to maintain. Typing can be applied later, in silver.</p>
+    </fieldset>
+    <fieldset>
+      <legend>5. Which Auto Loader option loads each whole JSON record into one VARIANT column?</legend>
+      <label><input type="radio"> <code>cloudFiles.schemaHints</code></label>
+      <label><input type="radio"> <code>cloudFiles.inferColumnTypes</code></label>
+      <label><input type="radio" data-correct> <code>singleVariantColumn</code></label>
+      <p class="explain" hidden>You give it the name of the VARIANT column. The other two options are about typed schemas.</p>
+    </fieldset>
+  </div>
+</section>
+
+<section id="wrap">
+  <div class="sec-num">Wrap up</div>
+  <h2>Key takeaways</h2>
+  <ul>
+    <li>Semi-structured data has nested records, lists and optional fields.</li>
+    <li>STRUCT, ARRAY and MAP give it a checked schema. VARIANT stores any shape with none.</li>
+    <li>Dot reaches into a struct. Colon reaches into VARIANT. Double colon casts.</li>
+    <li><code>explode</code> turns an array into rows. <code>explode_outer</code> keeps rows with empty arrays.</li>
+    <li>A common design: VARIANT in bronze, typed and flattened columns in silver.</li>
+  </ul>
+  <h3>Glossary terms used</h3>
+  <p><a href="../../glossary.html#semi-structured-data">semi-structured data</a> · <a href="../../glossary.html#nested">nested</a> · <a href="../../glossary.html#struct">struct</a> · <a href="../../glossary.html#array">array</a> · <a href="../../glossary.html#variant">VARIANT</a> · <a href="../../glossary.html#explode">explode</a> · <a href="../../glossary.html#json">JSON</a></p>
+  <h3>Official docs</h3>
+  <ul>
+    <li><a href="https://docs.databricks.com/aws/en/semi-structured/">Semi-structured data on Databricks</a></li>
+    <li><a href="https://docs.databricks.com/aws/en/semi-structured/variant">Query variant data</a></li>
+    <li><a href="https://docs.databricks.com/aws/en/ingestion/variant">Ingest data as variant</a></li>
+    <li><a href="https://docs.databricks.com/aws/en/sql/language-manual/functions/parse_json">parse_json function</a></li>
+    <li><a href="https://docs.databricks.com/aws/en/sql/language-manual/functions/variant_get">variant_get function</a></li>
+  </ul>
+  <p class="cap">Last verified: 16 November 2026</p>
+</section>
+
+</main>
+
+<script>
+(function () {
+  var C = window.Course, $ = function (id) { return document.getElementById(id); }, L = $('dLog');
+  var DOC = { order_id: 501, customer: { name: 'Ana', city: 'Leeds' }, items: [{ sku: 'LOAF', qty: 2 }, { sku: 'BUN', qty: 6 }], gift_note: 'Happy birthday' };
+  $('pDoc').textContent = JSON.stringify(DOC, null, 1);
+
+  /* Walk a path such as raw:items[0].sku through the document. Missing steps give undefined. Names are case sensitive. */
+  function walk(path) {
+    var steps = path.replace(/^raw:/, '').match(/[^.\[\]]+/g), v = DOC;
+    for (var i = 0; i < steps.length; i++) {
+      if (v == null || typeof v !== 'object') return undefined;
+      v = Array.isArray(v) ? v[+steps[i]] : v[steps[i]];
+    }
+    return v;
+  }
+  $('dGo').onclick = function () {
+    var path = $('dPath').value, cast = $('dCast').value, v = walk(path), out, type, cls = 'ok';
+    $('pRows').innerHTML = '';
+    if (v === undefined) { out = 'NULL'; type = 'Nothing at that path. No error.'; cls = 'skip'; }
+    else if (cast === '::int') {
+      if (typeof v === 'number' || /^-?\d+$/.test(v)) { out = String(parseInt(v, 10)); type = 'INT'; }
+      else { out = 'ERROR'; type = 'Cannot turn ' + JSON.stringify(v) + ' into an INT. try_cast would give NULL.'; cls = 'bad'; }
+    }
+    else if (cast === '::string') { out = typeof v === 'object' ? JSON.stringify(v) : String(v); type = 'STRING'; }
+    else { out = JSON.stringify(v); type = 'VARIANT (not cast yet)'; }
+    $('pRes').textContent = out; $('pType').textContent = type;
+    C.log(L, cls, 'SELECT ' + path + cast + '  ->  ' + out + (v === undefined && /[A-Z]/.test(path.replace('raw:', '')) ? '   (paths are case sensitive)' : ''));
+    C.bump($('pRes'));
+  };
+  $('dExp').onclick = function () {
+    var rows = DOC.items.map(function (it) { return { order_id: DOC.order_id, sku: it.sku, qty: it.qty }; });
+    $('pRes').textContent = rows.length + ' rows'; $('pType').textContent = 'one row per element of items';
+    $('pRows').innerHTML = C.table(rows);
+    C.log(L, 'ok', 'Exploded the items list: 1 order became ' + rows.length + ' rows. (explode for an ARRAY column, variant_explode for a VARIANT.)');
+  };
+  $('dReset').onclick = function () { L.innerHTML = ''; $('pRes').textContent = '-'; $('pType').textContent = ''; $('pRows').innerHTML = ''; };
+})();
+</script>
+</body>
+</html>

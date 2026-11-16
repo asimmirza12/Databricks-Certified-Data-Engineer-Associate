@@ -1,0 +1,279 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>02-03 Lakeflow Connect: standard vs managed connectors · DE Associate course</title>
+<link rel="stylesheet" href="../../assets/course.css">
+<script src="../../assets/course.js"></script>
+</head>
+<body data-lesson="02-03">
+
+<aside class="disclaimer" aria-label="Disclaimer"><strong>Learning resource only.</strong> This is an independent, unofficial study guide made for learning purposes. It is not affiliated with, endorsed by or sponsored by Databricks. Databricks features change often, so always check the details in the <a href="https://docs.databricks.com">official Databricks documentation</a> and the official exam guide on databricks.com before relying on anything here. Databricks and related names are trademarks of their respective owners.</aside>
+
+<main class="wrap">
+
+<header class="hero">
+  <div class="eyebrow">Module 02 · Data Ingestion and Loading · Lesson 3 of 13</div>
+  <h1>Lakeflow Connect: standard vs managed connectors</h1>
+  <p class="lede">Lakeflow Connect is the family name for Databricks ingestion tools. It has two branches. One does everything for you. The other gives you the parts and lets you build.</p>
+  <dl class="where">
+    <div><dt>Module</dt><dd>02 Data Ingestion and Loading (21% of the exam)</dd></div>
+    <div><dt>Exam objective</dt><dd>2.1 Load data from local files and from both kinds of Lakeflow Connect connector, and 2.4 Set up Lakeflow Connect so data from business systems arrives reliably in governed tables. This lesson is the overview of both kinds.</dd></div>
+    <div><dt>Time to read</dt><dd>About 11 minutes</dd></div>
+    <div><dt>Before this</dt><dd><a href="01-ingestion-patterns.html">02-01 Ingestion patterns</a></dd></div>
+  </dl>
+</header>
+
+<section id="idea">
+  <div class="sec-num">The idea</div>
+  <h2>Ready-made, or build it yourself</h2>
+  <p>A <a href="../../glossary.html#connector">connector</a> is a piece of software that knows how to read from one kind of source. <a href="../../glossary.html#lakeflow-connect">Lakeflow Connect</a> groups all of Databricks' connectors into two kinds.</p>
+  <ul>
+    <li>A <a href="../../glossary.html#managed-connector">managed connector</a> is a complete, ready-made pipeline for one specific source, such as Salesforce or SQL Server. You say what to connect to and which tables you want. Databricks handles logging in, finding changes, retrying after failures and adapting when the source's columns change. You cannot alter how it ingests.</li>
+    <li>A <a href="../../glossary.html#standard-connector">standard connector</a> is a building block. It knows how to read a kind of source, such as files in cloud storage or a message stream, but you write the pipeline around it: what to read, how often, what to do with it. More work, more control.</li>
+  </ul>
+  <p>Both kinds land data in tables governed by Unity Catalog. That is the phrase the exam guide repeats: "Unity Catalog-governed tables".</p>
+  <div class="analogy">
+    <span class="tag">Everyday analogy</span>
+    <p><strong>Getting a bookshelf.</strong> A managed connector is a shelf that arrives assembled and is fitted for you. It suits the alcove it was made for and you cannot change its design. A standard connector is a box of good timber, brackets and screws. You can build exactly the shelf you need, any size, any shape, but you do the building and you fix it when it wobbles.</p>
+  </div>
+</section>
+
+<section id="how">
+  <div class="sec-num">How it works</div>
+  <h2>What sits between the source and your table</h2>
+  <div class="stage">
+    <svg class="tall" viewBox="0 0 360 380" role="img" aria-label="Managed connectors: source application or database, then a connection and a managed ingestion pipeline run by Databricks, then tables. Standard connectors: files or streams, then a pipeline you write using Auto Loader or similar, then tables.">
+      <defs><path id="k1" d="M90 60 V98"/><path id="k2" d="M90 178 V216"/><path id="k3" d="M270 60 V98"/><path id="k4" d="M270 178 V216"/><path id="k5" d="M90 270 C 90 300, 150 306, 160 322"/><path id="k6" d="M270 270 C 270 300, 210 306, 200 322"/></defs>
+      <g class="wire"><use href="#k1"/><use href="#k2"/><use href="#k3"/><use href="#k4"/><use href="#k5"/><use href="#k6"/></g>
+      <g class="mover">
+        <circle r="5" class="dot"><animateMotion dur="1.6s" repeatCount="indefinite"><mpath href="#k1"/></animateMotion></circle>
+        <circle r="5" class="dot"><animateMotion dur="1.6s" begin="-0.8s" repeatCount="indefinite"><mpath href="#k2"/></animateMotion></circle>
+        <circle r="5" class="dot-ok"><animateMotion dur="1.6s" begin="-0.4s" repeatCount="indefinite"><mpath href="#k3"/></animateMotion></circle>
+        <circle r="5" class="dot-ok"><animateMotion dur="1.6s" begin="-1.2s" repeatCount="indefinite"><mpath href="#k4"/></animateMotion></circle>
+      </g>
+      <text class="t-b" x="90" y="16" text-anchor="middle">Managed</text><text class="t-b" x="270" y="16" text-anchor="middle">Standard</text>
+      <rect class="box-soft" x="14" y="24" width="152" height="36" rx="6"/><text x="90" y="47" text-anchor="middle">Business app, database</text>
+      <rect class="box-soft" x="194" y="24" width="152" height="36" rx="6"/><text x="270" y="47" text-anchor="middle">Files, message streams</text>
+      <rect class="box-acc" x="14" y="98" width="152" height="80" rx="8"/>
+      <text class="t-b" x="90" y="120" text-anchor="middle">Connection</text><text class="t-m" x="90" y="138" text-anchor="middle">saved login details</text>
+      <text class="t-m" x="90" y="158" text-anchor="middle">you fill in a form</text>
+      <rect class="box" x="194" y="98" width="152" height="80" rx="8"/>
+      <text class="t-b" x="270" y="120" text-anchor="middle">Your code</text><text class="t-m" x="270" y="138" text-anchor="middle">Auto Loader, COPY INTO,</text>
+      <text class="t-m" x="270" y="154" text-anchor="middle">read_files, a stream reader</text>
+      <rect class="box-acc" x="14" y="216" width="152" height="54" rx="8"/>
+      <text class="t-b" x="90" y="238" text-anchor="middle">Managed pipeline</text><text class="t-m" x="90" y="256" text-anchor="middle">run by Databricks</text>
+      <rect class="box" x="194" y="216" width="152" height="54" rx="8"/>
+      <text class="t-b" x="270" y="238" text-anchor="middle">Your pipeline or job</text><text class="t-m" x="270" y="256" text-anchor="middle">run and looked after by you</text>
+      <rect class="box" x="70" y="322" width="220" height="48" rx="8"/>
+      <text class="t-b" x="180" y="343" text-anchor="middle">Unity Catalog tables</text><text class="t-m" x="180" y="360" text-anchor="middle">the same destination either way</text>
+    </svg>
+    <p class="cap">On the managed side the shaded boxes are provided for you. On the standard side the plain boxes are yours to write and maintain.</p>
+  </div>
+  <h3>What you meet in each branch</h3>
+  <div class="grid2">
+    <div class="card"><span class="tag">Managed: SaaS applications</span><p>Business software run by another company, such as a sales or HR system. The connector logs in with a saved <a href="../../glossary.html#connection">connection</a> and copies the objects you pick, incrementally.</p></div>
+    <div class="card"><span class="tag">Managed: databases</span><p>Operational databases such as SQL Server. The connector reads the database's change log (CDC) so inserts, updates and deletes all arrive. It has an extra part called a gateway: lesson 02-08.</p></div>
+    <div class="card"><span class="tag">Standard: files in cloud storage</span><p>Files landing in S3, ADLS or GCS, or in a volume. Read with Auto Loader, <code>COPY INTO</code> or <code>read_files</code>. Lessons 02-04 to 02-07.</p></div>
+    <div class="card"><span class="tag">Standard: message streams</span><p>Systems that carry a constant flow of small messages, such as Apache Kafka. Read with Structured Streaming or in a pipeline.</p></div>
+  </div>
+  <p class="note">The list of sources with a managed connector grows from release to release. Do not memorise a list. Learn the two kinds and check the docs for whether a given source has one.</p>
+</section>
+
+<section id="demo">
+  <div class="sec-num">Try it</div>
+  <h2>Which branch does this source belong to?</h2>
+  <p>Pick a source and say whether you need to change how the ingestion works. See which kind of connector fits and what you would have to set up.</p>
+  <div class="stage">
+    <div class="ctrls">
+      <label class="tog">Source: <select id="dSrc">
+        <option value="saas">A sales application with a managed connector</option>
+        <option value="db">A SQL Server database</option>
+        <option value="files">JSON files arriving in cloud storage</option>
+        <option value="stream">A Kafka message stream</option>
+        <option value="niche">A small SaaS tool with no Databricks connector</option>
+        <option value="local">A CSV file on my laptop</option>
+      </select></label>
+      <label class="tog"><input type="checkbox" id="dCustom"> I need custom logic during ingestion</label>
+      <button id="dGo" type="button" class="primary">Find the fit</button>
+      <button id="dReset" type="button">Clear log</button>
+    </div>
+    <div class="panes">
+      <div class="pane"><h4>Best fit</h4><div class="big" id="pFit">-</div><p class="cap" id="pWhy"></p></div>
+      <div class="pane"><h4>What you set up</h4><div id="pParts"></div></div>
+      <div class="pane"><h4>What Databricks handles</h4><div id="pAuto"></div></div>
+    </div>
+    <div class="log" id="dLog" role="log" aria-label="What happened"></div>
+  </div>
+</section>
+
+<section id="code">
+  <div class="sec-num">Code</div>
+  <h2>How much you write in each branch</h2>
+  <p>A standard connector is used in code that you write. This is a complete, working ingestion of JSON files:</p>
+<pre><code><span class="c-c">-- STANDARD: you write the statement, choose the options and schedule it.</span>
+<span class="c-k">CREATE OR REFRESH STREAMING TABLE</span> bakery.bronze.web_orders_raw
+<span class="c-k">SCHEDULE EVERY</span> 1 <span class="c-k">HOUR</span>
+<span class="c-k">AS SELECT</span> *, _metadata.file_path <span class="c-k">AS</span> source_file
+<span class="c-k">FROM STREAM</span> read_files(
+  <span class="c-s">'/Volumes/bakery/landing/web_orders/'</span>,
+  format =&gt; <span class="c-s">'json'</span>
+);</code></pre>
+  <p>A <a href="../../glossary.html#streaming-table">streaming table</a> is a table that loads only new data each time it refreshes. You will see it often from here on.</p>
+  <p>A managed connector is mostly configured in a form. Behind the form is a short description like this one, which you might keep in a file (Module 05):</p>
+<pre><code><span class="c-c"># MANAGED: you describe WHAT to ingest. There is no reading or writing logic to write.</span>
+<span class="c-c"># Illustrative shape only. Check the connector's documentation for exact field names.</span>
+<span class="c-k">ingestion_definition</span>:
+  <span class="c-k">connection_name</span>: bakery_crm_connection     <span class="c-c"># saved login details</span>
+  <span class="c-k">objects</span>:
+    - <span class="c-k">table</span>:
+        <span class="c-k">source_table</span>: Customer                <span class="c-c"># what to copy from the source</span>
+        <span class="c-k">destination_catalog</span>: bakery
+        <span class="c-k">destination_schema</span>: bronze            <span class="c-c"># where it lands</span></code></pre>
+</section>
+
+<section id="whatif">
+  <div class="sec-num">What if I change this?</div>
+  <h2>Managed or standard for the same job</h2>
+  <div class="tbl"><table class="whatif">
+    <tr><th>Change</th><th>Effect</th></tr>
+    <tr><td>Use a managed connector instead of writing your own reader</td><td>Far less to build and maintain. You accept its behaviour as it is: you cannot add your own steps inside it.</td></tr>
+    <tr><td>Use a standard connector for a source that also has a managed one</td><td>Full control over every step. You now own authentication, change tracking, retries and schema changes.</td></tr>
+    <tr><td>The source adds a new column</td><td>A managed connector adapts by itself. With a standard connector you decide what happens, through schema options (lesson 02-07).</td></tr>
+    <tr><td>You need to mask a column before it is stored anywhere</td><td>A managed connector lands the data as it is. Do the masking in the next step, or use a standard connector to do it during ingestion.</td></tr>
+    <tr><td>No connector exists for the source</td><td>Write your own with a notebook (lessons 02-09 and 02-10), or use a partner tool (lesson 02-13).</td></tr>
+  </table></div>
+</section>
+
+<section id="compare">
+  <div class="sec-num">Compare</div>
+  <h2>The two kinds side by side</h2>
+  <div class="tbl"><table>
+    <tr><th></th><th>Managed connectors</th><th>Standard connectors</th></tr>
+    <tr><td>You provide</td><td>A connection and a list of what to ingest</td><td>The code and its options</td></tr>
+    <tr><td>Change tracking, retries, schema changes</td><td>Handled for you</td><td>Configured by you</td></tr>
+    <tr><td>Can you customise the ingestion?</td><td>No</td><td>Yes, fully</td></tr>
+    <tr><td>Typical sources</td><td>SaaS applications, operational databases</td><td>Files in cloud storage, message streams</td></tr>
+    <tr><td>Runs as</td><td>A managed pipeline on serverless compute</td><td>A pipeline, a job or a stream that you define</td></tr>
+    <tr><td>Destination</td><td>Unity Catalog streaming tables</td><td>Unity Catalog tables</td></tr>
+    <tr><td>Best when</td><td>You want data flowing with the least effort</td><td>You need control, or the source is files or streams</td></tr>
+  </table></div>
+</section>
+
+<section id="scenarios">
+  <div class="sec-num">Real life</div>
+  <h2>Which kind would you reach for?</h2>
+  <div class="tbl"><table>
+    <tr><th>Scenario</th><th>What happens</th><th>Fix</th></tr>
+    <tr><td>The sales team's CRM data is needed in the lakehouse by next week</td><td>Writing and testing API code would take longer than that</td><td>Managed SaaS connector</td></tr>
+    <tr><td>An orders database must be mirrored, including deleted orders</td><td>Deletes need the change log</td><td>Managed database connector, which uses CDC</td></tr>
+    <tr><td>Tills drop thousands of JSON files a day into a bucket</td><td>This is file ingestion</td><td>Standard connector: Auto Loader</td></tr>
+    <tr><td>Each incoming record must be checked against a rule and split into two tables as it lands</td><td>Managed connectors cannot run your logic</td><td>Standard connector inside your own pipeline</td></tr>
+    <tr><td>Nobody on the team wants to be paged when a source renames a field</td><td>Hand-built readers break on such changes</td><td>Managed connector, which handles schema changes itself</td></tr>
+  </table></div>
+</section>
+
+<section id="traps">
+  <div class="sec-num">Don't confuse these</div>
+  <h2>Connector traps</h2>
+  <div class="grid2">
+    <div class="card trap"><span class="tag">Managed connector vs managed table</span><p>"Managed" means "Databricks looks after it" in both, but they are unrelated. One is an ingestion pipeline, the other a kind of table.</p></div>
+    <div class="card trap"><span class="tag">Standard does not mean basic</span><p>Standard connectors are the more flexible kind. Auto Loader, a standard connector, handles millions of files.</p></div>
+    <div class="card trap"><span class="tag">Connection vs connector</span><p>A connector is the software that reads a source. A connection is a saved Unity Catalog object with the address and login for one particular source system.</p></div>
+    <div class="card trap"><span class="tag">Lakeflow's three parts</span><p>Lakeflow Connect ingests. Lakeflow Spark Declarative Pipelines (formerly Delta Live Tables) transforms. Lakeflow Jobs orchestrates. Questions often hinge on which is which.</p></div>
+  </div>
+</section>
+
+<section id="quiz">
+  <div class="sec-num">Check yourself</div>
+  <h2>Quiz</h2>
+  <div class="quiz">
+    <fieldset>
+      <legend>1. What is the main difference between managed and standard connectors?</legend>
+      <label><input type="radio"> Managed connectors are free and standard ones are paid</label>
+      <label><input type="radio" data-correct> Managed ones are complete pipelines you cannot customise. Standard ones are building blocks you configure.</label>
+      <label><input type="radio"> Standard connectors cannot write to Unity Catalog</label>
+      <p class="explain" hidden>The trade is effort against control. Both write to Unity Catalog tables.</p>
+    </fieldset>
+    <fieldset>
+      <legend>2. Auto Loader reading files from cloud storage is which kind?</legend>
+      <label><input type="radio"> A managed connector</label>
+      <label><input type="radio" data-correct> A standard connector</label>
+      <label><input type="radio"> Neither. It is not part of Lakeflow Connect.</label>
+      <p class="explain" hidden>File ingestion with Auto Loader, <code>COPY INTO</code> or <code>read_files</code> is the standard branch: you write and configure it.</p>
+    </fieldset>
+    <fieldset>
+      <legend>3. A team must transform each record with their own code at the moment it is ingested. What should they use?</legend>
+      <label><input type="radio"> A managed connector</label>
+      <label><input type="radio" data-correct> A standard connector in their own pipeline</label>
+      <label><input type="radio"> The upload page</label>
+      <p class="explain" hidden>Managed connectors do not let you add steps. Standard connectors are used inside code you control.</p>
+    </fieldset>
+    <fieldset>
+      <legend>4. In the demo, what did you have to set up yourself for the SQL Server source using a managed connector?</legend>
+      <label><input type="radio" data-correct> A connection and the list of tables to ingest</label>
+      <label><input type="radio"> Code to read the change log and apply updates</label>
+      <label><input type="radio"> A schedule for retrying failed runs</label>
+      <p class="explain" hidden>You describe what to ingest. Reading changes, applying them and retrying are the connector's job.</p>
+    </fieldset>
+  </div>
+</section>
+
+<section id="wrap">
+  <div class="sec-num">Wrap up</div>
+  <h2>Key takeaways</h2>
+  <ul>
+    <li>Lakeflow Connect has two kinds of connector: managed and standard.</li>
+    <li>Managed: a ready-made pipeline for a specific application or database. Least effort, no customising.</li>
+    <li>Standard: building blocks such as Auto Loader that you configure. Most control.</li>
+    <li>Both land data in Unity Catalog-governed tables.</li>
+    <li>A connection stores the login details that a managed connector uses.</li>
+  </ul>
+  <h3>Glossary terms used</h3>
+  <p><a href="../../glossary.html#lakeflow-connect">Lakeflow Connect</a> · <a href="../../glossary.html#connector">connector</a> · <a href="../../glossary.html#managed-connector">managed connector</a> · <a href="../../glossary.html#standard-connector">standard connector</a> · <a href="../../glossary.html#connection">connection</a> · <a href="../../glossary.html#streaming-table">streaming table</a> · <a href="../../glossary.html#cdc">change data capture</a></p>
+  <h3>Official docs</h3>
+  <ul>
+    <li><a href="https://docs.databricks.com/aws/en/ingestion/overview">What is Lakeflow Connect?</a></li>
+    <li><a href="https://docs.databricks.com/aws/en/ingestion/lakeflow-connect/">Lakeflow Connect connector concepts</a></li>
+    <li><a href="https://docs.databricks.com/aws/en/ingestion/lakeflow-connect/saas-overview">Managed SaaS connectors</a></li>
+    <li><a href="https://docs.databricks.com/aws/en/ingestion/lakeflow-connect/cdc-overview">Managed database connectors</a></li>
+    <li><a href="https://docs.databricks.com/aws/en/ingestion/">Standard connectors: ingest with SQL and Spark APIs</a></li>
+  </ul>
+  <p class="cap">Last verified: 16 November 2026</p>
+</section>
+
+</main>
+
+<script>
+(function () {
+  var C = window.Course, $ = function (id) { return document.getElementById(id); }, L = $('dLog');
+  var AUTO = ['logging in to the source', 'finding what changed', 'retrying after failures', 'adapting to new columns'];
+  /* For each source: does a managed connector exist, and what the standard route is. */
+  var S = {
+    saas:   { managed: 'Managed SaaS connector', std: 'A notebook calling the application\'s REST API', stdParts: ['API code and paging', 'your own change tracking', 'a job to schedule it'] },
+    db:     { managed: 'Managed database connector (CDC)', std: 'A notebook reading over JDBC', stdParts: ['JDBC read code', 'a high-water mark you maintain', 'a job to schedule it'] },
+    files:  { managed: null, std: 'Standard connector: Auto Loader', stdParts: ['Auto Loader options', 'a checkpoint location', 'a pipeline or job to run it'] },
+    stream: { managed: null, std: 'Standard connector: a stream reader', stdParts: ['Structured Streaming or pipeline code', 'a checkpoint location', 'compute that stays on'] },
+    niche:  { managed: null, std: 'A notebook calling its REST API, or a partner tool', stdParts: ['API code and paging', 'your own change tracking', 'a job to schedule it'] },
+    local:  { managed: null, std: 'File upload', stdParts: ['upload the file in the UI', 'optionally a volume to keep the raw file'] }
+  };
+  function list(a) { return a.map(function (t) { return '<div class="item"><span>' + t + '</span></div>'; }).join(''); }
+  $('dGo').onclick = function () {
+    var s = S[$('dSrc').value], custom = $('dCustom').checked, useManaged = s.managed && !custom;
+    $('pFit').textContent = useManaged ? s.managed : s.std;
+    var extra = $('dSrc').value === 'stream' ? ' Databricks has also been adding a managed Kafka connector: check the docs for its current status.' : '';
+    $('pWhy').textContent = (useManaged ? 'A managed connector exists and you do not need to change how it works.'
+      : s.managed ? 'A managed connector exists, but it cannot run your custom logic, so you build it yourself.'
+      : 'For this kind of source, this is the usual route.') + extra;
+    $('pParts').innerHTML = list(useManaged ? ['a connection (address and login)', 'the list of objects to ingest', 'destination catalog and schema'] : s.stdParts);
+    $('pAuto').innerHTML = useManaged ? list(AUTO) : '<p class="cap">Nothing beyond running the compute. The logic is yours.</p>';
+    C.log(L, useManaged ? 'ok' : 'skip', $('dSrc').selectedOptions[0].text + (custom ? ', custom logic needed' : '') + ' -> ' + $('pFit').textContent);
+    C.bump($('pFit'));
+  };
+  $('dReset').onclick = function () { L.innerHTML = ''; };
+  C.log(L, 'skip', 'Pick a source and press "Find the fit".');
+})();
+</script>
+</body>
+</html>

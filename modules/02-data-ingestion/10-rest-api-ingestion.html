@@ -1,0 +1,327 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>02-10 REST API ingestion · DE Associate course</title>
+<link rel="stylesheet" href="../../assets/course.css">
+<script src="../../assets/course.js"></script>
+</head>
+<body data-lesson="02-10">
+
+<aside class="disclaimer" aria-label="Disclaimer"><strong>Learning resource only.</strong> This is an independent, unofficial study guide made for learning purposes. It is not affiliated with, endorsed by or sponsored by Databricks. Databricks features change often, so always check the details in the <a href="https://docs.databricks.com">official Databricks documentation</a> and the official exam guide on databricks.com before relying on anything here. Databricks and related names are trademarks of their respective owners.</aside>
+
+<main class="wrap">
+
+<header class="hero">
+  <div class="eyebrow">Module 02 · Data Ingestion and Loading · Lesson 10 of 13</div>
+  <h1>REST API ingestion, scheduled with Lakeflow Jobs</h1>
+  <p class="lede">Much of the world's data sits behind web addresses that hand out JSON. This lesson shows how to collect it from a notebook, keep a raw copy, and run the whole thing on a timetable.</p>
+  <dl class="where">
+    <div><dt>Module</dt><dd>02 Data Ingestion and Loading (21% of the exam)</dd></div>
+    <div><dt>Exam objective</dt><dd>2.5 Pull data in a notebook over JDBC/ODBC or a REST API, land it in storage or a table, and schedule it with Lakeflow Jobs. This lesson covers REST APIs and scheduling.</dd></div>
+    <div><dt>Time to read</dt><dd>About 13 minutes</dd></div>
+    <div><dt>Before this</dt><dd><a href="02-volumes-and-local-files.html">02-02 Uploading local files and volumes</a> · <a href="09-jdbc-odbc.html">02-09 Reading databases with JDBC and ODBC</a></dd></div>
+  </dl>
+</header>
+
+<section id="idea">
+  <div class="sec-num">The idea</div>
+  <h2>Ask a web address, get data back</h2>
+  <p>An API is a way for one program to ask another for something. A <a href="../../glossary.html#rest-api">REST API</a> is the most common kind on the internet. Your program sends a request to a web address, and the answer comes back as text, almost always JSON.</p>
+  <p>A weather service, a payments provider, a delivery company: each offers a REST API. When there is no connector for a system, its REST API is usually the way in.</p>
+  <p>A notebook that ingests from one does four things:</p>
+  <ol>
+    <li><strong>Authenticate.</strong> Prove who you are, usually with a secret key called a token.</li>
+    <li><strong>Request, page by page.</strong> APIs rarely send everything at once. They send a page of results and a pointer to the next page. Fetching page after page is called <a href="../../glossary.html#pagination">pagination</a>.</li>
+    <li><strong>Land the raw response.</strong> Save the JSON exactly as received, as a file in a volume.</li>
+    <li><strong>Load it into a table.</strong> Read those files into bronze with Auto Loader or <code>read_files</code>.</li>
+  </ol>
+  <p>Then a Lakeflow Jobs schedule runs the notebook, so it happens every hour or every night without anyone pressing a button.</p>
+  <div class="analogy">
+    <span class="tag">Everyday analogy</span>
+    <p><strong>Collecting a long report from a counter.</strong> You show your pass (authentication). The clerk hands over ten sheets and says "come back for sheets 11 to 20" (pagination). If you ask too fast, the clerk tells you to slow down (rate limiting). You photocopy every sheet before you start writing on any of them (landing the raw copy). And you send a courier at 6 am every day instead of going yourself (scheduling).</p>
+  </div>
+</section>
+
+<section id="how">
+  <div class="sec-num">How it works</div>
+  <h2>From web address to bronze table</h2>
+  <div class="stage">
+    <svg class="tall" viewBox="0 0 360 400" role="img" aria-label="A scheduled job runs two tasks. Task one calls the REST API page by page and writes raw JSON files to a volume. Task two loads the new files into a bronze table.">
+      <defs><path id="r1" d="M100 92 V58"/><path id="r2" d="M140 58 V92"/><path id="r3" d="M120 152 V186"/><path id="r4" d="M180 216 H228"/><path id="r5" d="M290 246 V292"/></defs>
+      <rect class="box-soft" x="6" y="76" width="348" height="256" rx="10"/>
+      <text class="t-m" x="16" y="324">LAKEFLOW JOB, every night at 2 am</text>
+      <g class="wire"><use href="#r1"/><use href="#r2"/><use href="#r3"/><use href="#r4"/><use href="#r5"/></g>
+      <g class="mover">
+        <circle r="5" class="dot"><animateMotion dur="1.2s" repeatCount="indefinite"><mpath href="#r1"/></animateMotion></circle>
+        <circle r="5" class="dot-ok"><animateMotion dur="1.2s" begin="-0.6s" repeatCount="indefinite"><mpath href="#r2"/></animateMotion></circle>
+        <circle r="5" class="dot-ok"><animateMotion dur="1.6s" repeatCount="indefinite"><mpath href="#r3"/></animateMotion></circle>
+        <circle r="5" class="dot"><animateMotion dur="1.6s" begin="-0.8s" repeatCount="indefinite"><mpath href="#r5"/></animateMotion></circle>
+      </g>
+      <rect class="box-soft" x="30" y="8" width="180" height="50" rx="8"/><text class="t-b" x="120" y="30" text-anchor="middle">REST API</text><text class="t-m" x="120" y="48" text-anchor="middle">a web address that returns JSON</text>
+      <text class="t-m" x="94" y="72" text-anchor="end">ask</text><text class="t-m" x="148" y="72">page</text>
+      <rect class="box-acc" x="20" y="92" width="200" height="60" rx="8"/><text class="t-b" x="120" y="114" text-anchor="middle">Task 1: fetch notebook</text><text class="t-m" x="120" y="132" text-anchor="middle">token from secrets, page by page</text>
+      <rect class="box" x="20" y="186" width="160" height="60" rx="8"/><text class="t-b" x="100" y="208" text-anchor="middle">Volume</text><text class="t-m" x="100" y="226" text-anchor="middle">raw JSON, one file per run</text>
+      <rect class="box-acc" x="228" y="186" width="118" height="60" rx="8"/><text class="t-b" x="287" y="208" text-anchor="middle">Task 2: load</text><text class="t-m" x="287" y="226" text-anchor="middle">new files only</text>
+      <rect class="box" x="228" y="292" width="118" height="28" rx="6"/><text x="287" y="311" text-anchor="middle">Bronze table</text>
+      <text class="t-m" x="180" y="356" text-anchor="middle">Task 2 runs only if task 1 succeeded.</text>
+      <text class="t-m" x="180" y="374" text-anchor="middle">If a run fails, the raw files already saved are still there.</text>
+    </svg>
+  </div>
+  <h3>Why land the raw response first?</h3>
+  <p>You could turn the JSON straight into a table and skip the files. For small reference data that is fine. But most APIs only let you ask for recent data. If your parsing had a bug, the original responses are gone and cannot be requested again. Raw files in a volume are your bronze-before-bronze: you can always reload from them.</p>
+</section>
+
+<section id="demo">
+  <div class="sec-num">Try it</div>
+  <h2>Fetch a paginated API</h2>
+  <p>The API holds 47 delivery records. Fetch it page by page, or all at once. Turn on rate limiting and watch the fetch back off. Then run the whole job twice and see whether the table doubles.</p>
+  <div class="stage">
+    <div class="ctrls">
+      <label class="tog">Page size: <select id="dSize"><option>10</option><option>25</option><option>50</option></select></label>
+      <label class="tog"><input type="checkbox" id="dLimit"> API allows only 3 calls a minute</label>
+      <label class="tog">Raw file name: <select id="dName"><option value="date">deliveries_&lt;date&gt;.json (one per day)</option><option value="fixed">deliveries.json (always the same)</option></select></label>
+    </div>
+    <div class="ctrls">
+      <button id="dPage" type="button">Fetch next page</button>
+      <button id="dJob" type="button" class="primary">Run the whole job</button>
+      <button id="dDay" type="button">Next day</button>
+      <button id="dReset" type="button">Reset</button>
+    </div>
+    <div class="panes">
+      <div class="pane"><h4>This fetch</h4><div class="big" id="pGot"></div><p class="cap" id="pCalls"></p></div>
+      <div class="pane"><h4>Raw files in the volume</h4><div id="pFiles"></div></div>
+      <div class="pane"><h4>Rows in the bronze table</h4><div class="big" id="pRows"></div><p class="cap" id="pDup"></p></div>
+    </div>
+    <div class="log" id="dLog" role="log" aria-label="What happened"></div>
+    <p class="cap">The load step tracks files by name, as Auto Loader does: a file name it has seen before is not loaded again.</p>
+  </div>
+</section>
+
+<section id="code">
+  <div class="sec-num">Code</div>
+  <h2>Task 1: fetch and land</h2>
+<pre><code><span class="c-k">import</span> json, time, requests
+<span class="c-k">from</span> datetime <span class="c-k">import</span> date
+
+<span class="c-c"># The token comes from a secret store, never from text in the notebook.</span>
+token   = dbutils.secrets.get(scope=<span class="c-s">"bakery-secrets"</span>, key=<span class="c-s">"delivery-api-token"</span>)
+headers = {<span class="c-s">"Authorization"</span>: f<span class="c-s">"Bearer {token}"</span>}
+url     = <span class="c-s">"https://api.delivery.example/v1/deliveries"</span>
+
+records, page = [], 1
+<span class="c-k">while True</span>:
+    response = requests.get(url, headers=headers, params={<span class="c-s">"page"</span>: page, <span class="c-s">"per_page"</span>: 100}, timeout=30)
+
+    <span class="c-k">if</span> response.status_code == 429:      <span class="c-c"># 429 means "too many requests": wait, then try again</span>
+        time.sleep(int(response.headers.get(<span class="c-s">"Retry-After"</span>, 30)))
+        <span class="c-k">continue</span>
+    response.raise_for_status()           <span class="c-c"># stop with an error on any other failure</span>
+
+    batch = response.json()[<span class="c-s">"data"</span>]
+    <span class="c-k">if not</span> batch:                         <span class="c-c"># an empty page means we have everything</span>
+        <span class="c-k">break</span>
+    records.extend(batch)
+    page += 1
+
+<span class="c-c"># Land the raw response. Volume paths work like ordinary file paths.</span>
+<span class="c-c"># A dated name gives one file per day, and a rerun on the same day replaces it.</span>
+path = f<span class="c-s">"/Volumes/bakery/landing/delivery_api/deliveries_{date.today()}.json"</span>
+<span class="c-k">with</span> open(path, <span class="c-s">"w"</span>) <span class="c-k">as</span> f:
+    <span class="c-k">for</span> r <span class="c-k">in</span> records:
+        f.write(json.dumps(r) + <span class="c-s">"\n"</span>)      <span class="c-c"># one JSON record per line</span></code></pre>
+  <h3>Task 2: load into bronze</h3>
+<pre><code>checkpoint = <span class="c-s">"/Volumes/bakery/ops/checkpoints/deliveries_raw"</span>
+
+(spark.readStream.format(<span class="c-s">"cloudFiles"</span>)
+    .option(<span class="c-s">"cloudFiles.format"</span>, <span class="c-s">"json"</span>)
+    .option(<span class="c-s">"cloudFiles.schemaLocation"</span>, checkpoint)
+    .load(<span class="c-s">"/Volumes/bakery/landing/delivery_api/"</span>)
+    .writeStream
+    .option(<span class="c-s">"checkpointLocation"</span>, checkpoint)
+    .trigger(availableNow=<span class="c-k">True</span>)
+    .toTable(<span class="c-s">"bakery.bronze.deliveries_raw"</span>))</code></pre>
+  <h3>The schedule</h3>
+  <p>The two notebooks become two tasks of one Lakeflow job. Module 04 covers jobs in depth. This is what the definition looks like:</p>
+<pre><code><span class="c-k">name</span>: ingest_deliveries
+<span class="c-k">schedule</span>:
+  <span class="c-k">quartz_cron_expression</span>: <span class="c-s">"0 0 2 * * ?"</span>      <span class="c-c"># every day at 02:00</span>
+  <span class="c-k">timezone_id</span>: <span class="c-s">"Europe/London"</span>
+<span class="c-k">tasks</span>:
+  - <span class="c-k">task_key</span>: fetch
+    <span class="c-k">max_retries</span>: 2                           <span class="c-c"># try again if the API is briefly down</span>
+    <span class="c-k">notebook_task</span>:
+      <span class="c-k">notebook_path</span>: /Workspace/bakery/ingest/fetch_deliveries
+  - <span class="c-k">task_key</span>: load
+    <span class="c-k">depends_on</span>:
+      - <span class="c-k">task_key</span>: fetch                      <span class="c-c"># only after fetch has succeeded</span>
+    <span class="c-k">notebook_task</span>:
+      <span class="c-k">notebook_path</span>: /Workspace/bakery/ingest/load_deliveries</code></pre>
+</section>
+
+<section id="whatif">
+  <div class="sec-num">What if I change this?</div>
+  <h2>Choices in an API notebook</h2>
+  <div class="tbl"><table class="whatif">
+    <tr><th>Change</th><th>Effect</th></tr>
+    <tr><td>Fetch only the first page</td><td>You get a small part of the data and no error. The table looks plausible and is badly incomplete.</td></tr>
+    <tr><td>Ignore the "too many requests" response</td><td>The notebook fails partway, or the API blocks you for a while. Waiting and retrying is the correct reaction.</td></tr>
+    <tr><td>Write straight to a table and keep no raw file</td><td>Less to manage. If the parsing was wrong, there is nothing to reload from.</td></tr>
+    <tr><td>Use the same file name on every run</td><td>Each run replaces the last file. A loader that tracks files by name sees nothing new and loads nothing.</td></tr>
+    <tr><td>Use a new file name on every run, including reruns</td><td>A rerun on the same day creates a second file with the same records, and bronze gets duplicates. Remove them in silver, or name files by the day they cover.</td></tr>
+    <tr><td>Add retries to the fetch task</td><td>A brief outage at the API no longer fails the whole night's run.</td></tr>
+    <tr><td>Run both steps in one notebook instead of two tasks</td><td>Simpler. But when it fails you cannot tell at a glance which half broke, or rerun only that half.</td></tr>
+  </table></div>
+</section>
+
+<section id="compare">
+  <div class="sec-num">Compare</div>
+  <h2>Where to land API data</h2>
+  <div class="tbl"><table>
+    <tr><th></th><th>Volume first, then table</th><th>Straight into a table</th></tr>
+    <tr><td>Raw response kept</td><td>Yes, as files</td><td>No</td></tr>
+    <tr><td>Reload after a parsing bug</td><td>Yes, from the files</td><td>Only if the API still offers that data</td></tr>
+    <tr><td>Moving parts</td><td>Two steps</td><td>One step</td></tr>
+    <tr><td>Good for</td><td>Anything you could not fetch again</td><td>Small look-up data that is always fully available</td></tr>
+  </table></div>
+  <h3>Three things every API makes you handle</h3>
+  <div class="grid3">
+    <div class="card"><span class="tag">Authentication</span><p>A token or key that proves who you are. Keep it in a <a href="../../glossary.html#secret">secret</a>.</p></div>
+    <div class="card"><span class="tag">Pagination</span><p>Results come in pages. Keep asking until a page comes back empty or there is no "next" pointer.</p></div>
+    <div class="card"><span class="tag">Rate limits</span><p>A cap on how many requests you may make in a period. Go over it and you get a "slow down" response.</p></div>
+  </div>
+</section>
+
+<section id="scenarios">
+  <div class="sec-num">Real life</div>
+  <h2>API ingestion gone wrong</h2>
+  <div class="tbl"><table>
+    <tr><th>Scenario</th><th>What happens</th><th>Fix</th></tr>
+    <tr><td>A table that should hold 40,000 deliveries always has exactly 100</td><td>The notebook fetches one page and stops</td><td>Loop over pages until there are no more</td></tr>
+    <tr><td>The job fails most nights at about the same point</td><td>It hits the API's rate limit</td><td>Honour the "retry after" hint and pause between calls</td></tr>
+    <tr><td>The provider changes a field from a number to text, and a month of data is wrong</td><td>Data was written straight to a table with no raw copy</td><td>Land raw files first, so the month can be reloaded</td></tr>
+    <tr><td>The API token appears in a screenshot shared in a chat</td><td>It was pasted into a notebook cell</td><td>Replace the token, then read it from secrets</td></tr>
+    <tr><td>Nobody notices the API has been down for three days</td><td>The notebook was run by hand "when someone remembered"</td><td>Schedule it with Lakeflow Jobs and add a failure alert</td></tr>
+  </table></div>
+</section>
+
+<section id="traps">
+  <div class="sec-num">Don't confuse these</div>
+  <h2>API ingestion traps</h2>
+  <div class="grid2">
+    <div class="card trap"><span class="tag">Fetching vs loading</span><p>Fetching brings data from the API into your storage. Loading turns stored files into table rows. Different steps, different failures.</p></div>
+    <div class="card trap"><span class="tag">Volume vs table as landing place</span><p>The exam phrase is "land data into cloud storage or directly into Unity Catalog-governed tables". Both are valid. Know why you would pick the volume.</p></div>
+    <div class="card trap"><span class="tag">Retry vs rerun</span><p>A retry is a job automatically trying a failed task again. A rerun is you starting the job again. Both are safe only if the task is idempotent.</p></div>
+    <div class="card trap"><span class="tag">Notebook vs job</span><p>The notebook holds the code. The job is what runs it on a schedule with retries and alerts. A notebook alone is not a pipeline.</p></div>
+  </div>
+</section>
+
+<section id="quiz">
+  <div class="sec-num">Check yourself</div>
+  <h2>Quiz</h2>
+  <div class="quiz">
+    <fieldset>
+      <legend>1. What is pagination?</legend>
+      <label><input type="radio"> Encrypting an API response</label>
+      <label><input type="radio" data-correct> Receiving results in pages and requesting each page in turn</label>
+      <label><input type="radio"> Limiting how often you may call an API</label>
+      <p class="explain" hidden>APIs split large results into pages. A limit on call frequency is rate limiting, a different thing.</p>
+    </fieldset>
+    <fieldset>
+      <legend>2. Why save the raw API response to a volume before loading a table?</legend>
+      <label><input type="radio"> Volumes are faster to query than tables</label>
+      <label><input type="radio" data-correct> So the data can be reloaded if parsing was wrong, even when the API no longer offers it</label>
+      <label><input type="radio"> Tables cannot store JSON</label>
+      <p class="explain" hidden>The raw files are a safety copy of something you may not be able to fetch a second time.</p>
+    </fieldset>
+    <fieldset>
+      <legend>3. Where should the API token be kept?</legend>
+      <label><input type="radio" data-correct> In a secret, read with <code>dbutils.secrets.get</code></label>
+      <label><input type="radio"> In a variable at the top of the notebook</label>
+      <label><input type="radio"> In the job's name</label>
+      <p class="explain" hidden>Secrets keep credentials out of code, output and revision history.</p>
+    </fieldset>
+    <fieldset>
+      <legend>4. In the demo, with the fixed file name <code>deliveries.json</code>, what did the second day's job load?</legend>
+      <label><input type="radio"> The new day's records</label>
+      <label><input type="radio" data-correct> Nothing, because that file name had been loaded before</label>
+      <label><input type="radio"> Every record twice</label>
+      <p class="explain" hidden>The loader tracks files by name. Overwriting an already-loaded name gives it nothing new to pick up.</p>
+    </fieldset>
+    <fieldset>
+      <legend>5. What makes the fetch notebook run every night without a person?</legend>
+      <label><input type="radio"> Leaving the notebook open</label>
+      <label><input type="radio"> Auto Loader</label>
+      <label><input type="radio" data-correct> A Lakeflow Jobs schedule</label>
+      <p class="explain" hidden>Lakeflow Jobs runs notebooks on a schedule, in order, with retries. Auto Loader loads files but does not call APIs.</p>
+    </fieldset>
+  </div>
+</section>
+
+<section id="wrap">
+  <div class="sec-num">Wrap up</div>
+  <h2>Key takeaways</h2>
+  <ul>
+    <li>A REST API returns JSON from a web address. A notebook can call it with ordinary Python.</li>
+    <li>Handle authentication, pagination and rate limits, or the data will be incomplete.</li>
+    <li>Land the raw response in a volume first, then load it into bronze.</li>
+    <li>Name raw files so that a rerun does not create duplicates and a new day is seen as new.</li>
+    <li>Lakeflow Jobs provides the schedule, the task order and the retries.</li>
+  </ul>
+  <h3>Glossary terms used</h3>
+  <p><a href="../../glossary.html#rest-api">REST API</a> · <a href="../../glossary.html#pagination">pagination</a> · <a href="../../glossary.html#rate-limit">rate limit</a> · <a href="../../glossary.html#secret">secret</a> · <a href="../../glossary.html#volume">volume</a> · <a href="../../glossary.html#idempotent">idempotent</a> · <a href="../../glossary.html#auto-loader">Auto Loader</a></p>
+  <h3>Official docs</h3>
+  <ul>
+    <li><a href="https://docs.databricks.com/aws/en/security/secrets/">Secret management</a></li>
+    <li><a href="https://docs.databricks.com/aws/en/volumes/volume-files">Work with files in volumes</a></li>
+    <li><a href="https://docs.databricks.com/aws/en/jobs/">Lakeflow Jobs</a></li>
+    <li><a href="https://docs.databricks.com/aws/en/pyspark/datasources">PySpark custom data sources</a> (a more advanced way to wrap an API)</li>
+  </ul>
+  <p class="cap">Last verified: 16 November 2026</p>
+</section>
+
+</main>
+
+<script>
+(function () {
+  var C = window.Course, $ = function (id) { return document.getElementById(id); }, L = $('dLog');
+  var PER_DAY = 47, day, got, calls, files, seen, rows, loadedIds;   /* files: name -> {day, n}. seen: names already loaded */
+  function draw() {
+    $('pGot').textContent = got + ' of ' + PER_DAY; $('pCalls').textContent = calls + ' API call(s) so far';
+    var names = Object.keys(files);
+    $('pFiles').innerHTML = names.length ? names.map(function (n) { return '<div class="item"><span>' + n + '</span><span>' + files[n].n + ' rec, ' + (seen[n] ? 'loaded' : 'new') + '</span></div>'; }).join('') : '<p class="cap">none</p>';
+    $('pRows').textContent = rows;
+    var uniq = Object.keys(loadedIds).length;
+    $('pDup').textContent = rows > uniq ? (rows - uniq) + ' duplicate rows' : 'no duplicates';
+  }
+  function fetchPage() {
+    var size = +$('dSize').value;
+    if (got >= PER_DAY) return false;
+    calls++;
+    if ($('dLimit').checked && calls % 4 === 0) { C.log(L, 'bad', '  call ' + calls + ': 429 too many requests. Waited, then tried again.'); calls++; }
+    var n = Math.min(size, PER_DAY - got); got += n;
+    C.log(L, 'skip', '  call ' + calls + ': page of ' + n + ' record(s). ' + got + ' of ' + PER_DAY + '.');
+    return true;
+  }
+  $('dPage').onclick = function () { if (!fetchPage()) C.log(L, 'skip', 'Empty page: nothing more to fetch today.'); draw(); };
+  $('dJob').onclick = function () {
+    C.log(L, 'skip', 'Job run, day ' + day + '. Task 1: fetch.');
+    got = 0; while (fetchPage()) { /* keep paging */ }
+    var name = $('dName').value === 'date' ? 'deliveries_day' + day + '.json' : 'deliveries.json';
+    files[name] = { day: day, n: got };
+    C.log(L, 'skip', 'Task 1 wrote ' + name + ' (' + got + ' records).');
+    var fresh = Object.keys(files).filter(function (n) { return !seen[n]; }), added = 0;
+    fresh.forEach(function (n) { seen[n] = 1; added += files[n].n; for (var i = 0; i < files[n].n; i++) loadedIds['d' + files[n].day + '-' + i] = 1; });
+    rows += added;
+    C.log(L, added ? 'ok' : 'bad', 'Task 2: ' + fresh.length + ' new file(s) loaded, ' + added + ' row(s).' + (added ? '' : ' The file name was already loaded, so today\'s data did NOT reach the table.'));
+    draw(); C.bump($('pRows'));
+  };
+  $('dDay').onclick = function () { day++; got = 0; C.log(L, 'skip', 'Day ' + day + ' begins. The API has ' + PER_DAY + ' new delivery records.'); draw(); };
+  function reset() { day = 1; got = 0; calls = 0; files = {}; seen = {}; rows = 0; loadedIds = {}; L.innerHTML = ''; C.log(L, 'skip', 'Day 1. The API has 47 delivery records.'); draw(); }
+  $('dReset').onclick = reset;
+  reset();
+})();
+</script>
+</body>
+</html>

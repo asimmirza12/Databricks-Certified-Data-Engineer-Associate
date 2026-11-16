@@ -1,0 +1,286 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>02-05 Auto Loader basics · DE Associate course</title>
+<link rel="stylesheet" href="../../assets/course.css">
+<script src="../../assets/course.js"></script>
+</head>
+<body data-lesson="02-05">
+
+<aside class="disclaimer" aria-label="Disclaimer"><strong>Learning resource only.</strong> This is an independent, unofficial study guide made for learning purposes. It is not affiliated with, endorsed by or sponsored by Databricks. Databricks features change often, so always check the details in the <a href="https://docs.databricks.com">official Databricks documentation</a> and the official exam guide on databricks.com before relying on anything here. Databricks and related names are trademarks of their respective owners.</aside>
+
+<main class="wrap">
+
+<header class="hero">
+  <div class="eyebrow">Module 02 · Data Ingestion and Loading · Lesson 5 of 13</div>
+  <h1>Auto Loader basics: cloudFiles, checkpoints, triggers</h1>
+  <p class="lede">Auto Loader is the main tool for loading files on Databricks. It watches a folder, loads each new file exactly once, and copes with millions of them.</p>
+  <dl class="where">
+    <div><dt>Module</dt><dd>02 Data Ingestion and Loading (21% of the exam)</dd></div>
+    <div><dt>Exam objective</dt><dd>2.3 Use Auto Loader, including how it finds files and how it handles a schema that is enforced or allowed to change. This lesson covers the core mechanics. The next two cover file detection and schemas.</dd></div>
+    <div><dt>Time to read</dt><dd>About 14 minutes</dd></div>
+    <div><dt>Before this</dt><dd><a href="01-ingestion-patterns.html">02-01 Ingestion patterns</a> · <a href="04-copy-into.html">02-04 COPY INTO</a></dd></div>
+  </dl>
+</header>
+
+<section id="idea">
+  <div class="sec-num">The idea</div>
+  <h2>A stream whose source is a folder</h2>
+  <p><a href="../../glossary.html#auto-loader">Auto Loader</a> is a file source for Spark's Structured Streaming. You point it at a folder. Every file that appears there is treated as a new piece of the stream, read once and written to a table.</p>
+  <p>You use it by asking for the format <code>cloudFiles</code>. That name is how you recognise Auto Loader in code, and its options all begin with <code>cloudFiles.</code></p>
+  <p>Three things make it work:</p>
+  <ul>
+    <li>A <a href="../../glossary.html#checkpoint">checkpoint</a> location: a folder where the stream records which files it has finished. This is its memory. With it, each file is loaded exactly once, even if the job crashes and restarts.</li>
+    <li>A <a href="../../glossary.html#schema-location">schema location</a>: a folder where Auto Loader stores the column names and types it has worked out from the files, so it does not have to guess again on every run.</li>
+    <li>A <a href="../../glossary.html#trigger">trigger</a>: the setting that decides whether the stream processes what is waiting and stops, or keeps running.</li>
+  </ul>
+  <p>Although it is built on streaming, Auto Loader is very often used in a batch style: start on a schedule, load whatever is new, stop. The exam guide calls this "batch modes".</p>
+  <div class="analogy">
+    <span class="tag">Everyday analogy</span>
+    <p><strong>A letterbox with a diligent clerk.</strong> Post drops through the door at any time. A clerk comes by, opens every envelope not yet in the logbook, files the contents, and writes each envelope's number in the logbook. If the clerk is interrupted halfway, they pick up from the logbook, never opening the same envelope twice. The clerk can come once a day, or stand by the door all day. The logbook is the checkpoint.</p>
+  </div>
+</section>
+
+<section id="how">
+  <div class="sec-num">How it works</div>
+  <h2>Discover, read, write, record</h2>
+  <div class="stage">
+    <svg class="tall" viewBox="0 0 360 380" role="img" aria-label="New files in a folder are discovered by Auto Loader, read in batches, written to a bronze table, and recorded in the checkpoint. The schema location stores the inferred schema.">
+      <defs><path id="a1" d="M180 62 V98"/><path id="a2" d="M180 168 V212"/><path id="a3" d="M130 168 C 90 190, 70 250, 70 296"/><path id="a4" d="M230 168 C 270 190, 290 250, 290 296"/></defs>
+      <g class="wire"><use href="#a1"/><use href="#a2"/><use href="#a3"/><use href="#a4"/></g>
+      <g class="mover">
+        <circle r="5" class="dot"><animateMotion dur="1.4s" repeatCount="indefinite"><mpath href="#a1"/></animateMotion></circle>
+        <circle r="5" class="dot"><animateMotion dur="1.4s" begin="-0.7s" repeatCount="indefinite"><mpath href="#a1"/></animateMotion></circle>
+        <circle r="5" class="dot-ok"><animateMotion dur="1.4s" begin="-0.3s" repeatCount="indefinite"><mpath href="#a2"/></animateMotion></circle>
+      </g>
+      <rect class="box-soft" x="50" y="8" width="260" height="54" rx="8"/>
+      <text class="t-b" x="180" y="30" text-anchor="middle">Landing folder</text><text class="t-m" x="180" y="48" text-anchor="middle">files arrive whenever the source sends them</text>
+      <rect class="box-acc" x="50" y="98" width="260" height="70" rx="8"/>
+      <text class="t-b" x="180" y="120" text-anchor="middle">Auto Loader</text><text class="mono" x="180" y="138" text-anchor="middle">format("cloudFiles")</text>
+      <text class="t-m" x="180" y="156" text-anchor="middle">finds new files, reads them in batches</text>
+      <rect class="box" x="100" y="212" width="160" height="54" rx="8"/>
+      <text class="t-b" x="180" y="234" text-anchor="middle">Bronze table</text><text class="t-m" x="180" y="252" text-anchor="middle">rows appended</text>
+      <rect class="box" x="6" y="296" width="128" height="70" rx="8"/>
+      <text class="t-b" x="70" y="318" text-anchor="middle">Checkpoint</text><text class="t-m" x="70" y="336" text-anchor="middle">files finished</text><text class="t-m" x="70" y="352" text-anchor="middle">= its memory</text>
+      <rect class="box" x="226" y="296" width="128" height="70" rx="8"/>
+      <text class="t-b" x="290" y="318" text-anchor="middle">Schema location</text><text class="t-m" x="290" y="336" text-anchor="middle">columns and types</text><text class="t-m" x="290" y="352" text-anchor="middle">it has worked out</text>
+    </svg>
+    <p class="cap">A file counts as done only when its rows are in the table <em>and</em> it is recorded in the checkpoint. That pairing is what gives exactly-once loading.</p>
+  </div>
+  <p>Auto Loader does not read a million waiting files in one gulp. It works through them in batches. The option <code>cloudFiles.maxFilesPerTrigger</code> caps how many files go into each batch. Its default is 1000. Recent runtime versions tune it for you.</p>
+</section>
+
+<section id="demo">
+  <div class="sec-num">Try it</div>
+  <h2>Run Auto Loader over a busy folder</h2>
+  <p>Let files arrive, run the stream, and run it again. Shrink the batch size and count the batches. Then delete the checkpoint and see what the stream believes.</p>
+  <div class="stage">
+    <div class="ctrls">
+      <button id="dArr" type="button">25 new files arrive</button>
+      <label class="tog">maxFilesPerTrigger: <select id="dMax"><option>1000</option><option>10</option><option>5</option></select></label>
+      <label class="tog"><input type="checkbox" id="dExist" checked> includeExistingFiles (only read at first start)</label>
+    </div>
+    <div class="ctrls">
+      <button id="dRun" type="button" class="primary">Run the stream (availableNow)</button>
+      <button id="dLose" type="button">Delete the checkpoint</button>
+      <button id="dReset" type="button">Reset</button>
+    </div>
+    <div class="panes">
+      <div class="pane"><h4>Files in the folder</h4><div class="big" id="pFiles"></div></div>
+      <div class="pane"><h4>Files in the checkpoint</h4><div class="big" id="pChk"></div><p class="cap" id="pChkN"></p></div>
+      <div class="pane"><h4>Rows in the bronze table</h4><div class="big" id="pRows"></div><p class="cap" id="pDup"></p></div>
+    </div>
+    <div class="log" id="dLog" role="log" aria-label="What happened"></div>
+    <p class="cap">Each file holds 10 rows. The folder starts with 40 files that were there before the stream was ever created.</p>
+  </div>
+</section>
+
+<section id="code">
+  <div class="sec-num">Code</div>
+  <h2>A complete Auto Loader job</h2>
+<pre><code>checkpoint = <span class="c-s">"/Volumes/bakery/ops/checkpoints/web_orders_raw"</span>
+
+(spark.readStream
+    .format(<span class="c-s">"cloudFiles"</span>)                               <span class="c-c"># this is Auto Loader</span>
+    .option(<span class="c-s">"cloudFiles.format"</span>, <span class="c-s">"json"</span>)                  <span class="c-c"># the format of the incoming files</span>
+    .option(<span class="c-s">"cloudFiles.schemaLocation"</span>, checkpoint)      <span class="c-c"># where to keep the inferred schema</span>
+    .load(<span class="c-s">"/Volumes/bakery/landing/web_orders/"</span>)           <span class="c-c"># the folder to watch</span>
+    .writeStream
+    .option(<span class="c-s">"checkpointLocation"</span>, checkpoint)             <span class="c-c"># where to record finished files</span>
+    .trigger(availableNow=<span class="c-k">True</span>)                           <span class="c-c"># load everything waiting, then stop</span>
+    .toTable(<span class="c-s">"bakery.bronze.web_orders_raw"</span>))             <span class="c-c"># a Unity Catalog table</span></code></pre>
+  <p>It is common, as here, to use one folder for both the checkpoint and the schema location. Each stream needs its own, never shared with another stream.</p>
+  <p>SQL users get the same engine through a streaming table. <code>STREAM read_files(...)</code> is Auto Loader in SQL clothing, and the checkpoint is managed for you.</p>
+<pre><code><span class="c-k">CREATE OR REFRESH STREAMING TABLE</span> bakery.bronze.web_orders_raw
+<span class="c-k">AS SELECT</span> *, _metadata.file_path <span class="c-k">AS</span> source_file
+<span class="c-k">FROM STREAM</span> read_files(
+  <span class="c-s">'/Volumes/bakery/landing/web_orders/'</span>,
+  format =&gt; <span class="c-s">'json'</span>
+);
+
+<span class="c-c">-- Load whatever has arrived since the last refresh.</span>
+<span class="c-k">REFRESH STREAMING TABLE</span> bakery.bronze.web_orders_raw;</code></pre>
+</section>
+
+<section id="whatif">
+  <div class="sec-num">What if I change this?</div>
+  <h2>The options that matter most</h2>
+  <div class="tbl"><table class="whatif">
+    <tr><th>Change</th><th>Effect</th></tr>
+    <tr><td><code>.trigger(availableNow=True)</code></td><td>Processes every file waiting, in as many batches as needed, then stops. This is the batch style. It is also the trigger to use on serverless compute.</td></tr>
+    <tr><td><code>.trigger(processingTime="1 minute")</code></td><td>The stream stays running and looks for new files every minute.</td></tr>
+    <tr><td>Delete or change <code>checkpointLocation</code></td><td>The stream forgets every file it loaded. On the next run it loads them all again, and the table gets duplicates.</td></tr>
+    <tr><td>Leave out <code>cloudFiles.schemaLocation</code> without giving a schema</td><td>Auto Loader has nowhere to store what it infers, and the stream cannot start.</td></tr>
+    <tr><td><code>cloudFiles.includeExistingFiles = false</code></td><td>Files already in the folder when the stream first starts are ignored. Only later arrivals are loaded. The default is true. The option is read only at the very first start.</td></tr>
+    <tr><td>Lower <code>cloudFiles.maxFilesPerTrigger</code></td><td>Smaller batches, each using less memory, and more of them.</td></tr>
+    <tr><td>Point two streams at the same checkpoint</td><td>They corrupt each other's record. One checkpoint per stream, always.</td></tr>
+    <tr><td>Overwrite a file in the folder with new content, same name</td><td>By default it is not loaded again: that path is already recorded. Send changed data as a new file.</td></tr>
+  </table></div>
+</section>
+
+<section id="compare">
+  <div class="sec-num">Compare</div>
+  <h2>Two styles of running it</h2>
+  <div class="tbl"><table>
+    <tr><th></th><th>Batch style</th><th>Continuous style</th></tr>
+    <tr><td>Trigger</td><td><code>availableNow=True</code></td><td><code>processingTime="..."</code></td></tr>
+    <tr><td>Compute is on</td><td>Only during the run</td><td>All the time</td></tr>
+    <tr><td>Started by</td><td>A scheduled job</td><td>Once, then left running</td></tr>
+    <tr><td>Data freshness</td><td>As fresh as the schedule</td><td>Seconds to minutes</td></tr>
+    <tr><td>Typical use</td><td>Hourly or nightly bronze loads</td><td>Files that must be available almost at once</td></tr>
+  </table></div>
+  <h3>Formats Auto Loader reads</h3>
+  <div class="grid3">
+    <div class="card"><span class="tag">Text-based</span><p>JSON, CSV, XML and plain text.</p></div>
+    <div class="card"><span class="tag">Binary data formats</span><p>Parquet, Avro and ORC, which carry their own schema.</p></div>
+    <div class="card"><span class="tag">Whole files</span><p><code>binaryFile</code>, for images, PDFs and other unstructured files (lesson 02-12).</p></div>
+  </div>
+</section>
+
+<section id="scenarios">
+  <div class="sec-num">Real life</div>
+  <h2>Auto Loader in production</h2>
+  <div class="tbl"><table>
+    <tr><th>Scenario</th><th>What happens</th><th>Fix</th></tr>
+    <tr><td>A job crashes after writing half of a large backlog</td><td>On restart, finished files are skipped and the rest are loaded</td><td>Nothing to fix. Rerun the job.</td></tr>
+    <tr><td>Someone "tidies up" by deleting the checkpoint folder</td><td>The next run reloads months of files into bronze</td><td>Treat checkpoints as part of the table. Never delete one unless you intend a full reload into an emptied table.</td></tr>
+    <tr><td>A new stream is pointed at a folder holding three years of history that is not wanted</td><td>By default all of it is loaded on the first run</td><td>Set <code>cloudFiles.includeExistingFiles</code> to false before the first start</td></tr>
+    <tr><td>The first run over a huge backlog runs out of memory</td><td>Batches are too large for the compute</td><td>Lower <code>maxFilesPerTrigger</code>, or use larger compute</td></tr>
+    <tr><td>An hourly job on serverless fails with a trigger error</td><td>No trigger was set, and serverless needs an explicit one</td><td>Add <code>.trigger(availableNow=True)</code></td></tr>
+  </table></div>
+</section>
+
+<section id="traps">
+  <div class="sec-num">Don't confuse these</div>
+  <h2>Auto Loader traps</h2>
+  <div class="grid2">
+    <div class="card trap"><span class="tag">cloudFiles.format vs format</span><p><code>.format("cloudFiles")</code> selects Auto Loader. <code>cloudFiles.format</code> says what the incoming files are: json, csv, parquet.</p></div>
+    <div class="card trap"><span class="tag">Checkpoint vs schema location</span><p>The checkpoint records progress: which files are done. The schema location records structure: which columns exist. Often the same folder, different jobs.</p></div>
+    <div class="card trap"><span class="tag">Streaming code, batch behaviour</span><p><code>readStream</code> with <code>availableNow</code> runs and stops. Auto Loader does not require always-on compute.</p></div>
+    <div class="card trap"><span class="tag">Auto Loader vs COPY INTO memory</span><p>Auto Loader remembers files in a checkpoint folder. <code>COPY INTO</code> remembers them with the target table.</p></div>
+  </div>
+</section>
+
+<section id="quiz">
+  <div class="sec-num">Check yourself</div>
+  <h2>Quiz</h2>
+  <div class="quiz">
+    <fieldset>
+      <legend>1. How do you tell Spark to use Auto Loader?</legend>
+      <label><input type="radio"> <code>.format("autoloader")</code></label>
+      <label><input type="radio" data-correct> <code>.format("cloudFiles")</code></label>
+      <label><input type="radio"> <code>.option("autoLoad", "true")</code></label>
+      <p class="explain" hidden>Auto Loader is the <code>cloudFiles</code> streaming source. The real file type goes in <code>cloudFiles.format</code>.</p>
+    </fieldset>
+    <fieldset>
+      <legend>2. What does the checkpoint location hold?</legend>
+      <label><input type="radio"> A backup copy of the files</label>
+      <label><input type="radio" data-correct> The record of which files have been processed</label>
+      <label><input type="radio"> The table's data</label>
+      <p class="explain" hidden>It is the stream's memory of progress, which is what makes each file load exactly once.</p>
+    </fieldset>
+    <fieldset>
+      <legend>3. Which trigger loads everything waiting and then stops?</legend>
+      <label><input type="radio" data-correct> <code>availableNow=True</code></label>
+      <label><input type="radio"> <code>processingTime="1 minute"</code></label>
+      <label><input type="radio"> No trigger</label>
+      <p class="explain" hidden><code>availableNow</code> is the batch-style trigger. The other two keep the stream running.</p>
+    </fieldset>
+    <fieldset>
+      <legend>4. In the demo, what happened after you deleted the checkpoint and ran the stream again?</legend>
+      <label><input type="radio"> Nothing was loaded</label>
+      <label><input type="radio"> Only the newest files were loaded</label>
+      <label><input type="radio" data-correct> Every file was loaded again, duplicating the rows</label>
+      <p class="explain" hidden>Without its record, the stream sees every file as new. The table is appended to, so the old rows are doubled.</p>
+    </fieldset>
+    <fieldset>
+      <legend>5. A new stream should ignore files that were already in the folder. Which option does that?</legend>
+      <label><input type="radio"> <code>cloudFiles.maxFilesPerTrigger = 0</code></label>
+      <label><input type="radio" data-correct> <code>cloudFiles.includeExistingFiles = false</code></label>
+      <label><input type="radio"> <code>cloudFiles.schemaLocation</code></label>
+      <p class="explain" hidden>With it set to false before the first start, only files arriving afterwards are processed.</p>
+    </fieldset>
+  </div>
+</section>
+
+<section id="wrap">
+  <div class="sec-num">Wrap up</div>
+  <h2>Key takeaways</h2>
+  <ul>
+    <li>Auto Loader is the <code>cloudFiles</code> streaming source: a stream that reads new files from a folder.</li>
+    <li>The checkpoint records finished files and gives exactly-once loading. Never delete or share it.</li>
+    <li>The schema location stores the columns and types Auto Loader has worked out.</li>
+    <li><code>availableNow</code> runs it batch style: load what is waiting, then stop.</li>
+    <li>In SQL, a streaming table over <code>STREAM read_files(...)</code> is the same engine.</li>
+  </ul>
+  <h3>Glossary terms used</h3>
+  <p><a href="../../glossary.html#auto-loader">Auto Loader</a> · <a href="../../glossary.html#checkpoint">checkpoint</a> · <a href="../../glossary.html#schema-location">schema location</a> · <a href="../../glossary.html#trigger">trigger</a> · <a href="../../glossary.html#streaming-table">streaming table</a> · <a href="../../glossary.html#structured-streaming">Structured Streaming</a></p>
+  <h3>Official docs</h3>
+  <ul>
+    <li><a href="https://docs.databricks.com/aws/en/ingestion/cloud-object-storage/auto-loader/">What is Auto Loader?</a></li>
+    <li><a href="https://docs.databricks.com/aws/en/ingestion/cloud-object-storage/auto-loader/options">Auto Loader options</a></li>
+    <li><a href="https://docs.databricks.com/aws/en/ingestion/cloud-object-storage/auto-loader/patterns">Common data loading patterns</a></li>
+    <li><a href="https://docs.databricks.com/aws/en/ldp/dbsql/streaming">Streaming tables in Databricks SQL</a></li>
+    <li><a href="https://docs.databricks.com/aws/en/structured-streaming/triggers">Trigger intervals</a></li>
+  </ul>
+  <p class="cap">Last verified: 16 November 2026</p>
+</section>
+
+</main>
+
+<script>
+(function () {
+  var C = window.Course, $ = function (id) { return document.getElementById(id); }, L = $('dLog');
+  var PER = 10, total, done, started, skipBelow, loads;   /* files are numbered 1..total. done: set of finished numbers. loads: number -> times loaded */
+  function draw() {
+    $('pFiles').textContent = total;
+    $('pChk').textContent = started ? Object.keys(done).length : '-';
+    $('pChkN').textContent = started ? 'this stream has run before' : 'no checkpoint: the stream has never run';
+    var rows = 0, dup = 0; Object.keys(loads).forEach(function (k) { rows += loads[k] * PER; dup += (loads[k] - 1) * PER; });
+    $('pRows').textContent = rows; $('pDup').textContent = dup ? dup + ' duplicate rows' : 'no duplicates';
+  }
+  $('dArr').onclick = function () { total += 25; C.log(L, 'skip', '25 files arrived. The folder now holds ' + total + '.'); draw(); };
+  $('dRun').onclick = function () {
+    if (!started) {
+      started = true;
+      /* includeExistingFiles is only looked at now, at the first start. */
+      skipBelow = $('dExist').checked ? 0 : total;
+      if (skipBelow) C.log(L, 'skip', 'First start with includeExistingFiles = false: the ' + skipBelow + ' files already here will never be loaded by this stream.');
+    }
+    var todo = [];
+    for (var i = skipBelow + 1; i <= total; i++) if (!done[i]) todo.push(i);
+    var max = +$('dMax').value, batches = Math.ceil(todo.length / max);
+    todo.forEach(function (n) { done[n] = 1; loads[n] = (loads[n] || 0) + 1; });
+    C.log(L, todo.length ? 'ok' : 'skip', todo.length ? 'Run: ' + todo.length + ' new file(s) loaded in ' + batches + ' batch(es) of up to ' + max + ', ' + todo.length * PER + ' rows. Stream stopped.' : 'Run: no new files. Nothing loaded. Stream stopped.');
+    draw(); C.bump($('pRows'));
+  };
+  $('dLose').onclick = function () { done = {}; started = false; C.log(L, 'bad', 'Checkpoint deleted. The stream has no memory of any file. The table still holds its rows.'); draw(); };
+  function reset() { total = 40; done = {}; loads = {}; started = false; skipBelow = 0; $('dExist').checked = true; L.innerHTML = ''; C.log(L, 'skip', 'A folder with 40 files. The stream has not been started yet.'); draw(); }
+  $('dReset').onclick = reset;
+  reset();
+})();
+</script>
+</body>
+</html>

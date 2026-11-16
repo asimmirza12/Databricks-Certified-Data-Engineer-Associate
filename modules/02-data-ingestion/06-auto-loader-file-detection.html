@@ -1,0 +1,257 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>02-06 Auto Loader file detection · DE Associate course</title>
+<link rel="stylesheet" href="../../assets/course.css">
+<script src="../../assets/course.js"></script>
+</head>
+<body data-lesson="02-06">
+
+<aside class="disclaimer" aria-label="Disclaimer"><strong>Learning resource only.</strong> This is an independent, unofficial study guide made for learning purposes. It is not affiliated with, endorsed by or sponsored by Databricks. Databricks features change often, so always check the details in the <a href="https://docs.databricks.com">official Databricks documentation</a> and the official exam guide on databricks.com before relying on anything here. Databricks and related names are trademarks of their respective owners.</aside>
+
+<main class="wrap">
+
+<header class="hero">
+  <div class="eyebrow">Module 02 · Data Ingestion and Loading · Lesson 6 of 13</div>
+  <h1>Auto Loader file detection: directory listing vs file notification</h1>
+  <p class="lede">Auto Loader loads new files. But how does it find out that a file is new? There are two ways, and the difference decides how well it copes with a very full folder.</p>
+  <dl class="where">
+    <div><dt>Module</dt><dd>02 Data Ingestion and Loading (21% of the exam)</dd></div>
+    <div><dt>Exam objective</dt><dd>2.3 Use Auto Loader, including how it finds files (directory listing or file notification) and how it handles schemas. This lesson covers how it finds files.</dd></div>
+    <div><dt>Time to read</dt><dd>About 11 minutes</dd></div>
+    <div><dt>Before this</dt><dd><a href="05-auto-loader-basics.html">02-05 Auto Loader basics</a></dd></div>
+  </dl>
+</header>
+
+<section id="idea">
+  <div class="sec-num">The idea</div>
+  <h2>Go and look, or be told</h2>
+  <p>There are only two ways to learn that something new has arrived.</p>
+  <ul>
+    <li><a href="../../glossary.html#directory-listing">Directory listing</a>: go and look. Auto Loader asks cloud storage for the list of files in the folder and compares it with its checkpoint. Anything not yet recorded is new. This needs no setup at all, and it is the default.</li>
+    <li><a href="../../glossary.html#file-notification">File notification</a>: be told. Cloud storage is set up to send a small message every time a file lands. Auto Loader reads the messages. It never has to list the folder.</li>
+  </ul>
+  <p>Listing is fine for a folder with a few thousand files. But cloud storage charges for every list request and returns files a page at a time. Listing a folder of ten million files to find ten new ones is slow and wasteful. Notification costs the same whether the folder holds ten files or ten million, because it only ever hears about the new ones.</p>
+  <p>File notification itself comes in two forms. The older form has each stream set up its own message queue. The newer, recommended form is called <a href="../../glossary.html#file-events">file events</a>: it is switched on once for a Unity Catalog external location, and every stream reading from that location can use it.</p>
+  <div class="analogy">
+    <span class="tag">Everyday analogy</span>
+    <p><strong>Finding out whether post has come.</strong> Directory listing is walking to the letterbox and looking through everything in it, every time, to spot what is new. Easy when the box holds three letters. Hopeless when it holds a year of unopened post. File notification is a doorbell that rings each time the postman delivers. You only get up when there is something new, however full the box is.</p>
+  </div>
+</section>
+
+<section id="how">
+  <div class="sec-num">How it works</div>
+  <h2>Two routes to the same answer</h2>
+  <div class="stage">
+    <svg class="tall" viewBox="0 0 360 370" role="img" aria-label="Directory listing: Auto Loader repeatedly asks storage for the full list of files. File notification: storage sends an event for each new file to a queue, and Auto Loader reads the queue.">
+      <defs><path id="e1" d="M250 52 H110"/><path id="e2" d="M110 84 H250"/><path id="e3" d="M90 236 H180"/><path id="e4" d="M240 236 H290"/></defs>
+      <text class="t-b" x="10" y="20">Directory listing</text><text class="t-m" x="128" y="20">the default, no setup</text>
+      <g class="wire"><use href="#e1"/><use href="#e2"/></g>
+      <rect class="box-soft" x="10" y="34" width="100" height="70" rx="8"/><text class="t-b" x="60" y="60" text-anchor="middle">Folder</text><text class="t-m" x="60" y="78" text-anchor="middle">all files, old</text><text class="t-m" x="60" y="92" text-anchor="middle">and new</text>
+      <rect class="box-acc" x="250" y="34" width="100" height="70" rx="8"/><text class="t-b" x="300" y="64" text-anchor="middle">Auto Loader</text><text class="t-m" x="300" y="82" text-anchor="middle">compares</text>
+      <text class="t-m" x="180" y="46" text-anchor="middle">"list everything"</text><text class="t-m" x="180" y="100" text-anchor="middle">the whole list, page by page</text>
+      <text class="t-m" x="180" y="128" text-anchor="middle">Work grows with the size of the folder.</text>
+      <text class="t-b" x="10" y="176">File notification</text><text class="t-m" x="128" y="176">needs one-off setup</text>
+      <g class="wire"><use href="#e3"/><use href="#e4"/></g>
+      <rect class="box-soft" x="10" y="200" width="80" height="72" rx="8"/><text class="t-b" x="50" y="228" text-anchor="middle">Folder</text><text class="t-m" x="50" y="246" text-anchor="middle">a file lands</text>
+      <rect class="box" x="180" y="208" width="60" height="56" rx="8"/><text class="t-b" x="210" y="232" text-anchor="middle">Queue</text><text class="t-m" x="210" y="250" text-anchor="middle">events</text>
+      <rect class="box-acc" x="290" y="200" width="64" height="72" rx="8"/><text class="t-b" x="322" y="228" text-anchor="middle">Auto</text><text class="t-b" x="322" y="244" text-anchor="middle">Loader</text>
+      <text class="t-m" x="135" y="226" text-anchor="middle">"new file!"</text>
+      <text class="t-m" x="180" y="300" text-anchor="middle">Work grows only with the number of new files.</text>
+      <text class="t-m" x="180" y="330" text-anchor="middle">File events: the same idea, set up once on an external</text>
+      <text class="t-m" x="180" y="346" text-anchor="middle">location and shared by every stream that reads from it.</text>
+      <g class="mover">
+        <rect class="dot" x="-16" y="-5" width="32" height="10" rx="3"><animateMotion dur="2.4s" repeatCount="indefinite"><mpath href="#e2"/></animateMotion></rect>
+        <circle r="4" class="dot"><animateMotion dur="2.4s" begin="-1.2s" repeatCount="indefinite"><mpath href="#e1"/></animateMotion></circle>
+        <circle r="5" class="dot-ok"><animateMotion dur="1.8s" repeatCount="indefinite"><mpath href="#e3"/></animateMotion></circle>
+        <circle r="5" class="dot-ok"><animateMotion dur="1.8s" begin="-0.9s" repeatCount="indefinite"><mpath href="#e4"/></animateMotion></circle>
+      </g>
+    </svg>
+  </div>
+  <p>Whichever way files are discovered, everything else about Auto Loader stays the same: the checkpoint, the schema handling and the exactly-once guarantee from lesson 02-05.</p>
+</section>
+
+<section id="demo">
+  <div class="sec-num">Try it</div>
+  <h2>How much work to find the new files?</h2>
+  <p>Choose how full the folder is and how many files arrive between runs. Run a detection in each mode and compare the number of requests to cloud storage. Then let a file-events stream sit unused for too long.</p>
+  <div class="stage">
+    <div class="ctrls">
+      <label class="tog">Files already in the folder: <select id="dOld"><option value="5000">5 thousand</option><option value="500000">500 thousand</option><option value="20000000">20 million</option></select></label>
+      <label class="tog">New files since the last run: <select id="dNew"><option value="50">50</option><option value="5000">5 thousand</option></select></label>
+    </div>
+    <div class="ctrls">
+      <label class="tog">Mode: <select id="dMode">
+        <option value="list">Directory listing (default)</option>
+        <option value="events">File notification with file events</option>
+      </select></label>
+      <label class="tog"><input type="checkbox" id="dStale"> The stream has not run for 10 days</label>
+      <button id="dRun" type="button" class="primary">Find new files</button>
+      <button id="dReset" type="button">Clear log</button>
+    </div>
+    <div class="panes">
+      <div class="pane"><h4>Requests to cloud storage</h4><div class="big" id="pReq">-</div><div class="meter"><i id="pBar"></i></div><p class="cap" id="pWhy"></p></div>
+      <div class="pane"><h4>New files found</h4><div class="big" id="pFound">-</div><p class="cap">The same either way. Only the effort differs.</p></div>
+    </div>
+    <div class="log" id="dLog" role="log" aria-label="What happened"></div>
+    <p class="cap">Model used: a list request returns up to 1,000 files, and events are read in groups of up to 1,000. Real numbers depend on the cloud and on folder layout.</p>
+  </div>
+</section>
+
+<section id="code">
+  <div class="sec-num">Code</div>
+  <h2>Choosing the mode</h2>
+<pre><code>base = (spark.readStream.format(<span class="c-s">"cloudFiles"</span>)
+    .option(<span class="c-s">"cloudFiles.format"</span>, <span class="c-s">"json"</span>)
+    .option(<span class="c-s">"cloudFiles.schemaLocation"</span>, <span class="c-s">"/Volumes/bakery/ops/checkpoints/web_orders_raw"</span>))
+
+<span class="c-c"># 1. DIRECTORY LISTING. Nothing to add: it is what you get by default.</span>
+listing = base.load(<span class="c-s">"/Volumes/bakery/landing/web_orders/"</span>)
+
+<span class="c-c"># 2. FILE NOTIFICATION WITH FILE EVENTS (recommended).</span>
+<span class="c-c"># Needs: the folder is inside a Unity Catalog external location that has file events enabled.</span>
+events = (base
+    .option(<span class="c-s">"cloudFiles.useManagedFileEvents"</span>, <span class="c-s">"true"</span>)
+    .load(<span class="c-s">"s3://bakery-landing/web_orders/"</span>))
+
+<span class="c-c"># 3. CLASSIC FILE NOTIFICATION (older). Auto Loader creates a queue and a</span>
+<span class="c-c"># notification for this one stream, which needs extra cloud permissions.</span>
+classic = (base
+    .option(<span class="c-s">"cloudFiles.useNotifications"</span>, <span class="c-s">"true"</span>)
+    .load(<span class="c-s">"s3://bakery-landing/web_orders/"</span>))</code></pre>
+  <p class="note">Do not set both options on one stream. On the newest runtime versions, Auto Loader uses file events by itself when they are available for the location. Check the docs for the runtime you are on.</p>
+</section>
+
+<section id="whatif">
+  <div class="sec-num">What if I change this?</div>
+  <h2>Mode and its consequences</h2>
+  <div class="tbl"><table class="whatif">
+    <tr><th>Change</th><th>Effect</th></tr>
+    <tr><td>Stay on directory listing as the folder grows to millions of files</td><td>Every run lists the whole folder. Runs get slower and the bill for list requests climbs.</td></tr>
+    <tr><td>Set <code>cloudFiles.useManagedFileEvents</code> to true</td><td>New files are discovered from events. Discovery time no longer depends on how full the folder is. Requires file events on the external location.</td></tr>
+    <tr><td>Set <code>cloudFiles.useNotifications</code> to true</td><td>The older per-stream notification setup. It works, but each stream manages its own cloud resources and needs permission to create them.</td></tr>
+    <tr><td>Run a file-events stream less than once a week</td><td>Events are only kept for a limited time. If the stream has been away too long, Auto Loader falls back to a full listing to be safe. Run at least every 7 days.</td></tr>
+    <tr><td>Use directory listing for a one-off load of old files</td><td>A good choice. A single listing is cheap, and no setup is needed.</td></tr>
+  </table></div>
+</section>
+
+<section id="compare">
+  <div class="sec-num">Compare</div>
+  <h2>The detection modes</h2>
+  <div class="tbl"><table>
+    <tr><th></th><th>Directory listing</th><th>File notification: file events</th><th>File notification: classic</th></tr>
+    <tr><td>How it learns of new files</td><td>Lists the folder</td><td>Reads events for the location</td><td>Reads events from its own queue</td></tr>
+    <tr><td>Setup</td><td>None</td><td>Once per external location</td><td>Per stream, with cloud permissions</td></tr>
+    <tr><td>Option</td><td>The default</td><td><code>cloudFiles.useManagedFileEvents</code></td><td><code>cloudFiles.useNotifications</code></td></tr>
+    <tr><td>Cost as the folder grows</td><td>Rises</td><td>Stays flat</td><td>Stays flat</td></tr>
+    <tr><td>Best for</td><td>Small folders, one-off backfills, getting started</td><td>Most production workloads</td><td>Existing setups not yet moved to file events</td></tr>
+  </table></div>
+</section>
+
+<section id="scenarios">
+  <div class="sec-num">Real life</div>
+  <h2>Which mode, when</h2>
+  <div class="tbl"><table>
+    <tr><th>Scenario</th><th>What happens</th><th>Fix</th></tr>
+    <tr><td>A proof of concept loads a few hundred files from a volume</td><td>Any mode works</td><td>Directory listing. Zero setup.</td></tr>
+    <tr><td>A two-year-old stream takes 40 minutes before it loads anything</td><td>It is listing tens of millions of old files on every run</td><td>Enable file events on the external location and switch the stream to them</td></tr>
+    <tr><td>Thirty streams read from one bucket, each with its own notification queue</td><td>Thirty sets of cloud resources to look after, and cloud limits on how many are allowed</td><td>Move to file events, which are shared across streams</td></tr>
+    <tr><td>A monthly job using file events is slow every time</td><td>It runs too rarely, so it keeps falling back to listing</td><td>Run it at least weekly, or accept listing for a monthly job</td></tr>
+  </table></div>
+</section>
+
+<section id="traps">
+  <div class="sec-num">Don't confuse these</div>
+  <h2>Detection traps</h2>
+  <div class="grid2">
+    <div class="card trap"><span class="tag">Default vs recommended</span><p>Directory listing is the default. File notification with file events is what Databricks recommends for most workloads. Exam questions can ask for either.</p></div>
+    <div class="card trap"><span class="tag">Detection mode vs trigger</span><p>The detection mode is how new files are found. The trigger is when the stream runs. They are independent: either mode works with <code>availableNow</code>.</p></div>
+    <div class="card trap"><span class="tag">File events vs file arrival trigger</span><p>File events help Auto Loader find files. A file arrival trigger starts a job when files land (Module 04). Related ideas, different features.</p></div>
+    <div class="card trap"><span class="tag">Notification is not streaming-only</span><p>File notification can be used in batch-style runs too. It changes how files are discovered, not whether the compute stays on.</p></div>
+  </div>
+</section>
+
+<section id="quiz">
+  <div class="sec-num">Check yourself</div>
+  <h2>Quiz</h2>
+  <div class="quiz">
+    <fieldset>
+      <legend>1. Which file detection mode does Auto Loader use if you set nothing?</legend>
+      <label><input type="radio" data-correct> Directory listing</label>
+      <label><input type="radio"> File notification</label>
+      <label><input type="radio"> It refuses to start</label>
+      <p class="explain" hidden>Directory listing is the default because it needs no setup.</p>
+    </fieldset>
+    <fieldset>
+      <legend>2. A folder holds 20 million files and gains 50 a day. Why is directory listing a poor choice?</legend>
+      <label><input type="radio"> It cannot detect more than a million files</label>
+      <label><input type="radio" data-correct> It lists all 20 million every run to find the 50 new ones</label>
+      <label><input type="radio"> It loads every file again each day</label>
+      <p class="explain" hidden>Listing still loads only new files, thanks to the checkpoint. The waste is in the discovery step, which scales with the folder's size.</p>
+    </fieldset>
+    <fieldset>
+      <legend>3. What does file notification with file events require?</legend>
+      <label><input type="radio"> A SQL warehouse</label>
+      <label><input type="radio" data-correct> The path is in a Unity Catalog external location with file events enabled</label>
+      <label><input type="radio"> A continuous trigger</label>
+      <p class="explain" hidden>File events are a feature of external locations. Once enabled there, streams reading from that location can use them.</p>
+    </fieldset>
+    <fieldset>
+      <legend>4. In the demo, what changed between the two modes for the same folder?</legend>
+      <label><input type="radio"> The number of new files found</label>
+      <label><input type="radio" data-correct> The number of requests needed to find them</label>
+      <label><input type="radio"> The rows loaded into the table</label>
+      <p class="explain" hidden>Both modes find the same files. Notification simply does far less work to get there when the folder is large.</p>
+    </fieldset>
+  </div>
+</section>
+
+<section id="wrap">
+  <div class="sec-num">Wrap up</div>
+  <h2>Key takeaways</h2>
+  <ul>
+    <li>Directory listing asks storage for the folder's contents. It is the default and needs no setup.</li>
+    <li>File notification hears about each new file from cloud storage, so its cost does not grow with the folder.</li>
+    <li>File events are the recommended form of notification, enabled once per external location.</li>
+    <li>The mode changes how files are found, not how they are loaded or tracked.</li>
+    <li>File-events streams should run at least once every 7 days.</li>
+  </ul>
+  <h3>Glossary terms used</h3>
+  <p><a href="../../glossary.html#auto-loader">Auto Loader</a> · <a href="../../glossary.html#directory-listing">directory listing</a> · <a href="../../glossary.html#file-notification">file notification</a> · <a href="../../glossary.html#file-events">file events</a> · <a href="../../glossary.html#external-location">external location</a></p>
+  <h3>Official docs</h3>
+  <ul>
+    <li><a href="https://docs.databricks.com/aws/en/ingestion/cloud-object-storage/auto-loader/file-detection-modes">Compare Auto Loader file detection modes</a></li>
+    <li><a href="https://docs.databricks.com/aws/en/ingestion/cloud-object-storage/auto-loader/file-events-explained">Auto Loader with file events</a></li>
+    <li><a href="https://docs.databricks.com/aws/en/ingestion/cloud-object-storage/auto-loader/file-notification-mode">Classic file notification mode</a></li>
+    <li><a href="https://docs.databricks.com/aws/en/ingestion/cloud-object-storage/auto-loader/best-practices">Auto Loader best practices</a></li>
+  </ul>
+  <p class="cap">Last verified: 16 November 2026</p>
+</section>
+
+</main>
+
+<script>
+(function () {
+  var C = window.Course, $ = function (id) { return document.getElementById(id); }, L = $('dLog'), PAGE = 1000;
+  $('dRun').onclick = function () {
+    var old = +$('dOld').value, fresh = +$('dNew').value, mode = $('dMode').value, stale = $('dStale').checked;
+    var listReq = Math.ceil((old + fresh) / PAGE), eventReq = Math.ceil(fresh / PAGE);
+    var fellBack = mode === 'events' && stale, req = mode === 'list' || fellBack ? listReq : eventReq;
+    $('pReq').textContent = req.toLocaleString();
+    $('pFound').textContent = fresh.toLocaleString();
+    $('pBar').style.width = Math.max(1, 100 * req / listReq) + '%';
+    $('pWhy').textContent = fellBack ? 'Events had expired after 10 days, so it fell back to listing the whole folder.'
+      : mode === 'list' ? 'Listed all ' + (old + fresh).toLocaleString() + ' files, 1,000 per request.'
+      : 'Read ' + fresh.toLocaleString() + ' events. The ' + old.toLocaleString() + ' old files were never touched.';
+    C.log(L, req === eventReq && mode === 'events' ? 'ok' : listReq > 1000 ? 'bad' : 'skip',
+      $('dMode').selectedOptions[0].text + (stale ? ', idle 10 days' : '') + ': ' + req.toLocaleString() + ' request(s) to find ' + fresh.toLocaleString() + ' new file(s) among ' + (old + fresh).toLocaleString() + '.');
+    C.bump($('pReq'));
+  };
+  $('dReset').onclick = function () { L.innerHTML = ''; };
+  C.log(L, 'skip', 'Pick a folder size and a mode, then press "Find new files".');
+})();
+</script>
+</body>
+</html>

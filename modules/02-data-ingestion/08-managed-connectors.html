@@ -1,0 +1,330 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>02-08 Configuring Lakeflow Connect managed connectors · DE Associate course</title>
+<link rel="stylesheet" href="../../assets/course.css">
+<script src="../../assets/course.js"></script>
+</head>
+<body data-lesson="02-08">
+
+<aside class="disclaimer" aria-label="Disclaimer"><strong>Learning resource only.</strong> This is an independent, unofficial study guide made for learning purposes. It is not affiliated with, endorsed by or sponsored by Databricks. Databricks features change often, so always check the details in the <a href="https://docs.databricks.com">official Databricks documentation</a> and the official exam guide on databricks.com before relying on anything here. Databricks and related names are trademarks of their respective owners.</aside>
+
+<main class="wrap">
+
+<header class="hero">
+  <div class="eyebrow">Module 02 · Data Ingestion and Loading · Lesson 8 of 13</div>
+  <h1>Configuring Lakeflow Connect managed connectors</h1>
+  <p class="lede">Lesson 02-03 said a managed connector does the work for you. This lesson opens the box: what parts it is made of, what you must set, and what keeps it reliable.</p>
+  <dl class="where">
+    <div><dt>Module</dt><dd>02 Data Ingestion and Loading (21% of the exam)</dd></div>
+    <div><dt>Exam objective</dt><dd>2.4 Set up Lakeflow Connect so data from business systems arrives reliably in governed tables.</dd></div>
+    <div><dt>Time to read</dt><dd>About 14 minutes</dd></div>
+    <div><dt>Before this</dt><dd><a href="03-lakeflow-connect-overview.html">02-03 Lakeflow Connect: standard vs managed connectors</a></dd></div>
+  </dl>
+</header>
+
+<section id="idea">
+  <div class="sec-num">The idea</div>
+  <h2>A few parts, each with one job</h2>
+  <p>Every managed connector is assembled from the same small set of parts.</p>
+  <ul>
+    <li>A <a href="../../glossary.html#connection">connection</a> is a Unity Catalog object that stores where the source is and how to log in. It is created once and can be reused. Because it is a Unity Catalog object, who may use it is controlled by grants.</li>
+    <li>An <a href="../../glossary.html#ingestion-pipeline">ingestion pipeline</a> copies data from the source into destination tables. It runs on serverless compute, on a schedule you choose.</li>
+    <li><strong>Destination tables</strong> are streaming tables in the catalog and schema you pick.</li>
+  </ul>
+  <p>Connectors for databases that use CDC need two more parts, because a database's change log cannot wait.</p>
+  <ul>
+    <li>An <a href="../../glossary.html#ingestion-gateway">ingestion gateway</a> stays connected to the database and continuously pulls out its changes. It runs on classic compute and must keep running, because databases clear old entries from their change logs. A gateway that is off for too long misses changes for good.</li>
+    <li>A <strong>staging volume</strong> is a Unity Catalog volume where the gateway parks what it has extracted until the ingestion pipeline picks it up.</li>
+  </ul>
+  <div class="analogy">
+    <span class="tag">Everyday analogy</span>
+    <p><strong>A newspaper delivery round.</strong> The connection is the list of addresses and the gate codes. The printing press runs all night and cannot be paused: papers come off it whether or not a van is waiting. That is the database's change log. The gateway is the worker who stands at the press and stacks every paper as it comes. The loading bay where the stacks wait is the staging volume. The van that does the round at 6 am is the ingestion pipeline. If nobody stands at the press, papers fall on the floor and are swept away.</p>
+  </div>
+</section>
+
+<section id="how">
+  <div class="sec-num">How it works</div>
+  <h2>SaaS connector and database connector</h2>
+  <div class="stage">
+    <svg class="tall" viewBox="0 0 360 400" role="img" aria-label="A SaaS connector: source application, ingestion pipeline on serverless, destination tables. A database connector: source database, ingestion gateway on classic compute running continuously, staging volume, ingestion pipeline on serverless, destination tables.">
+      <defs><path id="g1" d="M84 58 V250"/><path id="g2" d="M264 58 V88"/><path id="g3" d="M264 148 V172"/><path id="g4" d="M264 220 V250"/><path id="g5" d="M84 310 C 84 334, 150 334, 160 348"/><path id="g6" d="M264 310 C 264 334, 210 334, 200 348"/></defs>
+      <g class="wire"><use href="#g1"/><use href="#g2"/><use href="#g3"/><use href="#g4"/><use href="#g5"/><use href="#g6"/></g>
+      <g class="mover">
+        <circle r="5" class="dot"><animateMotion dur="3s" repeatCount="indefinite"><mpath href="#g1"/></animateMotion></circle>
+        <circle r="4" class="dot-ok"><animateMotion dur="0.9s" repeatCount="indefinite"><mpath href="#g2"/></animateMotion></circle>
+        <circle r="4" class="dot-ok"><animateMotion dur="0.9s" begin="-0.4s" repeatCount="indefinite"><mpath href="#g3"/></animateMotion></circle>
+        <circle r="5" class="dot"><animateMotion dur="3s" begin="-1.5s" repeatCount="indefinite"><mpath href="#g4"/></animateMotion></circle>
+      </g>
+      <text class="t-b" x="84" y="14" text-anchor="middle">SaaS application</text><text class="t-b" x="264" y="14" text-anchor="middle">Database (CDC)</text>
+      <rect class="box-soft" x="14" y="22" width="140" height="36" rx="6"/><text x="84" y="45" text-anchor="middle">Sales application</text>
+      <rect class="box-soft" x="194" y="22" width="140" height="36" rx="6"/><text x="264" y="45" text-anchor="middle">Orders database</text>
+      <text class="t-m" x="96" y="150">connection</text><text class="t-m" x="96" y="166">holds the login</text>
+      <rect class="box-acc" x="194" y="88" width="140" height="60" rx="8"/><text class="t-b" x="264" y="108" text-anchor="middle">Ingestion gateway</text><text class="t-m" x="264" y="124" text-anchor="middle">classic compute</text><text class="t-m" x="264" y="138" text-anchor="middle">always running</text>
+      <rect class="box" x="194" y="172" width="140" height="48" rx="8"/><text class="t-b" x="264" y="192" text-anchor="middle">Staging volume</text><text class="t-m" x="264" y="208" text-anchor="middle">changes wait here</text>
+      <rect class="box-acc" x="14" y="250" width="140" height="60" rx="8"/><text class="t-b" x="84" y="272" text-anchor="middle">Ingestion pipeline</text><text class="t-m" x="84" y="288" text-anchor="middle">serverless</text><text class="t-m" x="84" y="302" text-anchor="middle">on a schedule</text>
+      <rect class="box-acc" x="194" y="250" width="140" height="60" rx="8"/><text class="t-b" x="264" y="272" text-anchor="middle">Ingestion pipeline</text><text class="t-m" x="264" y="288" text-anchor="middle">serverless</text><text class="t-m" x="264" y="302" text-anchor="middle">on a schedule</text>
+      <rect class="box" x="70" y="348" width="220" height="44" rx="8"/><text class="t-b" x="180" y="368" text-anchor="middle">Streaming tables</text><text class="t-m" x="180" y="384" text-anchor="middle">in your catalog and schema</text>
+    </svg>
+    <p class="cap">The fast green dots are the gateway capturing changes without pause. The slow blue dots are the pipeline moving data on its schedule.</p>
+  </div>
+  <h3>Keeping history: two ways to store a change</h3>
+  <p>When a source row changes, the destination can react in two ways. The names come from an old data warehousing term, <a href="../../glossary.html#scd">slowly changing dimension</a> (SCD).</p>
+  <div class="grid2">
+    <div class="card"><span class="tag">SCD type 1: keep the latest</span><p>The destination row is overwritten with the new values. The table always matches the source as it is now. Old values are gone. This is the default.</p></div>
+    <div class="card"><span class="tag">SCD type 2: keep the history</span><p>The old version is kept and marked as ended. A new row is added for the new version. Two extra columns, <code>__START_AT</code> and <code>__END_AT</code>, say when each version was current.</p></div>
+  </div>
+  <p>There is also a simpler family called query-based connectors. They have no gateway and no staging volume. The pipeline just queries the source database on a schedule for rows that changed. Less to run, but it relies on a column that reveals changes, as in lesson 02-01.</p>
+</section>
+
+<section id="demo">
+  <div class="sec-num">Try it</div>
+  <h2>Change the source and watch the destination</h2>
+  <p>Choose how history is stored. Change and delete customers at the source, then run the pipeline. Then try the two things that hurt: leaving the gateway off, and running a full refresh on a table with history.</p>
+  <div class="stage">
+    <div class="ctrls">
+      <label class="tog">History: <select id="dScd"><option value="1">SCD type 1: keep the latest</option><option value="2">SCD type 2: keep the history</option></select></label>
+      <label class="tog"><input type="checkbox" id="dGate" checked> Gateway is running</label>
+    </div>
+    <div class="ctrls">
+      <button id="sUpd" type="button">Source: Ana moves city</button>
+      <button id="sDel" type="button">Source: delete Raj</button>
+      <button id="dRun" type="button" class="primary">Run the ingestion pipeline</button>
+      <button id="dFull" type="button">Full refresh</button>
+      <button id="dReset" type="button">Reset</button>
+    </div>
+    <div class="panes">
+      <div class="pane"><h4>Source table</h4><div id="pSrc"></div></div>
+      <div class="pane"><h4>Staging volume</h4><div class="big" id="pStage"></div><p class="cap" id="pLost"></p></div>
+      <div class="pane"><h4>Destination table</h4><div id="pDst"></div><p class="cap" id="pOk"></p></div>
+    </div>
+    <div class="log" id="dLog" role="log" aria-label="What happened"></div>
+    <p class="cap">To keep it short, this demo treats the database's change log as cleared straight away. In reality a gateway that returns soon enough can still catch up.</p>
+  </div>
+</section>
+
+<section id="code">
+  <div class="sec-num">Code</div>
+  <h2>Setting one up</h2>
+  <p>Most people configure a managed connector in the UI, which walks through the same steps. Here they are as code. First the connection:</p>
+<pre><code><span class="c-c">-- A connection is a Unity Catalog object. Creating one needs the CREATE CONNECTION privilege.</span>
+<span class="c-c">-- secret() reads the password from a secret store, so it never appears in the code.</span>
+<span class="c-k">CREATE CONNECTION</span> bakery_orders_db <span class="c-k">TYPE</span> sqlserver
+<span class="c-k">OPTIONS</span> (
+  host <span class="c-s">'orders-db.bakery.example'</span>,
+  port <span class="c-s">'1433'</span>,
+  user <span class="c-s">'ingest_reader'</span>,
+  password secret(<span class="c-s">'bakery-secrets'</span>, <span class="c-s">'orders-db-password'</span>)
+);
+
+<span class="c-c">-- Let the data engineering group build pipelines with it.</span>
+<span class="c-k">GRANT USE CONNECTION ON CONNECTION</span> bakery_orders_db <span class="c-k">TO</span> `data_engineers`;</code></pre>
+  <p>Then the pipeline, as a description of what to ingest and how:</p>
+<pre><code><span class="c-c"># Illustrative shape. Field names vary by connector: check its documentation.</span>
+<span class="c-k">ingestion_definition</span>:
+  <span class="c-k">ingestion_gateway_id</span>: ${gateway_id}       <span class="c-c"># database connectors only</span>
+  <span class="c-k">objects</span>:
+    - <span class="c-k">table</span>:
+        <span class="c-k">source_schema</span>: sales
+        <span class="c-k">source_table</span>: customers
+        <span class="c-k">destination_catalog</span>: bakery
+        <span class="c-k">destination_schema</span>: bronze
+        <span class="c-k">table_configuration</span>:
+          <span class="c-k">scd_type</span>: SCD_TYPE_2            <span class="c-c"># keep history. Default is SCD_TYPE_1.</span></code></pre>
+  <p>Reading the result is ordinary SQL. With history kept, "current" rows are those whose end is empty:</p>
+<pre><code><span class="c-c">-- The current version of every customer, from a table that keeps history.</span>
+<span class="c-k">SELECT</span> customer_id, name, city
+<span class="c-k">FROM</span> bakery.bronze.customers
+<span class="c-k">WHERE</span> __END_AT <span class="c-k">IS NULL</span>;</code></pre>
+</section>
+
+<section id="whatif">
+  <div class="sec-num">What if I change this?</div>
+  <h2>Settings that affect reliability</h2>
+  <div class="tbl"><table class="whatif">
+    <tr><th>Change</th><th>Effect</th></tr>
+    <tr><td>SCD type 1 to SCD type 2</td><td>The destination keeps every past version of a row, with <code>__START_AT</code> and <code>__END_AT</code>. The table grows faster, and queries must filter for current rows.</td></tr>
+    <tr><td>Stop the gateway of a database connector</td><td>Changes stop being captured. If the database clears its change log before the gateway returns, those changes are lost and a full refresh is needed.</td></tr>
+    <tr><td>Run the ingestion pipeline hourly instead of daily</td><td>Destination tables are fresher. The gateway is unaffected: it captures continuously either way.</td></tr>
+    <tr><td>Run a full refresh</td><td>The destination is rebuilt from a new complete copy of the source. With history tracking on, the accumulated history is erased.</td></tr>
+    <tr><td>Use a query-based connector instead of a CDC one</td><td>No gateway and no staging volume to run. In exchange it depends on a column that shows which rows changed.</td></tr>
+    <tr><td>Revoke <code>USE CONNECTION</code> from a group</td><td>They can no longer create or run pipelines that log in through that connection.</td></tr>
+    <tr><td>The source adds a column</td><td>The connector adapts and the destination gains the column. No code change.</td></tr>
+  </table></div>
+</section>
+
+<section id="compare">
+  <div class="sec-num">Compare</div>
+  <h2>Three shapes of managed connector</h2>
+  <div class="tbl"><table>
+    <tr><th></th><th>SaaS connector</th><th>Database connector (CDC)</th><th>Query-based connector</th></tr>
+    <tr><td>Parts</td><td>Connection, ingestion pipeline</td><td>Connection, gateway, staging volume, ingestion pipeline</td><td>Connection, ingestion pipeline</td></tr>
+    <tr><td>How changes are found</td><td>The application's own interface</td><td>The database's change log</td><td>A scheduled query for changed rows</td></tr>
+    <tr><td>Compute</td><td>Serverless</td><td>Gateway on classic, pipeline on serverless</td><td>Serverless</td></tr>
+    <tr><td>Anything always on?</td><td>No</td><td>Yes, the gateway</td><td>No</td></tr>
+    <tr><td>Catches deletes</td><td>Depends on the application</td><td>Yes</td><td>Not reliably</td></tr>
+  </table></div>
+  <h3>What makes it "reliable"</h3>
+  <div class="grid3">
+    <div class="card"><span class="tag">Automatic retries</span><p>Temporary failures, such as a brief network fault, are retried without your involvement.</p></div>
+    <div class="card"><span class="tag">Incremental by design</span><p>Each run continues from where the last stopped. A failed run does not cause gaps or duplicates.</p></div>
+    <div class="card"><span class="tag">Governed end to end</span><p>The connection, the staging volume and the destination tables are all Unity Catalog objects with grants and lineage.</p></div>
+  </div>
+</section>
+
+<section id="scenarios">
+  <div class="sec-num">Real life</div>
+  <h2>Running managed connectors</h2>
+  <div class="tbl"><table>
+    <tr><th>Scenario</th><th>What happens</th><th>Fix</th></tr>
+    <tr><td>To save money, someone schedules the gateway to run only during office hours</td><td>Overnight changes roll out of the database's change log before they are captured</td><td>Run the gateway continuously. Save money on the pipeline schedule instead.</td></tr>
+    <tr><td>Auditors need to know what a customer's address was last March</td><td>With SCD type 1 the old address was overwritten</td><td>Use SCD type 2 for tables where history matters</td></tr>
+    <tr><td>A pipeline on a history table is "fixed" with a full refresh</td><td>Two years of recorded history vanish</td><td>Avoid full refresh on SCD type 2 tables unless losing history is acceptable</td></tr>
+    <tr><td>A new engineer cannot create a pipeline for an existing source</td><td>They lack <code>USE CONNECTION</code> on the connection</td><td>Grant it to their group</td></tr>
+    <tr><td>The workspace only allows serverless compute</td><td>A gateway needs classic compute, so a CDC database connector cannot be deployed</td><td>Use a query-based connector, or a workspace that supports classic compute</td></tr>
+  </table></div>
+</section>
+
+<section id="traps">
+  <div class="sec-num">Don't confuse these</div>
+  <h2>Managed connector traps</h2>
+  <div class="grid2">
+    <div class="card trap"><span class="tag">Gateway vs pipeline</span><p>The gateway extracts from the database, continuously, on classic compute. The pipeline loads into tables, on a schedule, on serverless. Only database CDC connectors have a gateway.</p></div>
+    <div class="card trap"><span class="tag">SCD type 1 vs type 2</span><p>Type 1 overwrites and keeps no history. Type 2 adds a row per version and keeps it all. Type 1 is the default.</p></div>
+    <div class="card trap"><span class="tag">Refresh vs full refresh</span><p>A normal run brings in what changed. A full refresh throws away the destination and reloads everything.</p></div>
+    <div class="card trap"><span class="tag">Staging volume vs destination</span><p>The staging volume is a temporary holding area for extracted changes. Your queries read the destination tables, never the staging volume.</p></div>
+  </div>
+</section>
+
+<section id="quiz">
+  <div class="sec-num">Check yourself</div>
+  <h2>Quiz</h2>
+  <div class="quiz">
+    <fieldset>
+      <legend>1. Which part of a database CDC connector must run continuously?</legend>
+      <label><input type="radio" data-correct> The ingestion gateway</label>
+      <label><input type="radio"> The ingestion pipeline</label>
+      <label><input type="radio"> The connection</label>
+      <p class="explain" hidden>The gateway has to capture changes before the database clears them from its log. The pipeline can run on any schedule.</p>
+    </fieldset>
+    <fieldset>
+      <legend>2. What does a connection store?</legend>
+      <label><input type="radio"> The ingested rows</label>
+      <label><input type="radio" data-correct> The source's address and login details</label>
+      <label><input type="radio"> The pipeline's schedule</label>
+      <p class="explain" hidden>A connection is a governed Unity Catalog object holding how to reach and authenticate to one source.</p>
+    </fieldset>
+    <fieldset>
+      <legend>3. A customer's city changes. With SCD type 2, what is in the destination afterwards?</legend>
+      <label><input type="radio"> One row, with the new city</label>
+      <label><input type="radio" data-correct> Two rows: the old city marked as ended, and the new city as current</label>
+      <label><input type="radio"> No rows until a full refresh</label>
+      <p class="explain" hidden>Type 2 keeps each version. <code>__END_AT</code> is filled in on the old one and empty on the current one.</p>
+    </fieldset>
+    <fieldset>
+      <legend>4. In the demo, what happened to changes made while the gateway was off?</legend>
+      <label><input type="radio"> They were picked up at the next pipeline run</label>
+      <label><input type="radio" data-correct> They were never captured, so the destination drifted from the source</label>
+      <label><input type="radio"> The source refused the changes</label>
+      <p class="explain" hidden>With nobody reading the change log, those changes were missed. Only a full refresh brought the destination back in line.</p>
+    </fieldset>
+    <fieldset>
+      <legend>5. Which compute runs the ingestion pipeline of a managed connector?</legend>
+      <label><input type="radio"> All-purpose compute</label>
+      <label><input type="radio"> A SQL warehouse</label>
+      <label><input type="radio" data-correct> Serverless compute</label>
+      <p class="explain" hidden>Ingestion pipelines run on serverless. The gateway, where there is one, is the part on classic compute.</p>
+    </fieldset>
+  </div>
+</section>
+
+<section id="wrap">
+  <div class="sec-num">Wrap up</div>
+  <h2>Key takeaways</h2>
+  <ul>
+    <li>Every managed connector has a connection, an ingestion pipeline and destination streaming tables.</li>
+    <li>Database CDC connectors add an always-on gateway on classic compute and a staging volume.</li>
+    <li>The ingestion pipeline runs on serverless, on your schedule.</li>
+    <li>SCD type 1 keeps the latest values. SCD type 2 keeps history with start and end columns.</li>
+    <li>A full refresh reloads everything and erases kept history.</li>
+  </ul>
+  <h3>Glossary terms used</h3>
+  <p><a href="../../glossary.html#managed-connector">managed connector</a> · <a href="../../glossary.html#connection">connection</a> · <a href="../../glossary.html#ingestion-gateway">ingestion gateway</a> · <a href="../../glossary.html#ingestion-pipeline">ingestion pipeline</a> · <a href="../../glossary.html#scd">slowly changing dimension</a> · <a href="../../glossary.html#cdc">change data capture</a> · <a href="../../glossary.html#streaming-table">streaming table</a></p>
+  <h3>Official docs</h3>
+  <ul>
+    <li><a href="https://docs.databricks.com/aws/en/ingestion/lakeflow-connect/">Lakeflow Connect connector concepts</a></li>
+    <li><a href="https://docs.databricks.com/aws/en/ingestion/lakeflow-connect/cdc-overview">Managed database connectors</a></li>
+    <li><a href="https://docs.databricks.com/aws/en/ingestion/lakeflow-connect/saas-overview">Managed SaaS connectors</a></li>
+    <li><a href="https://docs.databricks.com/aws/en/ingestion/lakeflow-connect/sql-server-pipeline">Ingest data from SQL Server</a></li>
+    <li><a href="https://docs.databricks.com/aws/en/ingestion/lakeflow-connect/faq">Managed connector FAQs</a></li>
+  </ul>
+  <p class="cap">Last verified: 16 November 2026</p>
+</section>
+
+</main>
+
+<script>
+(function () {
+  var C = window.Course, $ = function (id) { return document.getElementById(id); }, L = $('dLog');
+  var CITIES = ['Leeds', 'York', 'Hull'], src, staged, lost, dst, t;   /* staged: captured changes waiting. dst rows carry start/end when history is kept */
+  function hist() { return $('dScd').value === '2'; }
+  function current() { return dst.filter(function (r) { return r.end == null; }); }
+  function view() {
+    return dst.map(function (r) { return hist() ? { id: r.id, name: r.name, city: r.city, __START_AT: r.start, __END_AT: r.end } : { id: r.id, name: r.name, city: r.city }; });
+  }
+  function inStep() {
+    var a = JSON.stringify(src), b = JSON.stringify(current().map(function (r) { return { id: r.id, name: r.name, city: r.city }; }).sort(function (x, y) { return x.id - y.id; }));
+    return a === b;
+  }
+  function draw() {
+    $('pSrc').innerHTML = C.table(src); $('pStage').textContent = staged.length + ' change(s)';
+    $('pLost').textContent = lost ? lost + ' change(s) were never captured' : '';
+    $('pDst').innerHTML = C.table(view());
+    $('pOk').textContent = inStep() ? 'Current rows match the source.' : 'Current rows do NOT match the source.';
+  }
+  function change(ch, text) {
+    t++;
+    if ($('dGate').checked) { staged.push(ch); C.log(L, 'skip', text + ' The gateway captured it into the staging volume.'); }
+    else { lost++; C.log(L, 'bad', text + ' The gateway is OFF: this change is not captured.'); }
+    draw();
+  }
+  $('sUpd').onclick = function () {
+    var r = src.filter(function (x) { return x.name === 'Ana'; })[0]; if (!r) return;
+    r.city = CITIES[(CITIES.indexOf(r.city) + 1) % 3]; change({ op: 'update', id: r.id, name: r.name, city: r.city, at: t + 1 }, 'Source: Ana moved to ' + r.city + '.');
+  };
+  $('sDel').onclick = function () {
+    var i = src.findIndex(function (x) { return x.name === 'Raj'; }); if (i < 0) { C.log(L, 'skip', 'Raj is already deleted.'); return; }
+    var r = src.splice(i, 1)[0]; change({ op: 'delete', id: r.id, at: t + 1 }, 'Source: Raj deleted.');
+  };
+  $('dRun').onclick = function () {
+    var n = staged.length;
+    staged.forEach(function (ch) {
+      var cur = dst.filter(function (r) { return r.id === ch.id && r.end == null; })[0];
+      if (hist()) { if (cur) cur.end = ch.at; if (ch.op === 'update') dst.push({ id: ch.id, name: ch.name, city: ch.city, start: ch.at, end: null }); }
+      else if (ch.op === 'delete') dst = dst.filter(function (r) { return r.id !== ch.id; });
+      else if (cur) cur.city = ch.city;
+    });
+    staged = [];
+    C.log(L, inStep() ? 'ok' : 'bad', 'Pipeline run: applied ' + n + ' change(s) from staging. ' + (inStep() ? 'Destination is in step.' : 'Destination is OUT of step: changes were missed while the gateway was off.'));
+    draw(); C.bump($('pDst'));
+  };
+  $('dFull').onclick = function () {
+    var had = dst.length; t++;
+    dst = src.map(function (r) { return { id: r.id, name: r.name, city: r.city, start: t, end: null }; }); staged = []; lost = 0;
+    C.log(L, hist() && had > dst.length ? 'bad' : 'skip', 'Full refresh: destination rebuilt from a complete new copy of the source.' + (hist() && had > dst.length ? ' The ' + (had - dst.length) + ' historical row(s) are GONE.' : ''));
+    draw();
+  };
+  function reset() {
+    src = [{ id: 1, name: 'Ana', city: 'Leeds' }, { id: 2, name: 'Raj', city: 'York' }, { id: 3, name: 'Sam', city: 'Hull' }];
+    t = 1; staged = []; lost = 0; dst = src.map(function (r) { return { id: r.id, name: r.name, city: r.city, start: 1, end: null }; });
+    $('dGate').checked = true; L.innerHTML = ''; C.log(L, 'skip', 'Initial load done. Source and destination match.'); draw();
+  }
+  $('dReset').onclick = $('dScd').onchange = reset;
+  $('dGate').onchange = function () { C.log(L, $('dGate').checked ? 'ok' : 'bad', $('dGate').checked ? 'Gateway started again. It captures changes from now on, not the ones it missed.' : 'Gateway stopped.'); };
+  reset();
+})();
+</script>
+</body>
+</html>

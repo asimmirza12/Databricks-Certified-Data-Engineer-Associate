@@ -1,0 +1,328 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>02-13 Choosing an ingestion method · DE Associate course</title>
+<link rel="stylesheet" href="../../assets/course.css">
+<script src="../../assets/course.js"></script>
+</head>
+<body data-lesson="02-13">
+
+<aside class="disclaimer" aria-label="Disclaimer"><strong>Learning resource only.</strong> This is an independent, unofficial study guide made for learning purposes. It is not affiliated with, endorsed by or sponsored by Databricks. Databricks features change often, so always check the details in the <a href="https://docs.databricks.com">official Databricks documentation</a> and the official exam guide on databricks.com before relying on anything here. Databricks and related names are trademarks of their respective owners.</aside>
+
+<main class="wrap">
+
+<header class="hero">
+  <div class="eyebrow">Module 02 · Data Ingestion and Loading · Lesson 13 of 13</div>
+  <h1>Choosing an ingestion method</h1>
+  <p class="lede">You have met every ingestion tool. The exam will describe a situation and ask which one fits. This lesson gives you a way to answer quickly and for the right reasons.</p>
+  <dl class="where">
+    <div><dt>Module</dt><dd>02 Data Ingestion and Loading (21% of the exam)</dd></div>
+    <div><dt>Exam objective</dt><dd>2.6 Decide which ingestion tool fits (Auto Loader, Lakeflow Connect standard or managed connectors, partner connectors or others), given data size, how often it arrives, its type and governance needs.</dd></div>
+    <div><dt>Time to read</dt><dd>About 12 minutes</dd></div>
+    <div><dt>Before this</dt><dd>Lessons <a href="03-lakeflow-connect-overview.html">02-03</a> to <a href="12-unstructured-data.html">02-12</a></dd></div>
+  </dl>
+</header>
+
+<section id="idea">
+  <div class="sec-num">The idea</div>
+  <h2>Start from the source, then apply four tests</h2>
+  <p>The first question is always the same: <strong>where does the data live?</strong> The kind of source narrows the choice to one or two tools straight away.</p>
+  <ul>
+    <li><strong>Files</strong> in cloud storage or a volume: Auto Loader, or <code>COPY INTO</code> for small simple loads.</li>
+    <li><strong>A business application</strong> (SaaS): a managed connector if one exists.</li>
+    <li><strong>A database</strong>: a managed database connector, or a JDBC notebook.</li>
+    <li><strong>A message stream</strong>: a streaming reader.</li>
+    <li><strong>A REST API</strong> with no connector: a notebook, scheduled with Lakeflow Jobs.</li>
+    <li><strong>A file on a laptop</strong>: upload it.</li>
+  </ul>
+  <p>Then the four things the exam objective names decide between the remaining candidates.</p>
+  <ul>
+    <li><strong>Volume</strong>: how much data, and for files, how many of them.</li>
+    <li><strong>Frequency</strong>: once, nightly, hourly, or continuously.</li>
+    <li><strong>Data type</strong>: structured, semi-structured or unstructured, and whether its shape changes.</li>
+    <li><strong>Governance</strong>: must access and lineage be controlled by Unity Catalog from the first moment?</li>
+  </ul>
+  <p>One rule sits above the rest: <strong>prefer the most managed option that meets the need.</strong> Less code that you own means fewer things that break at night.</p>
+  <div class="analogy">
+    <span class="tag">Everyday analogy</span>
+    <p><strong>Sending something across town.</strong> First, what is it? A letter, a sofa, a live fish. That alone rules out most options. Then: how big, how often, how fragile, and does it need a signature on delivery? You would not hire a removal lorry for a letter, or post a sofa. And if a courier already runs that route every day, you use the courier instead of buying a van.</p>
+  </div>
+</section>
+
+<section id="how">
+  <div class="sec-num">How it works</div>
+  <h2>From source to tool</h2>
+  <div class="stage">
+    <svg class="tall" viewBox="0 0 360 430" role="img" aria-label="A map from kinds of source to ingestion tools. Files go to Auto Loader or COPY INTO. Applications go to managed SaaS connectors, or a partner tool or REST notebook. Databases go to managed database connectors or JDBC. Streams go to a stream reader. Everything lands in Unity Catalog tables.">
+      <defs>
+        <path id="m1" d="M130 44 H196"/><path id="m2" d="M130 110 H196"/><path id="m3" d="M130 176 H196"/><path id="m4" d="M130 242 H196"/><path id="m5" d="M130 308 H196"/>
+        <path id="mo" d="M270 340 V376"/>
+      </defs>
+      <g class="wire"><use href="#m1"/><use href="#m2"/><use href="#m3"/><use href="#m4"/><use href="#m5"/><use href="#mo"/></g>
+      <g class="mover">
+        <circle r="5" class="dot"><animateMotion dur="1.6s" repeatCount="indefinite"><mpath href="#m1"/></animateMotion></circle>
+        <circle r="5" class="dot"><animateMotion dur="1.6s" begin="-0.3s" repeatCount="indefinite"><mpath href="#m2"/></animateMotion></circle>
+        <circle r="5" class="dot"><animateMotion dur="1.6s" begin="-0.6s" repeatCount="indefinite"><mpath href="#m3"/></animateMotion></circle>
+        <circle r="5" class="dot"><animateMotion dur="1.6s" begin="-0.9s" repeatCount="indefinite"><mpath href="#m4"/></animateMotion></circle>
+        <circle r="5" class="dot"><animateMotion dur="1.6s" begin="-1.2s" repeatCount="indefinite"><mpath href="#m5"/></animateMotion></circle>
+        <circle r="5" class="dot-ok"><animateMotion dur="1.2s" repeatCount="indefinite"><mpath href="#mo"/></animateMotion></circle>
+      </g>
+      <g>
+        <rect class="box-soft" x="8" y="22" width="122" height="44" rx="6"/><text x="69" y="49" text-anchor="middle">Files</text>
+        <rect class="box-soft" x="8" y="88" width="122" height="44" rx="6"/><text x="69" y="115" text-anchor="middle">Business app</text>
+        <rect class="box-soft" x="8" y="154" width="122" height="44" rx="6"/><text x="69" y="181" text-anchor="middle">Database</text>
+        <rect class="box-soft" x="8" y="220" width="122" height="44" rx="6"/><text x="69" y="247" text-anchor="middle">Message stream</text>
+        <rect class="box-soft" x="8" y="286" width="122" height="44" rx="6"/><text x="69" y="313" text-anchor="middle">REST API</text>
+      </g>
+      <g>
+        <rect class="box" x="196" y="14" width="156" height="60" rx="6"/><text class="t-b" x="274" y="36" text-anchor="middle">Auto Loader</text><text class="t-m" x="274" y="54" text-anchor="middle">COPY INTO if small</text>
+        <rect class="box-acc" x="196" y="80" width="156" height="60" rx="6"/><text class="t-b" x="274" y="102" text-anchor="middle">Managed connector</text><text class="t-m" x="274" y="120" text-anchor="middle">else partner or REST</text>
+        <rect class="box-acc" x="196" y="146" width="156" height="60" rx="6"/><text class="t-b" x="274" y="168" text-anchor="middle">Managed connector</text><text class="t-m" x="274" y="186" text-anchor="middle">else JDBC notebook</text>
+        <rect class="box" x="196" y="212" width="156" height="60" rx="6"/><text class="t-b" x="274" y="234" text-anchor="middle">Stream reader</text><text class="t-m" x="274" y="252" text-anchor="middle">Structured Streaming</text>
+        <rect class="box" x="196" y="278" width="156" height="60" rx="6"/><text class="t-b" x="274" y="300" text-anchor="middle">Notebook + job</text><text class="t-m" x="274" y="318" text-anchor="middle">volume, then Auto Loader</text>
+      </g>
+      <rect class="box" x="100" y="376" width="252" height="44" rx="8"/><text class="t-b" x="226" y="396" text-anchor="middle">Unity Catalog-governed tables</text><text class="t-m" x="226" y="412" text-anchor="middle">every route ends here</text>
+    </svg>
+    <p class="cap">Shaded boxes are fully managed. Plain boxes are tools you configure or code yourself.</p>
+  </div>
+  <h3>One more option: partner tools</h3>
+  <p>Other companies sell ingestion products with hundreds of ready-made connectors. Databricks calls them technology partners. <a href="../../glossary.html#partner-connect">Partner Connect</a> is a page in the workspace that sets up a connection to one of them with a few clicks: it creates the Databricks resources the partner needs and hands over the details. A partner tool is the usual answer when a source has no Databricks connector and you would rather not write and maintain the code yourself.</p>
+</section>
+
+<section id="demo">
+  <div class="sec-num">Try it</div>
+  <h2>The ingestion chooser</h2>
+  <p>Describe the situation. The recommendation follows the rules in this lesson, and it tells you which of your answers decided it. Predict first, then check.</p>
+  <div class="stage">
+    <div class="ctrls">
+      <label class="tog">Source: <select id="dSrc">
+        <option value="files">Files in cloud storage</option>
+        <option value="saas">A business application (SaaS)</option>
+        <option value="db">An operational database</option>
+        <option value="stream">A message stream</option>
+        <option value="api">A REST API</option>
+        <option value="local">A file on a laptop</option>
+      </select></label>
+      <label class="tog">Size: <select id="dSize"><option value="small">modest (thousands of files or rows)</option><option value="large">very large (millions and growing)</option></select></label>
+      <label class="tog">Arrives: <select id="dFreq"><option value="once">once</option><option value="sched">on a schedule</option><option value="cont">continuously</option></select></label>
+    </div>
+    <div class="ctrls">
+      <label class="tog">Special need: <select id="dNeed">
+        <option value="none">none</option>
+        <option value="deletes">must capture updates and deletes</option>
+        <option value="custom">custom logic during ingestion</option>
+        <option value="sql">the team only writes SQL</option>
+        <option value="noconn">Databricks has no connector for it</option>
+        <option value="schema">its columns change often</option>
+      </select></label>
+      <button id="dGo" type="button" class="primary">Recommend</button>
+      <button id="dReset" type="button">Clear log</button>
+    </div>
+    <div class="panes">
+      <div class="pane"><h4>Recommendation</h4><div class="big" id="pPick">-</div><p class="cap" id="pWhy"></p></div>
+      <div class="pane"><h4>What decided it</h4><div id="pFacts"></div></div>
+    </div>
+    <div class="log" id="dLog" role="log" aria-label="What happened"></div>
+  </div>
+</section>
+
+<section id="code">
+  <div class="sec-num">Code</div>
+  <h2>The tools, one glance each</h2>
+  <p>A reminder of what each choice looks like in practice. Recognising these shapes is half of answering exam questions.</p>
+<pre><code><span class="c-c">-- COPY INTO: SQL, files, idempotent, modest scale.</span>
+<span class="c-k">COPY INTO</span> bakery.bronze.prices_raw
+<span class="c-k">FROM</span> <span class="c-s">'/Volumes/bakery/landing/supplier_drop/prices/'</span>
+<span class="c-k">FILEFORMAT</span> = CSV <span class="c-k">FORMAT_OPTIONS</span> (<span class="c-s">'header'</span> = <span class="c-s">'true'</span>);</code></pre>
+<pre><code><span class="c-c"># Auto Loader: files at any scale, schema evolution, batch or continuous.</span>
+(spark.readStream.format(<span class="c-s">"cloudFiles"</span>)
+    .option(<span class="c-s">"cloudFiles.format"</span>, <span class="c-s">"json"</span>)
+    .option(<span class="c-s">"cloudFiles.schemaLocation"</span>, checkpoint)
+    .load(<span class="c-s">"/Volumes/bakery/landing/web_orders/"</span>)
+    .writeStream.option(<span class="c-s">"checkpointLocation"</span>, checkpoint)
+    .trigger(availableNow=<span class="c-k">True</span>)
+    .toTable(<span class="c-s">"bakery.bronze.web_orders_raw"</span>))</code></pre>
+<pre><code><span class="c-c">-- Streaming table: Auto Loader for SQL users.</span>
+<span class="c-k">CREATE OR REFRESH STREAMING TABLE</span> bakery.bronze.web_orders_raw
+<span class="c-k">AS SELECT</span> * <span class="c-k">FROM STREAM</span> read_files(<span class="c-s">'/Volumes/bakery/landing/web_orders/'</span>, format =&gt; <span class="c-s">'json'</span>);</code></pre>
+<pre><code><span class="c-c"># JDBC notebook: any database, your own logic, your own change tracking.</span>
+orders = (spark.read.format(<span class="c-s">"jdbc"</span>)
+    .option(<span class="c-s">"databricks.connection"</span>, <span class="c-s">"bakery_orders_db"</span>)
+    .option(<span class="c-s">"query"</span>, <span class="c-s">"SELECT * FROM public.orders WHERE updated_at &gt; '2026-11-15'"</span>)
+    .load())</code></pre>
+  <p>Managed connectors and partner tools have no code to show: you configure them in a form. That absence is their selling point.</p>
+</section>
+
+<section id="whatif">
+  <div class="sec-num">What if I change this?</div>
+  <h2>One detail that flips the answer</h2>
+  <div class="tbl"><table class="whatif">
+    <tr><th>Change</th><th>Effect</th></tr>
+    <tr><td>Thousands of files become millions</td><td><code>COPY INTO</code> gives way to Auto Loader, with file events for discovery.</td></tr>
+    <tr><td>Nightly becomes "within a minute"</td><td>Scheduled batch runs give way to a continuously running stream.</td></tr>
+    <tr><td>The file's columns start changing often</td><td>Auto Loader, for its schema evolution modes and rescued data. Or ingest as VARIANT.</td></tr>
+    <tr><td>Deletes at the source must be reflected</td><td>A high-water mark is no longer enough. Use a managed database connector with CDC.</td></tr>
+    <tr><td>A managed connector appears for a source you hand-coded</td><td>Usually worth moving to it: less code to own.</td></tr>
+    <tr><td>The team must apply its own logic as data arrives</td><td>Managed connectors are ruled out. Use a standard connector in your own pipeline.</td></tr>
+    <tr><td>The data only needs looking at occasionally, not storing</td><td>Do not ingest at all. Query it in place with Lakehouse Federation.</td></tr>
+    <tr><td>Files are PDFs or images, not data files</td><td>Auto Loader with the <code>binaryFile</code> format, landing in a volume and a table of file details.</td></tr>
+  </table></div>
+</section>
+
+<section id="compare">
+  <div class="sec-num">Compare</div>
+  <h2>Every method on one page</h2>
+  <div class="tbl"><table>
+    <tr><th>Method</th><th>Source</th><th>Scale</th><th>Frequency</th><th>You maintain</th><th>Pick it when</th></tr>
+    <tr><td>File upload</td><td>Local file</td><td>Small</td><td>One-off</td><td>Nothing</td><td>A quick, manual load</td></tr>
+    <tr><td><code>COPY INTO</code></td><td>Files</td><td>Thousands of files</td><td>Scheduled</td><td>One SQL statement</td><td>Simple SQL loads, easy reloads</td></tr>
+    <tr><td>Auto Loader</td><td>Files</td><td>Up to millions and beyond</td><td>Scheduled or continuous</td><td>Options and a checkpoint</td><td>Most file ingestion</td></tr>
+    <tr><td>Managed connector</td><td>SaaS apps, databases</td><td>Any</td><td>Scheduled, CDC</td><td>Configuration only</td><td>A connector exists and no custom logic is needed</td></tr>
+    <tr><td>Stream reader</td><td>Message streams</td><td>High</td><td>Continuous</td><td>Streaming code</td><td>Events must be processed as they happen</td></tr>
+    <tr><td>JDBC notebook</td><td>Databases</td><td>Any, with care</td><td>Scheduled</td><td>Code, change tracking, a job</td><td>No connector, or special logic</td></tr>
+    <tr><td>REST notebook</td><td>APIs</td><td>Usually modest</td><td>Scheduled</td><td>Code, paging, a job</td><td>No connector and no partner tool</td></tr>
+    <tr><td>Partner tool</td><td>Hundreds of sources</td><td>Any</td><td>Scheduled</td><td>A subscription and its settings</td><td>No Databricks connector and you prefer not to code</td></tr>
+  </table></div>
+  <h3>Governance is the constant</h3>
+  <p>Whatever you choose, the exam expects the result to be governed by Unity Catalog: files in volumes, logins in connections, data in catalog tables, with grants and lineage. A design that reads from an ungoverned path with a pasted-in key is the wrong answer even if the tool is right.</p>
+</section>
+
+<section id="scenarios">
+  <div class="sec-num">Real life</div>
+  <h2>Exam-style scenarios</h2>
+  <div class="tbl"><table>
+    <tr><th>Scenario</th><th>What happens</th><th>Fix</th></tr>
+    <tr><td>Sensors write millions of small JSON files a day, and new fields appear now and then</td><td>Very many files, changing schema</td><td>Auto Loader with file events and a schema evolution mode</td></tr>
+    <tr><td>A SQL-only team loads one vendor CSV each morning</td><td>Small, steady, simple</td><td><code>COPY INTO</code>, or a streaming table</td></tr>
+    <tr><td>The CRM system's accounts and contacts are needed daily, with minimal upkeep</td><td>A business application with a managed connector</td><td>Managed SaaS connector</td></tr>
+    <tr><td>An orders database must be mirrored, including cancellations that delete rows</td><td>Updates and deletes matter</td><td>Managed database connector using CDC</td></tr>
+    <tr><td>A niche booking tool has an API but no Databricks connector, and the team is short of engineers</td><td>Building and maintaining API code is a burden</td><td>A partner tool through Partner Connect</td></tr>
+    <tr><td>The same booking tool, but the data must be reshaped in a company-specific way as it lands</td><td>Custom logic is required</td><td>A REST notebook writing to a volume, loaded by Auto Loader, scheduled with Lakeflow Jobs</td></tr>
+    <tr><td>Card payments must be scored for fraud within seconds</td><td>Continuous events</td><td>A stream reader on the message stream</td></tr>
+  </table></div>
+</section>
+
+<section id="traps">
+  <div class="sec-num">Don't confuse these</div>
+  <h2>Choosing traps</h2>
+  <div class="grid2">
+    <div class="card trap"><span class="tag">Tool first, source second</span><p>Do not start from a favourite tool. Auto Loader is excellent and cannot read a database. Identify the source before anything else.</p></div>
+    <div class="card trap"><span class="tag">COPY INTO vs Auto Loader</span><p>Both load new files once. Scale and schema change point to Auto Loader. Simplicity, SQL and easy reloads point to <code>COPY INTO</code>.</p></div>
+    <div class="card trap"><span class="tag">Managed vs partner</span><p>A managed connector is built and run by Databricks. A partner connector is another company's product that writes into Databricks.</p></div>
+    <div class="card trap"><span class="tag">Hand-built when managed exists</span><p>A custom notebook is rarely the best answer when a managed connector covers the source and no special logic is asked for.</p></div>
+  </div>
+</section>
+
+<section id="quiz">
+  <div class="sec-num">Check yourself</div>
+  <h2>Quiz</h2>
+  <div class="quiz">
+    <fieldset>
+      <legend>1. Millions of JSON files arrive in cloud storage each day and their fields change over time. Which tool fits best?</legend>
+      <label><input type="radio"> <code>COPY INTO</code></label>
+      <label><input type="radio" data-correct> Auto Loader</label>
+      <label><input type="radio"> A JDBC notebook</label>
+      <p class="explain" hidden>Scale and schema change are Auto Loader's strengths. <code>COPY INTO</code> suits thousands of files, and JDBC is for databases.</p>
+    </fieldset>
+    <fieldset>
+      <legend>2. A company wants its sales application data in Unity Catalog tables with as little engineering as possible. A managed connector exists. What should it use?</legend>
+      <label><input type="radio" data-correct> The managed connector</label>
+      <label><input type="radio"> A REST notebook</label>
+      <label><input type="radio"> Auto Loader</label>
+      <p class="explain" hidden>Prefer the most managed option that meets the need. Nothing in the question calls for custom code.</p>
+    </fieldset>
+    <fieldset>
+      <legend>3. A source has no Databricks connector, and the team does not want to write API code. What is the usual answer?</legend>
+      <label><input type="radio"> <code>COPY INTO</code></label>
+      <label><input type="radio" data-correct> A partner ingestion tool, set up through Partner Connect</label>
+      <label><input type="radio"> A managed database connector</label>
+      <p class="explain" hidden>Partner tools exist for exactly this gap: many ready-made connectors without hand-written code.</p>
+    </fieldset>
+    <fieldset>
+      <legend>4. Rows deleted in a source database must disappear from the lakehouse copy. Which approach handles that?</legend>
+      <label><input type="radio"> A JDBC notebook with a high-water mark on an ID</label>
+      <label><input type="radio" data-correct> A managed database connector using CDC</label>
+      <label><input type="radio"> <code>COPY INTO</code></label>
+      <p class="explain" hidden>Deletes are only visible in the database's change log, which CDC reads. A high-water mark never sees a row that is gone.</p>
+    </fieldset>
+    <fieldset>
+      <legend>5. In the chooser demo, what changed the answer for "files in cloud storage" from <code>COPY INTO</code> to Auto Loader?</legend>
+      <label><input type="radio"> Changing the source to a database</label>
+      <label><input type="radio" data-correct> Raising the size to millions, or saying the columns change often</label>
+      <label><input type="radio"> Choosing "once" as the frequency</label>
+      <p class="explain" hidden>For files, scale and schema change are the deciding tests between the two tools.</p>
+    </fieldset>
+  </div>
+</section>
+
+<section id="wrap">
+  <div class="sec-num">Wrap up</div>
+  <h2>Key takeaways</h2>
+  <ul>
+    <li>Identify the kind of source first. It narrows the choice to one or two tools.</li>
+    <li>Then test volume, frequency, data type and governance.</li>
+    <li>Prefer the most managed option that meets the need.</li>
+    <li>Files: Auto Loader, or <code>COPY INTO</code> when small and simple. Apps and databases: managed connectors.</li>
+    <li>No connector: a partner tool, or a notebook scheduled with Lakeflow Jobs.</li>
+  </ul>
+  <p class="note">That completes Module 02. Your data is in bronze. Module 03 turns it into something people can use.</p>
+  <h3>Glossary terms used</h3>
+  <p><a href="../../glossary.html#auto-loader">Auto Loader</a> · <a href="../../glossary.html#copy-into">COPY INTO</a> · <a href="../../glossary.html#managed-connector">managed connector</a> · <a href="../../glossary.html#standard-connector">standard connector</a> · <a href="../../glossary.html#partner-connect">Partner Connect</a> · <a href="../../glossary.html#lakehouse-federation">Lakehouse Federation</a> · <a href="../../glossary.html#cdc">change data capture</a></p>
+  <h3>Official docs</h3>
+  <ul>
+    <li><a href="https://docs.databricks.com/aws/en/ingestion/overview">What is Lakeflow Connect?</a></li>
+    <li><a href="https://docs.databricks.com/aws/en/ingestion/cloud-object-storage/">Ingest data from cloud object storage</a></li>
+    <li><a href="https://docs.databricks.com/aws/en/ingestion/lakeflow-connect/">Lakeflow Connect connector concepts</a></li>
+    <li><a href="https://docs.databricks.com/aws/en/partner-connect/">What is Partner Connect?</a></li>
+  </ul>
+  <p class="cap">Last verified: 16 November 2026</p>
+</section>
+
+</main>
+
+<script>
+(function () {
+  var C = window.Course, $ = function (id) { return document.getElementById(id); }, L = $('dLog');
+
+  /* The lesson's rules as code. Returns the pick, the reason, and the answers that decided it. */
+  function choose(src, size, freq, need) {
+    var f = [['Source', $('dSrc').selectedOptions[0].text]];
+    function out(pick, why) { return { pick: pick, why: why, facts: f }; }
+    if (src === 'local') return out(freq === 'once' ? 'File upload: create a table' : 'Upload to a volume, then COPY INTO or Auto Loader', freq === 'once' ? 'A one-off local file needs no pipeline.' : 'A repeated load should keep the raw file and use a rerunnable step.');
+    if (src === 'files') {
+      if (size === 'large') { f.push(['Size', 'millions of files']); return out(need === 'sql' ? 'Streaming table (Auto Loader in SQL)' : 'Auto Loader, with file events', 'At this scale file discovery must not depend on listing the folder.'); }
+      if (need === 'schema') { f.push(['Need', 'columns change often']); return out('Auto Loader', 'Its schema evolution modes and rescued data column handle changing files.'); }
+      if (freq === 'cont') { f.push(['Arrives', 'continuously']); return out('Auto Loader, running continuously', 'COPY INTO only runs as a batch.'); }
+      if (need === 'custom') { f.push(['Need', 'custom logic']); return out('Auto Loader in your own pipeline', 'A standard connector lets you add your own steps.'); }
+      f.push(['Size', 'modest']); return out(need === 'sql' ? 'COPY INTO, or a streaming table' : 'COPY INTO, or Auto Loader', 'Small and simple: either works. COPY INTO is the lightest.');
+    }
+    if (src === 'saas') {
+      if (need === 'noconn') { f.push(['Need', 'no Databricks connector']); return out('Partner tool via Partner Connect', 'Partner tools cover sources Databricks has no connector for. A REST notebook is the build-it-yourself alternative.'); }
+      if (need === 'custom') { f.push(['Need', 'custom logic']); return out('REST notebook, scheduled with Lakeflow Jobs', 'Managed connectors cannot run your own logic.'); }
+      return out('Managed SaaS connector', 'A connector exists and nothing calls for custom code.');
+    }
+    if (src === 'db') {
+      if (need === 'noconn') { f.push(['Need', 'no Databricks connector']); return out('JDBC notebook, scheduled with Lakeflow Jobs', 'JDBC reaches almost any database.'); }
+      if (need === 'custom') { f.push(['Need', 'custom logic']); return out('JDBC notebook, scheduled with Lakeflow Jobs', 'Managed connectors cannot run your own logic.'); }
+      if (need === 'deletes') { f.push(['Need', 'updates and deletes']); return out('Managed database connector (CDC)', 'Only the change log shows deletes.'); }
+      return out('Managed database connector', 'A connector exists and nothing calls for custom code.');
+    }
+    if (src === 'stream') { f.push(['Arrives', 'as a flow of messages']); return out('Stream reader (Structured Streaming or a pipeline)', 'Message streams are read with a streaming source.'); }
+    f.push(['Source', 'no connector for a plain API']);
+    return out(need === 'noconn' && need !== 'custom' ? 'Partner tool, or a REST notebook with Lakeflow Jobs' : 'REST notebook to a volume, then Auto Loader, scheduled with Lakeflow Jobs', 'Fetch page by page, land the raw JSON, load it, and schedule the job.');
+  }
+  $('dGo').onclick = function () {
+    var r = choose($('dSrc').value, $('dSize').value, $('dFreq').value, $('dNeed').value);
+    $('pPick').textContent = r.pick; $('pWhy').textContent = r.why;
+    $('pFacts').innerHTML = r.facts.map(function (x) { return '<div class="item"><span>' + x[0] + '</span><span>' + x[1] + '</span></div>'; }).join('');
+    C.log(L, 'ok', $('dSrc').selectedOptions[0].text + ' / ' + $('dSize').value + ' / ' + $('dFreq').selectedOptions[0].text + ' / ' + $('dNeed').selectedOptions[0].text + ' -> ' + r.pick);
+    C.bump($('pPick'));
+  };
+  $('dReset').onclick = function () { L.innerHTML = ''; };
+  C.log(L, 'skip', 'Describe a situation and press Recommend.');
+})();
+</script>
+</body>
+</html>

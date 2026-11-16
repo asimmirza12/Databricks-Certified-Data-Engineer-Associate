@@ -62,19 +62,19 @@ Objectives:
 
 | Status | Lesson | File | Objective | Prerequisites |
 |---|---|---|---|---|
-| [ ] | 02-01 Ingestion patterns: batch, streaming, incremental | `01-ingestion-patterns.html` | 2.1 | 00-04, 00-10 |
-| [ ] | 02-02 Uploading local files and Unity Catalog volumes | `02-volumes-and-local-files.html` | 2.1 | 00-09, 02-01 |
-| [ ] | 02-03 Lakeflow Connect: standard vs managed connectors | `03-lakeflow-connect-overview.html` | 2.1, 2.4 | 02-01 |
-| [ ] | 02-04 COPY INTO: simple incremental file loading | `04-copy-into.html` | 2.2 | 02-02 |
-| [ ] | 02-05 Auto Loader basics: cloudFiles, checkpoints, triggers | `05-auto-loader-basics.html` | 2.3 | 02-01, 02-04 |
-| [ ] | 02-06 Auto Loader file detection: directory listing vs file notification | `06-auto-loader-file-detection.html` | 2.3 | 02-05 |
-| [ ] | 02-07 Auto Loader schema inference, enforcement and evolution | `07-auto-loader-schema.html` | 2.3 | 02-05 |
-| [ ] | 02-08 Configuring Lakeflow Connect managed connectors | `08-managed-connectors.html` | 2.4 | 02-03 |
-| [ ] | 02-09 Reading databases with JDBC and ODBC in notebooks | `09-jdbc-odbc.html` | 2.5 | 02-01, 00-05 |
-| [ ] | 02-10 REST API ingestion, scheduled with Lakeflow Jobs | `10-rest-api-ingestion.html` | 2.5 | 02-02, 02-09 |
-| [ ] | 02-11 Semi-structured data: JSON, nested fields, VARIANT | `11-semi-structured-data.html` | 2.7 | 00-03, 02-07 |
-| [ ] | 02-12 Unstructured data: documents, images and other files | `12-unstructured-data.html` | 2.7 | 02-02 |
-| [ ] | 02-13 Choosing an ingestion method | `13-choosing-ingestion-method.html` | 2.6 | 02-03 to 02-12 |
+| [x] | 02-01 Ingestion patterns: batch, streaming, incremental | `01-ingestion-patterns.html` | 2.1 | 00-04, 00-10 |
+| [x] | 02-02 Uploading local files and Unity Catalog volumes | `02-volumes-and-local-files.html` | 2.1 | 00-09, 02-01 |
+| [x] | 02-03 Lakeflow Connect: standard vs managed connectors | `03-lakeflow-connect-overview.html` | 2.1, 2.4 | 02-01 |
+| [x] | 02-04 COPY INTO: simple incremental file loading | `04-copy-into.html` | 2.2 | 02-02 |
+| [x] | 02-05 Auto Loader basics: cloudFiles, checkpoints, triggers | `05-auto-loader-basics.html` | 2.3 | 02-01, 02-04 |
+| [x] | 02-06 Auto Loader file detection: directory listing vs file notification | `06-auto-loader-file-detection.html` | 2.3 | 02-05 |
+| [x] | 02-07 Auto Loader schema inference, enforcement and evolution | `07-auto-loader-schema.html` | 2.3 | 02-05 |
+| [x] | 02-08 Configuring Lakeflow Connect managed connectors | `08-managed-connectors.html` | 2.4 | 02-03 |
+| [x] | 02-09 Reading databases with JDBC and ODBC in notebooks | `09-jdbc-odbc.html` | 2.5 | 02-01, 00-05 |
+| [x] | 02-10 REST API ingestion, scheduled with Lakeflow Jobs | `10-rest-api-ingestion.html` | 2.5 | 02-02, 02-09 |
+| [x] | 02-11 Semi-structured data: JSON, nested fields, VARIANT | `11-semi-structured-data.html` | 2.7 | 00-03, 02-07 |
+| [x] | 02-12 Unstructured data: documents, images and other files | `12-unstructured-data.html` | 2.7 | 02-02 |
+| [x] | 02-13 Choosing an ingestion method | `13-choosing-ingestion-method.html` | 2.6 | 02-03 to 02-12 |
 
 ## Module 03: Data Transformation and Modeling (22% of the exam)
 

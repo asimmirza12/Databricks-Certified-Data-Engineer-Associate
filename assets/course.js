@@ -27,19 +27,19 @@
     ["06", "choosing-compute", "Choosing compute for a workload", 1]
   ]},
   {n:"02", slug:"data-ingestion", title:"Data Ingestion and Loading", weight:21, lessons:[
-    ["01", "ingestion-patterns", "Ingestion patterns: batch, streaming, incremental", 0],
-    ["02", "volumes-and-local-files", "Uploading local files and Unity Catalog volumes", 0],
-    ["03", "lakeflow-connect-overview", "Lakeflow Connect: standard vs managed connectors", 0],
-    ["04", "copy-into", "COPY INTO: simple incremental file loading", 0],
-    ["05", "auto-loader-basics", "Auto Loader basics: cloudFiles, checkpoints, triggers", 0],
-    ["06", "auto-loader-file-detection", "Auto Loader file detection: directory listing vs file notification", 0],
-    ["07", "auto-loader-schema", "Auto Loader schema inference, enforcement and evolution", 0],
-    ["08", "managed-connectors", "Configuring Lakeflow Connect managed connectors", 0],
-    ["09", "jdbc-odbc", "Reading databases with JDBC and ODBC in notebooks", 0],
-    ["10", "rest-api-ingestion", "REST API ingestion, scheduled with Lakeflow Jobs", 0],
-    ["11", "semi-structured-data", "Semi-structured data: JSON, nested fields, VARIANT", 0],
-    ["12", "unstructured-data", "Unstructured data: documents, images and other files", 0],
-    ["13", "choosing-ingestion-method", "Choosing an ingestion method", 0]
+    ["01", "ingestion-patterns", "Ingestion patterns: batch, streaming, incremental", 1],
+    ["02", "volumes-and-local-files", "Uploading local files and Unity Catalog volumes", 1],
+    ["03", "lakeflow-connect-overview", "Lakeflow Connect: standard vs managed connectors", 1],
+    ["04", "copy-into", "COPY INTO: simple incremental file loading", 1],
+    ["05", "auto-loader-basics", "Auto Loader basics: cloudFiles, checkpoints, triggers", 1],
+    ["06", "auto-loader-file-detection", "Auto Loader file detection: directory listing vs file notification", 1],
+    ["07", "auto-loader-schema", "Auto Loader schema inference, enforcement and evolution", 1],
+    ["08", "managed-connectors", "Configuring Lakeflow Connect managed connectors", 1],
+    ["09", "jdbc-odbc", "Reading databases with JDBC and ODBC in notebooks", 1],
+    ["10", "rest-api-ingestion", "REST API ingestion, scheduled with Lakeflow Jobs", 1],
+    ["11", "semi-structured-data", "Semi-structured data: JSON, nested fields, VARIANT", 1],
+    ["12", "unstructured-data", "Unstructured data: documents, images and other files", 1],
+    ["13", "choosing-ingestion-method", "Choosing an ingestion method", 1]
   ]},
   {n:"03", slug:"transformation-and-modeling", title:"Data Transformation and Modeling", weight:22, lessons:[
     ["01", "dataframes-and-sql", "DataFrames and SQL: two ways to say the same thing", 0],

@@ -1,0 +1,303 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>02-02 Uploading local files and volumes · DE Associate course</title>
+<link rel="stylesheet" href="../../assets/course.css">
+<script src="../../assets/course.js"></script>
+</head>
+<body data-lesson="02-02">
+
+<aside class="disclaimer" aria-label="Disclaimer"><strong>Learning resource only.</strong> This is an independent, unofficial study guide made for learning purposes. It is not affiliated with, endorsed by or sponsored by Databricks. Databricks features change often, so always check the details in the <a href="https://docs.databricks.com">official Databricks documentation</a> and the official exam guide on databricks.com before relying on anything here. Databricks and related names are trademarks of their respective owners.</aside>
+
+<main class="wrap">
+
+<header class="hero">
+  <div class="eyebrow">Module 02 · Data Ingestion and Loading · Lesson 2 of 13</div>
+  <h1>Uploading local files and Unity Catalog volumes</h1>
+  <p class="lede">The simplest ingestion of all: a file on your computer becomes a table. Along the way you meet volumes, the governed home for every file that is not yet a table.</p>
+  <dl class="where">
+    <div><dt>Module</dt><dd>02 Data Ingestion and Loading (21% of the exam)</dd></div>
+    <div><dt>Exam objective</dt><dd>2.1 Explain the ways data can be brought in and load it from local files and from both kinds of Lakeflow Connect connector. This lesson covers local files.</dd></div>
+    <div><dt>Time to read</dt><dd>About 12 minutes</dd></div>
+    <div><dt>Before this</dt><dd><a href="../00-foundations/09-unity-catalog-basics.html">00-09 Unity Catalog basics</a> · <a href="01-ingestion-patterns.html">02-01 Ingestion patterns</a></dd></div>
+  </dl>
+</header>
+
+<section id="idea">
+  <div class="sec-num">The idea</div>
+  <h2>Two doors for a local file</h2>
+  <p>A "local file" is one that sits on your own laptop, such as a spreadsheet export someone emailed you. There are two ways to get it into Databricks.</p>
+  <ul>
+    <li><strong>Straight into a table.</strong> The "Create or modify a table" page in the UI takes the file, shows a preview, lets you fix column names and types, and creates a managed Delta table. Nothing else to do.</li>
+    <li><strong>Into a volume first.</strong> You upload the file to a <a href="../../glossary.html#volume">volume</a>, where it stays as a file. Then a query or pipeline reads it into a table.</li>
+  </ul>
+  <p>The first door is quickest for a one-off. The second is what real pipelines use, because the raw file is kept, and the same loading code can run again when the next file arrives.</p>
+  <p>A volume is a Unity Catalog object that holds files of any kind. It lives in a schema, next to tables, and gets the same three-part name. Because it is a Unity Catalog object, access to its files is controlled by grants, exactly like access to a table.</p>
+  <div class="analogy">
+    <span class="tag">Everyday analogy</span>
+    <p><strong>A post room in an office.</strong> A parcel arrives at the front desk. You can open it and put the contents straight onto the shelves: quick, but the box is thrown away. Or you can log it into the post room first, where it is labelled, kept and only handled by people with a key, and then unpack it by a set routine. The post room is the volume.</p>
+  </div>
+</section>
+
+<section id="how">
+  <div class="sec-num">How it works</div>
+  <h2>From laptop to table</h2>
+  <div class="stage">
+    <svg class="tall" viewBox="0 0 360 330" role="img" aria-label="A local file can go directly to a managed table through the upload page, or to a volume and then be read into a table by a query, COPY INTO or Auto Loader.">
+      <defs>
+        <path id="v1" d="M110 50 C 70 70, 70 220, 110 262"/>
+        <path id="v2" d="M250 50 C 280 70, 262 96, 262 122"/>
+        <path id="v3" d="M262 186 C 262 220, 250 240, 250 262"/>
+      </defs>
+      <g class="wire"><use href="#v1"/><use href="#v2"/><use href="#v3"/></g>
+      <g class="mover">
+        <circle r="5" class="dot"><animateMotion dur="2.6s" repeatCount="indefinite"><mpath href="#v1"/></animateMotion></circle>
+        <circle r="5" class="dot-ok"><animateMotion dur="1.6s" repeatCount="indefinite"><mpath href="#v2"/></animateMotion></circle>
+        <circle r="5" class="dot-ok"><animateMotion dur="1.6s" begin="-0.8s" repeatCount="indefinite"><mpath href="#v3"/></animateMotion></circle>
+      </g>
+      <rect class="box-soft" x="90" y="10" width="180" height="40" rx="8"/><text x="180" y="35" text-anchor="middle">orders.csv on your laptop</text>
+      <text class="t-m" x="14" y="150">Door 1:</text><text class="t-m" x="14" y="166">upload page</text><text class="t-m" x="14" y="182">makes the table</text>
+      <rect class="box-acc" x="172" y="122" width="180" height="64" rx="8"/>
+      <text class="t-b" x="262" y="144" text-anchor="middle">Volume</text>
+      <text class="mono" x="262" y="162" text-anchor="middle">/Volumes/bakery/landing/</text>
+      <text class="mono" x="262" y="176" text-anchor="middle">till_files/orders.csv</text>
+      <text class="t-m" x="300" y="100" text-anchor="middle">Door 2: upload</text>
+      <text class="t-m" x="262" y="226" text-anchor="middle">read_files, COPY INTO</text><text class="t-m" x="262" y="242" text-anchor="middle">or Auto Loader</text>
+      <rect class="box" x="60" y="262" width="240" height="56" rx="8"/>
+      <text class="t-b" x="180" y="285" text-anchor="middle">Table</text><text class="mono" x="180" y="304" text-anchor="middle">bakery.bronze.orders_raw</text>
+    </svg>
+    <p class="cap">With door 2 the file remains in the volume after the table is loaded, so you can load it again or check what was really sent.</p>
+  </div>
+  <h3>Volume paths</h3>
+  <p>Every file in a volume has one fixed style of path, built from the volume's three-part name:</p>
+  <p class="filetext">/Volumes/&lt;catalog&gt;/&lt;schema&gt;/&lt;volume&gt;/&lt;folders&gt;/&lt;file&gt;</p>
+  <p>The same path works in SQL, in Python, in the file browser and on every cloud. You never need the raw <code>s3://</code> or <code>abfss://</code> address.</p>
+  <h3>Two kinds of volume</h3>
+  <div class="grid2">
+    <div class="card"><span class="tag">Managed volume</span><p>Unity Catalog chooses where the files are stored and looks after them. Dropping the volume removes the files. The easy default.</p></div>
+    <div class="card"><span class="tag">External volume</span><p>Points at a folder in cloud storage that already exists, registered through an external location. Dropping the volume leaves the files. Use it when another system also writes to that folder.</p></div>
+  </div>
+</section>
+
+<section id="demo">
+  <div class="sec-num">Try it</div>
+  <h2>Will this upload work?</h2>
+  <p>Describe what you want to upload and where. The checker applies the documented limits and the volume privileges. Try a large file, a zip file, and an upload without the right privilege.</p>
+  <div class="stage">
+    <div class="ctrls">
+      <label class="tog">File type: <select id="dType"><option>CSV</option><option>JSON</option><option>Parquet</option><option>Excel (.xlsx)</option><option>ZIP archive</option><option>PDF</option></select></label>
+      <label class="tog">Size of each file: <select id="dSize"><option value="0.01">10 MB</option><option value="0.5">500 MB</option><option value="3">3 GB</option><option value="8">8 GB</option></select></label>
+      <label class="tog">Number of files: <select id="dCount"><option>1</option><option>5</option><option>25</option></select></label>
+    </div>
+    <div class="ctrls">
+      <label class="tog">Door: <select id="dDoor"><option value="table">1: Create a table from the upload page</option><option value="volume">2: Upload to a volume in the UI</option></select></label>
+      <label class="tog"><input type="checkbox" id="dWrite" checked> I have WRITE VOLUME</label>
+      <label class="tog"><input type="checkbox" id="dRead" checked> I have READ VOLUME</label>
+      <button id="dGo" type="button" class="primary">Upload</button>
+      <button id="dReadBtn" type="button">Read the volume</button>
+      <button id="dReset" type="button">Reset</button>
+    </div>
+    <div class="panes">
+      <div class="pane"><h4>Volume: bakery.landing.till_files</h4><div id="pVol"></div></div>
+      <div class="pane"><h4>Tables created</h4><div id="pTab"></div></div>
+    </div>
+    <div class="log" id="dLog" role="log" aria-label="What happened"></div>
+    <p class="cap">Limits used: upload page accepts CSV, TSV, JSON, Avro, Parquet and text, up to 10 files and under 2 GB in total. The volume UI accepts any file type up to 5 GB per file. Limits change: check the docs.</p>
+  </div>
+</section>
+
+<section id="code">
+  <div class="sec-num">Code</div>
+  <h2>Working with a volume</h2>
+<pre><code><span class="c-c">-- Create a managed volume inside a schema.</span>
+<span class="c-k">CREATE VOLUME IF NOT EXISTS</span> bakery.landing.till_files
+  <span class="c-k">COMMENT</span> <span class="c-s">'Raw files from the shop tills'</span>;
+
+<span class="c-c">-- An external volume points at an existing cloud folder instead.</span>
+<span class="c-k">CREATE EXTERNAL VOLUME</span> bakery.landing.supplier_drop
+  <span class="c-k">LOCATION</span> <span class="c-s">'s3://bakery-supplier-drop/incoming/'</span>;
+
+<span class="c-c">-- Who may read and who may add files.</span>
+<span class="c-k">GRANT READ VOLUME  ON VOLUME</span> bakery.landing.till_files <span class="c-k">TO</span> `analysts`;
+<span class="c-k">GRANT WRITE VOLUME ON VOLUME</span> bakery.landing.till_files <span class="c-k">TO</span> `data_engineers`;
+
+<span class="c-c">-- See what is in it.</span>
+<span class="c-k">LIST</span> <span class="c-s">'/Volumes/bakery/landing/till_files/'</span>;</code></pre>
+  <p>Once a file is in the volume, <code>read_files</code> lets you query it like a table, and one more line turns it into a real table.</p>
+<pre><code><span class="c-c">-- Look at the file without loading it anywhere.</span>
+<span class="c-k">SELECT</span> * <span class="c-k">FROM</span> read_files(
+  <span class="c-s">'/Volumes/bakery/landing/till_files/orders.csv'</span>,
+  format =&gt; <span class="c-s">'csv'</span>,
+  header =&gt; <span class="c-k">true</span>
+) <span class="c-k">LIMIT</span> 10;
+
+<span class="c-c">-- Load it into a bronze table, keeping a note of which file each row came from.</span>
+<span class="c-k">CREATE TABLE</span> bakery.bronze.orders_raw <span class="c-k">AS</span>
+<span class="c-k">SELECT</span> *, _metadata.file_path <span class="c-k">AS</span> source_file
+<span class="c-k">FROM</span> read_files(<span class="c-s">'/Volumes/bakery/landing/till_files/'</span>, format =&gt; <span class="c-s">'csv'</span>, header =&gt; <span class="c-k">true</span>);</code></pre>
+<pre><code><span class="c-c"># The same in Python. Volume paths work like ordinary file paths.</span>
+orders = (spark.read.format(<span class="c-s">"csv"</span>)
+    .option(<span class="c-s">"header"</span>, <span class="c-s">"true"</span>)
+    .load(<span class="c-s">"/Volumes/bakery/landing/till_files/orders.csv"</span>))
+
+<span class="c-c"># Copy a file from one place in a volume to another.</span>
+dbutils.fs.cp(<span class="c-s">"/Volumes/bakery/landing/till_files/orders.csv"</span>,
+              <span class="c-s">"/Volumes/bakery/landing/till_files/archive/orders.csv"</span>)</code></pre>
+  <p class="note"><code>read_files</code> guesses column types by default. Auto Loader, which you meet in lesson 02-05, does the opposite and reads CSV and JSON columns as text unless told otherwise. That difference is a classic exam trap.</p>
+</section>
+
+<section id="whatif">
+  <div class="sec-num">What if I change this?</div>
+  <h2>Small changes, different outcomes</h2>
+  <div class="tbl"><table class="whatif">
+    <tr><th>Change</th><th>Effect</th></tr>
+    <tr><td>Use the upload page instead of a volume</td><td>You get a managed Delta table at once. The original file is not kept anywhere you can reach.</td></tr>
+    <tr><td>Point <code>read_files</code> at a folder instead of one file</td><td>Every file in the folder is read as one dataset.</td></tr>
+    <tr><td>Leave out <code>_metadata.file_path</code></td><td>The table loads fine, but you can no longer tell which file a bad row came from.</td></tr>
+    <tr><td>Grant <code>READ VOLUME</code> but not <code>WRITE VOLUME</code></td><td>The person can list and read files, but cannot upload, change or delete them.</td></tr>
+    <tr><td>Drop a managed volume</td><td>Its files are removed. Drop an external volume and the files stay in your cloud folder.</td></tr>
+    <tr><td>Try to upload a file larger than the UI allows</td><td>The UI refuses. Larger files go in with the command line tool, the SDK or the Files API.</td></tr>
+  </table></div>
+</section>
+
+<section id="compare">
+  <div class="sec-num">Compare</div>
+  <h2>Ways to load a local file</h2>
+  <div class="tbl"><table>
+    <tr><th></th><th>Upload page: create a table</th><th>Upload to a volume, then load</th></tr>
+    <tr><td>Result</td><td>A managed Delta table</td><td>A file in a volume, then a table when you load it</td></tr>
+    <tr><td>Raw file kept?</td><td>No</td><td>Yes</td></tr>
+    <tr><td>Repeatable?</td><td>By hand each time</td><td>Yes: the same query or pipeline runs on every new file</td></tr>
+    <tr><td>File types</td><td>Tabular text and common data formats only</td><td>Anything, including images and PDFs</td></tr>
+    <tr><td>Good for</td><td>A quick look, a small reference table, learning</td><td>Anything that will happen more than once</td></tr>
+  </table></div>
+  <h3>Ways to get a file into a volume</h3>
+  <div class="grid3">
+    <div class="card"><span class="tag">The UI</span><p>Open the volume in the catalog browser and upload. Simple, with a size limit per file.</p></div>
+    <div class="card"><span class="tag">Command line</span><p>The Databricks CLI copies files from your machine, for example <code>databricks fs cp</code>. Scriptable.</p></div>
+    <div class="card"><span class="tag">Code</span><p>The Databricks SDK or the Files API, for programs that deliver files automatically and for very large files.</p></div>
+  </div>
+</section>
+
+<section id="scenarios">
+  <div class="sec-num">Real life</div>
+  <h2>Local files in practice</h2>
+  <div class="tbl"><table>
+    <tr><th>Scenario</th><th>What happens</th><th>Fix</th></tr>
+    <tr><td>Marketing sends a 300-row CSV of campaign codes, once</td><td>A pipeline would be overkill</td><td>Upload page: create the table directly</td></tr>
+    <tr><td>Finance emails a spreadsheet export every month</td><td>Uploading to a table by hand is error-prone and leaves no raw copy</td><td>Upload to a volume folder each month and load with <code>COPY INTO</code> or Auto Loader</td></tr>
+    <tr><td>An analyst can see a volume but uploads fail</td><td>They hold <code>READ VOLUME</code> only</td><td>Grant <code>WRITE VOLUME</code></td></tr>
+    <tr><td>A 12 GB log file will not upload in the browser</td><td>It is over the UI limit</td><td>Use the CLI, SDK or Files API</td></tr>
+    <tr><td>A vendor's system writes files to its own cloud bucket folder</td><td>You need governed access without moving the files</td><td>Register the folder as an external volume</td></tr>
+  </table></div>
+</section>
+
+<section id="traps">
+  <div class="sec-num">Don't confuse these</div>
+  <h2>Volume traps</h2>
+  <div class="grid2">
+    <div class="card trap"><span class="tag">Volume vs table</span><p>A volume holds files. A file in a volume is not a table and cannot be registered as one. You load it into a table.</p></div>
+    <div class="card trap"><span class="tag">Managed vs external volume</span><p>Same idea as tables. Managed: Unity Catalog owns the files. External: you do, and they survive a drop.</p></div>
+    <div class="card trap"><span class="tag">READ VOLUME vs SELECT</span><p><code>SELECT</code> is the privilege for tables. Files in volumes use <code>READ VOLUME</code> and <code>WRITE VOLUME</code>.</p></div>
+    <div class="card trap"><span class="tag">read_files vs Auto Loader defaults</span><p><code>read_files</code> infers column types by default. Auto Loader reads CSV and JSON columns as strings by default.</p></div>
+  </div>
+</section>
+
+<section id="quiz">
+  <div class="sec-num">Check yourself</div>
+  <h2>Quiz</h2>
+  <div class="quiz">
+    <fieldset>
+      <legend>1. What is the path of file <code>orders.csv</code> in volume <code>till_files</code>, schema <code>landing</code>, catalog <code>bakery</code>?</legend>
+      <label><input type="radio"> <code>/bakery/landing/till_files/orders.csv</code></label>
+      <label><input type="radio" data-correct> <code>/Volumes/bakery/landing/till_files/orders.csv</code></label>
+      <label><input type="radio"> <code>bakery.landing.till_files.orders.csv</code></label>
+      <p class="explain" hidden>Volume paths always start with <code>/Volumes/</code>, followed by catalog, schema and volume.</p>
+    </fieldset>
+    <fieldset>
+      <legend>2. Which privilege lets someone upload a file to a volume?</legend>
+      <label><input type="radio"> <code>SELECT</code></label>
+      <label><input type="radio"> <code>READ VOLUME</code></label>
+      <label><input type="radio" data-correct> <code>WRITE VOLUME</code></label>
+      <p class="explain" hidden><code>WRITE VOLUME</code> covers adding, changing and deleting files. <code>READ VOLUME</code> is for listing and reading only.</p>
+    </fieldset>
+    <fieldset>
+      <legend>3. A monthly file must be loaded the same way every time, and the original kept. Which approach fits?</legend>
+      <label><input type="radio"> The upload page that creates a table</label>
+      <label><input type="radio" data-correct> Upload to a volume, then load with a query or pipeline</label>
+      <label><input type="radio"> Paste the data into a notebook</label>
+      <p class="explain" hidden>The volume keeps the raw file, and the loading step is code that can be rerun each month.</p>
+    </fieldset>
+    <fieldset>
+      <legend>4. You drop an external volume. What happens to its files?</legend>
+      <label><input type="radio" data-correct> They stay in the cloud folder</label>
+      <label><input type="radio"> They are deleted</label>
+      <label><input type="radio"> They become a managed volume</label>
+      <p class="explain" hidden>External means Unity Catalog only points at the folder. Dropping the volume removes the pointer.</p>
+    </fieldset>
+  </div>
+</section>
+
+<section id="wrap">
+  <div class="sec-num">Wrap up</div>
+  <h2>Key takeaways</h2>
+  <ul>
+    <li>A local file can go straight to a table from the upload page, or into a volume first.</li>
+    <li>A volume is a Unity Catalog object for files, with paths starting <code>/Volumes/</code>.</li>
+    <li>Access to files uses <code>READ VOLUME</code> and <code>WRITE VOLUME</code>.</li>
+    <li><code>read_files</code> queries files directly and turns them into tables.</li>
+    <li>Use a volume whenever the load will be repeated or the raw file must be kept.</li>
+  </ul>
+  <h3>Glossary terms used</h3>
+  <p><a href="../../glossary.html#volume">volume</a> · <a href="../../glossary.html#managed-volume">managed volume</a> · <a href="../../glossary.html#external-volume">external volume</a> · <a href="../../glossary.html#read-files">read_files</a> · <a href="../../glossary.html#privilege">privilege</a></p>
+  <h3>Official docs</h3>
+  <ul>
+    <li><a href="https://docs.databricks.com/aws/en/volumes/">What are Unity Catalog volumes?</a></li>
+    <li><a href="https://docs.databricks.com/aws/en/volumes/volume-files">Work with files in volumes</a></li>
+    <li><a href="https://docs.databricks.com/aws/en/ingestion/file-upload/">Upload files to Databricks</a></li>
+    <li><a href="https://docs.databricks.com/aws/en/sql/language-manual/functions/read_files">read_files function</a></li>
+  </ul>
+  <p class="cap">Last verified: 16 November 2026</p>
+</section>
+
+</main>
+
+<script>
+(function () {
+  var C = window.Course, $ = function (id) { return document.getElementById(id); }, L = $('dLog');
+  var TABLE_OK = ['CSV', 'JSON', 'Parquet'], vol, tabs, n;
+  function draw() {
+    $('pVol').innerHTML = vol.length ? vol.map(function (f) { return '<div class="item"><span>' + f.name + '</span><span>' + f.size + '</span></div>'; }).join('') : '<p class="cap">empty</p>';
+    $('pTab').innerHTML = tabs.length ? tabs.map(function (t) { return '<div class="item"><span>' + t + '</span></div>'; }).join('') : '<p class="cap">none</p>';
+  }
+  function label(gb) { return gb < 1 ? Math.round(gb * 1000) + ' MB' : gb + ' GB'; }
+  $('dGo').onclick = function () {
+    var type = $('dType').value, gb = +$('dSize').value, count = +$('dCount').value, door = $('dDoor').value, why = null;
+    if (door === 'table') {
+      if (TABLE_OK.indexOf(type) < 0) why = 'the upload page does not accept ' + type + ' files';
+      else if (count > 10) why = 'the upload page takes at most 10 files at a time, and you chose ' + count;
+      else if (gb * count >= 2) why = 'the files total ' + label(gb * count) + ', and the upload page needs under 2 GB in total';
+      if (why) { C.log(L, 'bad', 'Create table: REFUSED, ' + why + '.'); return; }
+      tabs.push('bakery.bronze.upload_' + (++n)); C.log(L, 'ok', 'Create table: ' + count + ' ' + type + ' file(s) became one managed Delta table. The files themselves were not kept.');
+    } else {
+      if (!$('dWrite').checked) why = 'you do not have WRITE VOLUME on this volume';
+      else if (gb > 5) why = 'each file is ' + label(gb) + ', over the 5 GB per-file limit of the UI. Use the CLI, SDK or Files API';
+      if (why) { C.log(L, 'bad', 'Upload to volume: REFUSED, ' + why + '.'); return; }
+      for (var i = 0; i < count; i++) vol.push({ name: 'file_' + (++n) + '.' + type.split(' ')[0].toLowerCase(), size: label(gb) });
+      C.log(L, 'ok', 'Upload to volume: ' + count + ' ' + type + ' file(s) stored as files. Any type is allowed. They are not tables yet.');
+    }
+    draw();
+  };
+  $('dReadBtn').onclick = function () {
+    if (!$('dRead').checked) { C.log(L, 'bad', 'Read: PERMISSION DENIED. Listing or reading files needs READ VOLUME.'); return; }
+    C.log(L, 'ok', "LIST '/Volumes/bakery/landing/till_files/': " + vol.length + ' file(s).');
+  };
+  function reset() { vol = []; tabs = []; n = 0; L.innerHTML = ''; C.log(L, 'skip', 'The volume is empty.'); draw(); }
+  $('dReset').onclick = reset;
+  reset();
+})();
+</script>
+</body>
+</html>

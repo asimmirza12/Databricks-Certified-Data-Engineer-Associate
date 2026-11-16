@@ -1,0 +1,280 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>02-12 Unstructured data · DE Associate course</title>
+<link rel="stylesheet" href="../../assets/course.css">
+<script src="../../assets/course.js"></script>
+</head>
+<body data-lesson="02-12">
+
+<aside class="disclaimer" aria-label="Disclaimer"><strong>Learning resource only.</strong> This is an independent, unofficial study guide made for learning purposes. It is not affiliated with, endorsed by or sponsored by Databricks. Databricks features change often, so always check the details in the <a href="https://docs.databricks.com">official Databricks documentation</a> and the official exam guide on databricks.com before relying on anything here. Databricks and related names are trademarks of their respective owners.</aside>
+
+<main class="wrap">
+
+<header class="hero">
+  <div class="eyebrow">Module 02 · Data Ingestion and Loading · Lesson 12 of 13</div>
+  <h1>Unstructured data: documents, images and other files</h1>
+  <p class="lede">Invoices as PDFs, photos of deliveries, scanned forms. They have no rows or columns, yet they still need to be collected, tracked and governed. Here is how.</p>
+  <dl class="where">
+    <div><dt>Module</dt><dd>02 Data Ingestion and Loading (21% of the exam)</dd></div>
+    <div><dt>Exam objective</dt><dd>2.7 Bring semi-structured and unstructured data into governed Delta tables. This lesson covers unstructured data.</dd></div>
+    <div><dt>Time to read</dt><dd>About 11 minutes</dd></div>
+    <div><dt>Before this</dt><dd><a href="02-volumes-and-local-files.html">02-02 Uploading local files and volumes</a> · <a href="05-auto-loader-basics.html">02-05 Auto Loader basics</a></dd></div>
+  </dl>
+</header>
+
+<section id="idea">
+  <div class="sec-num">The idea</div>
+  <h2>Keep the files in a volume, and a table about the files</h2>
+  <p><a href="../../glossary.html#unstructured-data">Unstructured data</a> is any file that is not made of rows and columns: PDFs, images, audio, video, Word documents. You cannot "load" a photograph into columns the way you load a CSV.</p>
+  <p>So the approach has two parts.</p>
+  <ul>
+    <li><strong>The files live in a volume.</strong> A <a href="../../glossary.html#volume">volume</a> stores any kind of file and puts it under Unity Catalog's access control.</li>
+    <li><strong>A table describes the files.</strong> One row per file, with its path, size and the time it was last changed. Optionally the row also carries the file's raw contents. This table is what makes the files countable, searchable and joinable with the rest of your data.</li>
+  </ul>
+  <p>Spark has a file format made for building that table, called <a href="../../glossary.html#binaryfile">binaryFile</a>. It does not try to understand what is inside. It reads each file as one row.</p>
+  <p>Later steps can then work on the contents, for example extracting the text from each PDF. That is transformation, not ingestion. Ingestion's job is to get every file registered, once, with nothing missed.</p>
+  <div class="analogy">
+    <span class="tag">Everyday analogy</span>
+    <p><strong>A museum store room.</strong> The objects sit on shelves. You cannot put a vase into a spreadsheet. But the museum keeps a catalogue: one line per object, with its shelf, its size and the date it arrived. Curators search the catalogue and then fetch the object. The shelves are the volume. The catalogue is the table.</p>
+  </div>
+</section>
+
+<section id="how">
+  <div class="sec-num">How it works</div>
+  <h2>One row for each file</h2>
+  <div class="stage">
+    <svg class="tall" viewBox="0 0 360 360" role="img" aria-label="Files of several types sit in a volume. Auto Loader with the binaryFile format reads each matching file as one row with path, modification time, length and content.">
+      <defs><path id="b1" d="M180 122 V160"/><path id="b2" d="M180 214 V250"/></defs>
+      <g class="wire"><use href="#b1"/><use href="#b2"/></g>
+      <g class="mover">
+        <circle r="5" class="dot"><animateMotion dur="1.5s" repeatCount="indefinite"><mpath href="#b1"/></animateMotion></circle>
+        <circle r="5" class="dot-ok"><animateMotion dur="1.5s" begin="-0.7s" repeatCount="indefinite"><mpath href="#b2"/></animateMotion></circle>
+      </g>
+      <rect class="box-soft" x="10" y="8" width="340" height="114" rx="8"/>
+      <text class="t-m" x="22" y="26">VOLUME bakery.landing.supplier_docs</text>
+      <g class="box"><rect x="22" y="36" width="150" height="24" rx="4"/><rect x="188" y="36" width="150" height="24" rx="4"/><rect x="22" y="66" width="150" height="24" rx="4"/><rect x="188" y="66" width="150" height="24" rx="4"/></g>
+      <text class="mono" x="30" y="53">invoice_0412.pdf</text><text class="mono" x="196" y="53">invoice_0413.pdf</text>
+      <text class="mono" x="30" y="83">delivery_77.jpg</text><text class="mono" x="196" y="83">notes.docx</text>
+      <text class="t-m" x="180" y="110" text-anchor="middle">any file type, governed by Unity Catalog</text>
+      <rect class="box-acc" x="60" y="160" width="240" height="54" rx="8"/>
+      <text class="t-b" x="180" y="182" text-anchor="middle">Auto Loader, format binaryFile</text><text class="t-m" x="180" y="200" text-anchor="middle">filter: *.pdf · each new file once</text>
+      <rect class="box" x="10" y="250" width="340" height="100" rx="8"/>
+      <text class="t-b" x="180" y="270" text-anchor="middle">Table bakery.bronze.supplier_docs</text>
+      <g class="wire"><path d="M20 280 H340 M20 306 H340"/></g>
+      <text class="t-m" x="24" y="298">path</text><text class="t-m" x="150" y="298">modificationTime</text><text class="t-m" x="262" y="298">length</text><text class="t-m" x="310" y="298">content</text>
+      <text class="mono" x="24" y="324">.../invoice_0412.pdf</text><text class="mono" x="262" y="324">88213</text><text class="mono" x="310" y="324">bytes</text>
+      <text class="mono" x="24" y="342">.../invoice_0413.pdf</text><text class="mono" x="262" y="342">91004</text><text class="mono" x="310" y="342">bytes</text>
+    </svg>
+    <p class="cap">The <code>content</code> column holds the file itself as raw bytes. The other three columns describe it.</p>
+  </div>
+  <p>The four columns that <code>binaryFile</code> produces are always the same:</p>
+  <ul>
+    <li><code>path</code>: where the file is.</li>
+    <li><code>modificationTime</code>: when it was last changed.</li>
+    <li><code>length</code>: its size in bytes.</li>
+    <li><code>content</code>: the raw bytes of the file.</li>
+  </ul>
+  <p>Because the engine is still Auto Loader, everything from lessons 02-05 and 02-06 applies: a checkpoint, exactly-once loading, and a choice of file detection mode.</p>
+</section>
+
+<section id="demo">
+  <div class="sec-num">Try it</div>
+  <h2>Catalogue a folder of documents</h2>
+  <p>Choose which files to pick up and whether to store their contents. Run the ingestion, let more files arrive, and run it again.</p>
+  <div class="stage">
+    <div class="ctrls">
+      <label class="tog">pathGlobFilter: <select id="dGlob"><option value="">(every file)</option><option value="pdf">*.pdf</option><option value="jpg">*.jpg</option></select></label>
+      <label class="tog"><input type="checkbox" id="dBytes" checked> Keep the <code>content</code> column</label>
+    </div>
+    <div class="ctrls">
+      <button id="dArr" type="button">3 more files arrive</button>
+      <button id="dRun" type="button" class="primary">Run the ingestion</button>
+      <button id="dReset" type="button">Reset</button>
+    </div>
+    <div class="panes">
+      <div class="pane"><h4>Files in the volume</h4><div id="pVol"></div></div>
+      <div class="pane"><h4>Table: one row per file</h4><div id="pTab"></div><h4>Size of the table's data</h4><div class="big" id="pSize"></div></div>
+    </div>
+    <div class="log" id="dLog" role="log" aria-label="What happened"></div>
+    <p class="cap">Changing the filter or the content option resets the demo, as it would be a new stream.</p>
+  </div>
+</section>
+
+<section id="code">
+  <div class="sec-num">Code</div>
+  <h2>Registering files in a table</h2>
+<pre><code>checkpoint = <span class="c-s">"/Volumes/bakery/ops/checkpoints/supplier_docs"</span>
+
+(spark.readStream.format(<span class="c-s">"cloudFiles"</span>)
+    .option(<span class="c-s">"cloudFiles.format"</span>, <span class="c-s">"binaryFile"</span>)     <span class="c-c"># one row per file, contents not interpreted</span>
+    .option(<span class="c-s">"pathGlobFilter"</span>, <span class="c-s">"*.pdf"</span>)               <span class="c-c"># only pick up PDFs</span>
+    .load(<span class="c-s">"/Volumes/bakery/landing/supplier_docs/"</span>)
+    .writeStream
+    .option(<span class="c-s">"checkpointLocation"</span>, checkpoint)
+    .trigger(availableNow=<span class="c-k">True</span>)
+    .toTable(<span class="c-s">"bakery.bronze.supplier_docs"</span>))</code></pre>
+  <p>The same in SQL, as a streaming table that refreshes hourly:</p>
+<pre><code><span class="c-k">CREATE OR REFRESH STREAMING TABLE</span> bakery.bronze.supplier_docs
+<span class="c-k">SCHEDULE EVERY</span> 1 <span class="c-k">HOUR</span>
+<span class="c-k">AS SELECT</span> path, modificationTime, length, content
+<span class="c-k">FROM STREAM</span> read_files(
+  <span class="c-s">'/Volumes/bakery/landing/supplier_docs/'</span>,
+  format =&gt; <span class="c-s">'binaryFile'</span>,
+  pathGlobFilter =&gt; <span class="c-s">'*.pdf'</span>
+);</code></pre>
+  <p>If you only need to know which files exist, leave the contents out and keep the table small:</p>
+<pre><code><span class="c-c">-- A light catalogue: where each file is, how big, and when it changed.</span>
+<span class="c-k">SELECT</span> path, length, modificationTime
+<span class="c-k">FROM</span> bakery.bronze.supplier_docs
+<span class="c-k">WHERE</span> length &gt; 5000000          <span class="c-c">-- files larger than about 5 MB</span>
+<span class="c-k">ORDER BY</span> modificationTime <span class="c-k">DESC</span>;</code></pre>
+  <p class="note">Turning document contents into text is a separate step. Databricks has an AI function for it, <code>ai_parse_document</code>, which takes the <code>content</code> column. It is outside ingestion, and its options change quickly, so check the docs before using it.</p>
+</section>
+
+<section id="whatif">
+  <div class="sec-num">What if I change this?</div>
+  <h2>Options for file ingestion</h2>
+  <div class="tbl"><table class="whatif">
+    <tr><th>Change</th><th>Effect</th></tr>
+    <tr><td>Add <code>pathGlobFilter</code></td><td>Only files whose names match are picked up. Others in the folder are ignored.</td></tr>
+    <tr><td>Keep the <code>content</code> column</td><td>The table holds a full copy of every file. Handy for processing, but the table becomes as large as all the files together.</td></tr>
+    <tr><td>Drop the <code>content</code> column</td><td>The table is a small list of files. Anything that needs the contents reads the file from its path in the volume.</td></tr>
+    <tr><td>Use <code>spark.read</code> instead of Auto Loader</td><td>Every file is read on every run. Fine for a one-off, wasteful for a folder that keeps growing.</td></tr>
+    <tr><td>Use <code>binaryFile</code> on a CSV file</td><td>You get one row holding the whole file as bytes, not one row per line. <code>binaryFile</code> never parses.</td></tr>
+    <tr><td>Replace a file with a new version under the same name</td><td>By default it is not picked up again. Deliver new versions under new names.</td></tr>
+  </table></div>
+</section>
+
+<section id="compare">
+  <div class="sec-num">Compare</div>
+  <h2>Three shapes of data, three ways in</h2>
+  <div class="tbl"><table>
+    <tr><th></th><th>Structured</th><th>Semi-structured</th><th>Unstructured</th></tr>
+    <tr><td>Example</td><td>CSV of prices</td><td>JSON orders</td><td>PDF invoices, photos</td></tr>
+    <tr><td>Format to read it</td><td><code>csv</code>, <code>parquet</code></td><td><code>json</code></td><td><code>binaryFile</code></td></tr>
+    <tr><td>One row is</td><td>One record</td><td>One record</td><td>One whole file</td></tr>
+    <tr><td>Lands as</td><td>Typed columns</td><td>STRUCT, ARRAY or VARIANT</td><td>Path, size, time and optional bytes</td></tr>
+    <tr><td>Raw files kept in</td><td>A volume</td><td>A volume</td><td>A volume, long term</td></tr>
+  </table></div>
+  <h3>Where unstructured files come from</h3>
+  <div class="grid3">
+    <div class="card"><span class="tag">Cloud storage</span><p>A bucket folder registered as an external volume. Read with Auto Loader.</p></div>
+    <div class="card"><span class="tag">Uploads</span><p>Files added to a managed volume by people or by programs.</p></div>
+    <div class="card"><span class="tag">Document systems</span><p>Lakeflow Connect has file connectors for systems such as SharePoint and Google Drive, which bring documents in under Unity Catalog governance.</p></div>
+  </div>
+</section>
+
+<section id="scenarios">
+  <div class="sec-num">Real life</div>
+  <h2>Files that are not tables</h2>
+  <div class="tbl"><table>
+    <tr><th>Scenario</th><th>What happens</th><th>Fix</th></tr>
+    <tr><td>Finance asks how many supplier invoices arrived last month</td><td>They are PDFs in a folder. There is nothing to count with SQL.</td><td>Ingest with <code>binaryFile</code> and count rows by <code>modificationTime</code></td></tr>
+    <tr><td>The documents table has grown to 400 GB</td><td>It stores every file's bytes, and the files are also in the volume</td><td>Drop the <code>content</code> column and read from <code>path</code> when needed</td></tr>
+    <tr><td>A folder holds PDFs, thumbnails and temporary files</td><td>All of them are being registered</td><td>Add a <code>pathGlobFilter</code></td></tr>
+    <tr><td>Scanned contracts sit on a team's shared laptop drive</td><td>No access control and no record of who has them</td><td>Move them to a Unity Catalog volume and grant <code>READ VOLUME</code> to the right group</td></tr>
+    <tr><td>The nightly job re-registers every image every night</td><td>It uses a plain batch read</td><td>Switch to Auto Loader, which only picks up new files</td></tr>
+  </table></div>
+</section>
+
+<section id="traps">
+  <div class="sec-num">Don't confuse these</div>
+  <h2>Unstructured data traps</h2>
+  <div class="grid2">
+    <div class="card trap"><span class="tag">Volume vs table</span><p>The files themselves belong in a volume. The table holds information about them. Unstructured data is governed through volumes.</p></div>
+    <div class="card trap"><span class="tag">binaryFile does not parse</span><p>It gives one row per file, whatever the file is. It does not read text out of a PDF or pixels out of an image.</p></div>
+    <div class="card trap"><span class="tag">Semi-structured vs unstructured</span><p>JSON has labels and can become columns: semi-structured. A PDF or an image has neither: unstructured.</p></div>
+    <div class="card trap"><span class="tag">Ingesting vs understanding</span><p>Registering files is ingestion. Extracting meaning from them is a later transformation step.</p></div>
+  </div>
+</section>
+
+<section id="quiz">
+  <div class="sec-num">Check yourself</div>
+  <h2>Quiz</h2>
+  <div class="quiz">
+    <fieldset>
+      <legend>1. Which Unity Catalog object is meant for storing PDF and image files?</legend>
+      <label><input type="radio"> A table</label>
+      <label><input type="radio" data-correct> A volume</label>
+      <label><input type="radio"> A view</label>
+      <p class="explain" hidden>Volumes hold files of any kind under governance. Tables hold rows.</p>
+    </fieldset>
+    <fieldset>
+      <legend>2. Reading a folder of 500 PDFs with the <code>binaryFile</code> format gives how many rows?</legend>
+      <label><input type="radio" data-correct> 500, one per file</label>
+      <label><input type="radio"> One per page</label>
+      <label><input type="radio"> One per line of text</label>
+      <p class="explain" hidden><code>binaryFile</code> treats each file as a single row and does not look inside.</p>
+    </fieldset>
+    <fieldset>
+      <legend>3. Which columns does <code>binaryFile</code> produce?</legend>
+      <label><input type="radio"> text, page, author, date</label>
+      <label><input type="radio" data-correct> path, modificationTime, length, content</label>
+      <label><input type="radio"> key, value, offset, timestamp</label>
+      <p class="explain" hidden>Three columns describe the file and one, <code>content</code>, holds its bytes.</p>
+    </fieldset>
+    <fieldset>
+      <legend>4. In the demo, what happened to the table's size when you stopped keeping <code>content</code>?</legend>
+      <label><input type="radio"> It stayed the same</label>
+      <label><input type="radio" data-correct> It became tiny, because only paths and sizes were stored</label>
+      <label><input type="radio"> The files were deleted from the volume</label>
+      <p class="explain" hidden>Without the bytes the table is only a list. The files stay in the volume, untouched.</p>
+    </fieldset>
+  </div>
+</section>
+
+<section id="wrap">
+  <div class="sec-num">Wrap up</div>
+  <h2>Key takeaways</h2>
+  <ul>
+    <li>Unstructured files are stored and governed in Unity Catalog volumes.</li>
+    <li>The <code>binaryFile</code> format reads each file as one row: path, modificationTime, length, content.</li>
+    <li>Auto Loader with <code>binaryFile</code> registers each new file exactly once.</li>
+    <li><code>pathGlobFilter</code> chooses which files are picked up.</li>
+    <li>Keeping <code>content</code> copies the files into the table. Often the path is enough.</li>
+  </ul>
+  <h3>Glossary terms used</h3>
+  <p><a href="../../glossary.html#unstructured-data">unstructured data</a> · <a href="../../glossary.html#volume">volume</a> · <a href="../../glossary.html#binaryfile">binaryFile</a> · <a href="../../glossary.html#auto-loader">Auto Loader</a> · <a href="../../glossary.html#streaming-table">streaming table</a></p>
+  <h3>Official docs</h3>
+  <ul>
+    <li><a href="https://docs.databricks.com/aws/en/volumes/unstructured-data-tutorial">Work with unstructured data in volumes</a></li>
+    <li><a href="https://docs.databricks.com/aws/en/query/formats/binary">Binary file format</a></li>
+    <li><a href="https://docs.databricks.com/aws/en/volumes/">What are Unity Catalog volumes?</a></li>
+    <li><a href="https://docs.databricks.com/aws/en/ingestion/sharepoint">Ingest files from SharePoint</a></li>
+    <li><a href="https://docs.databricks.com/aws/en/sql/language-manual/functions/ai_parse_document">ai_parse_document function</a></li>
+  </ul>
+  <p class="cap">Last verified: 16 November 2026</p>
+</section>
+
+</main>
+
+<script>
+(function () {
+  var C = window.Course, $ = function (id) { return document.getElementById(id); }, L = $('dLog');
+  var KINDS = [['invoice', 'pdf', 90], ['delivery', 'jpg', 2400], ['notes', 'docx', 40]], files, done, n, clock;   /* size in KB */
+  function match(f) { var g = $('dGlob').value; return !g || f.ext === g; }
+  function add(k) { var t = KINDS[k % 3]; files.push({ name: t[0] + '_' + (++n) + '.' + t[1], ext: t[1], kb: t[2] + n, at: ++clock }); }
+  function fmt(kb) { return kb < 1 ? 'under 1 KB' : kb >= 1024 ? (kb / 1024).toFixed(1) + ' MB' : Math.round(kb) + ' KB'; }
+  function draw() {
+    $('pVol').innerHTML = files.map(function (f) { return '<div class="item' + (match(f) ? '' : ' off') + '"><span>' + f.name + '</span><span>' + fmt(f.kb) + '</span></div>'; }).join('');
+    var keep = $('dBytes').checked, rows = files.filter(function (f) { return done[f.name]; });
+    $('pTab').innerHTML = C.table(rows.map(function (f) { var r = { path: '.../' + f.name, length: f.kb * 1024 }; if (keep) r.content = '<bytes>'; return r; }));
+    $('pSize').textContent = fmt(rows.reduce(function (a, f) { return a + (keep ? f.kb : 0.2); }, 0));
+  }
+  $('dArr').onclick = function () { add(n); add(n); add(n); C.log(L, 'skip', '3 files arrived in the volume.'); draw(); };
+  $('dRun').onclick = function () {
+    var todo = files.filter(function (f) { return match(f) && !done[f.name]; }), skipped = files.filter(function (f) { return !match(f); }).length;
+    todo.forEach(function (f) { done[f.name] = 1; });
+    C.log(L, todo.length ? 'ok' : 'skip', 'Run: ' + todo.length + ' new file(s) registered, one row each.' + (skipped ? ' ' + skipped + ' file(s) did not match the filter and were ignored.' : '') + (todo.length ? '' : ' Nothing new.'));
+    draw(); C.bump($('pSize'));
+  };
+  function reset() { files = []; done = {}; n = 0; clock = 0; add(0); add(1); add(2); add(0); L.innerHTML = ''; C.log(L, 'skip', 'Four files are in the volume. Nothing is registered yet.'); draw(); }
+  $('dReset').onclick = $('dGlob').onchange = $('dBytes').onchange = reset;
+  reset();
+})();
+</script>
+</body>
+</html>
