@@ -1,0 +1,312 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>00-10 Medallion architecture · DE Associate course</title>
+<link rel="stylesheet" href="../../assets/course.css">
+<script src="../../assets/course.js"></script>
+</head>
+<body data-lesson="00-10">
+
+<aside class="disclaimer" aria-label="Disclaimer"><strong>Learning resource only.</strong> This is an independent, unofficial study guide made for learning purposes. It is not affiliated with, endorsed by or sponsored by Databricks. Databricks features change often, so always check the details in the <a href="https://docs.databricks.com">official Databricks documentation</a> and the official exam guide on databricks.com before relying on anything here. Databricks and related names are trademarks of their respective owners.</aside>
+
+<main class="wrap">
+
+<header class="hero">
+  <div class="eyebrow">Module 00 · Foundations · Lesson 10 of 10</div>
+  <h1>Medallion architecture: bronze, silver, gold</h1>
+  <p class="lede">The last foundation: a simple way to arrange your tables in three layers, so that raw data is never lost and finished data can be trusted.</p>
+  <dl class="where">
+    <div><dt>Module</dt><dd>00 Foundations</dd></div>
+    <div><dt>Exam objective</dt><dd>None directly. The Module 03 objectives talk about reading bronze tables, writing silver tables and building gold objects, so the three words must mean something to you.</dd></div>
+    <div><dt>Time to read</dt><dd>About 12 minutes</dd></div>
+    <div><dt>Before this</dt><dd><a href="08-delta-lake-basics.html">00-08 Delta Lake basics</a> · <a href="09-unity-catalog-basics.html">00-09 Unity Catalog basics</a></dd></div>
+  </dl>
+</header>
+
+<section id="idea">
+  <div class="sec-num">The idea</div>
+  <h2>Improve the data in three steps, and keep every step</h2>
+  <p>The <a href="../../glossary.html#medallion-architecture">medallion architecture</a> is a habit, not a product. It says: do not go from messy source data to a finished report in one jump. Go through three layers of tables, each cleaner than the last, and keep all three.</p>
+  <ul>
+    <li><strong class="bronze">Bronze</strong> holds the data exactly as it arrived. Mistakes and all. Nothing is fixed, nothing is thrown away.</li>
+    <li><strong class="silver">Silver</strong> holds the same data after cleaning: correct types, no duplicates, bad rows dealt with.</li>
+    <li><strong class="gold">Gold</strong> holds data shaped for one particular use: totals, averages and summaries that a report or a person can read directly.</li>
+  </ul>
+  <p>The names come from medals. Quality goes up as you move from bronze to gold.</p>
+  <div class="analogy">
+    <span class="tag">Everyday analogy</span>
+    <p><strong>From wheat to bread.</strong> Sacks of wheat arrive from the farm with husks and the odd stone: that is bronze. The mill cleans and grinds it into flour: silver. The baker turns flour into loaves, rolls and cakes for different customers: gold. A sensible bakery keeps some wheat in the store. If a batch of flour turns out bad, it can mill again. Without the wheat, it would have to wait for next year's harvest.</p>
+  </div>
+</section>
+
+<section id="how">
+  <div class="sec-num">How it works</div>
+  <h2>Data only moves one way</h2>
+  <div class="stage">
+    <svg class="tall" viewBox="0 0 360 386" role="img" aria-label="Sources feed bronze. Bronze feeds silver. Silver feeds several gold tables, which feed dashboards and reports.">
+      <defs>
+        <path id="m0" d="M180 40 V66"/><path id="m1" d="M180 128 V154"/>
+        <path id="m2" d="M180 216 C 180 232, 92 228, 92 246"/><path id="m3" d="M180 216 C 180 232, 268 228, 268 246"/>
+        <path id="m4" d="M92 308 V334"/><path id="m5" d="M268 308 V334"/>
+      </defs>
+      <g class="wire"><use href="#m0"/><use href="#m1"/><use href="#m2"/><use href="#m3"/><use href="#m4"/><use href="#m5"/></g>
+      <g class="mover">
+        <circle r="5" class="dot"><animateMotion dur="1.5s" repeatCount="indefinite"><mpath href="#m0"/></animateMotion></circle>
+        <circle r="5" class="dot"><animateMotion dur="1.5s" begin="-0.5s" repeatCount="indefinite"><mpath href="#m1"/></animateMotion></circle>
+        <circle r="5" class="dot-ok"><animateMotion dur="1.5s" begin="-1s" repeatCount="indefinite"><mpath href="#m2"/></animateMotion></circle>
+        <circle r="5" class="dot-ok"><animateMotion dur="1.5s" begin="-0.2s" repeatCount="indefinite"><mpath href="#m3"/></animateMotion></circle>
+      </g>
+      <rect class="box-soft" x="70" y="6" width="220" height="34" rx="6"/><text x="180" y="28" text-anchor="middle">Sources: tills, website, files</text>
+      <rect class="box m-bronze" x="50" y="66" width="260" height="62" rx="8"/>
+      <text class="t-b" x="180" y="88" text-anchor="middle">BRONZE · raw</text><text class="t-m" x="180" y="106" text-anchor="middle">everything, exactly as it arrived</text><text class="t-m" x="180" y="120" text-anchor="middle">used by: data engineers</text>
+      <rect class="box m-silver" x="50" y="154" width="260" height="62" rx="8"/>
+      <text class="t-b" x="180" y="176" text-anchor="middle">SILVER · cleaned</text><text class="t-m" x="180" y="194" text-anchor="middle">typed, deduplicated, checked</text><text class="t-m" x="180" y="208" text-anchor="middle">used by: engineers, analysts, data scientists</text>
+      <rect class="box m-gold" x="14" y="246" width="156" height="62" rx="8"/>
+      <text class="t-b" x="92" y="268" text-anchor="middle">GOLD</text><text class="t-m" x="92" y="286" text-anchor="middle">sales by shop per day</text><text class="t-m" x="92" y="300" text-anchor="middle">for finance</text>
+      <rect class="box m-gold" x="190" y="246" width="156" height="62" rx="8"/>
+      <text class="t-b" x="268" y="268" text-anchor="middle">GOLD</text><text class="t-m" x="268" y="286" text-anchor="middle">best-selling items</text><text class="t-m" x="268" y="300" text-anchor="middle">for shop managers</text>
+      <rect class="box-soft" x="14" y="334" width="156" height="34" rx="6"/><text x="92" y="356" text-anchor="middle">Finance report</text>
+      <rect class="box-soft" x="190" y="334" width="156" height="34" rx="6"/><text x="268" y="356" text-anchor="middle">Manager dashboard</text>
+    </svg>
+    <p class="cap">One silver table can feed many gold tables. Each gold table answers one group's questions.</p>
+  </div>
+  <p>Each layer is built only from the layer before it. Gold never reads from the source directly. That is what makes the next idea possible.</p>
+  <p class="note"><strong>Why keep bronze?</strong> Because cleaning rules are written by people, and people make mistakes. If a rule was wrong, you fix the rule and rebuild silver and gold from bronze. If you had cleaned the data on arrival and thrown the raw version away, the rows your bad rule dropped would be gone for good.</p>
+</section>
+
+<section id="demo">
+  <div class="sec-num">Try it</div>
+  <h2>Find a bug, then try to recover</h2>
+  <p>Start with the cleaning rule that has a bug: it throws away every order from South. Let two batches arrive and build the layers. Then switch to the correct rule and rebuild. Reset, untick "Keep a bronze layer" and do the same again.</p>
+  <div class="stage">
+    <div class="ctrls">
+      <label class="tog">Cleaning rule: <select id="dRule">
+        <option value="bug">Buggy: also drops all South orders</option>
+        <option value="ok">Correct: drop duplicates and missing prices</option>
+      </select></label>
+      <label class="tog"><input type="checkbox" id="dKeep" checked> Keep a bronze layer</label>
+    </div>
+    <div class="ctrls">
+      <button id="dArrive" type="button" class="primary">A batch of 5 orders arrives</button>
+      <button id="dBuild" type="button" class="primary">Rebuild silver and gold</button>
+      <button id="dReset" type="button">Reset</button>
+    </div>
+    <div class="panes">
+      <div class="pane"><h4 class="bronze">Bronze: raw rows</h4><div class="big" id="pB"></div><p class="cap" id="pBn"></p></div>
+      <div class="pane"><h4 class="silver">Silver: clean rows</h4><div class="big" id="pS"></div><p class="cap" id="pSn"></p></div>
+      <div class="pane"><h4 class="gold">Gold: sales by shop</h4><div id="pG"></div></div>
+      <div class="pane"><h4>Orders truly made (the truth)</h4><div id="pT"></div></div>
+    </div>
+    <div class="log" id="dLog" role="log" aria-label="What happened"></div>
+  </div>
+</section>
+
+<section id="code">
+  <div class="sec-num">Code</div>
+  <h2>Three layers, three statements</h2>
+  <p>A common convention is one schema per layer inside a catalog: <code>bakery.bronze</code>, <code>bakery.silver</code>, <code>bakery.gold</code>. It is a convention, not a rule.</p>
+<pre><code><span class="c-c">-- BRONZE: land the files as they are. Everything stays text. Record where each row came from.</span>
+<span class="c-k">CREATE OR REPLACE TABLE</span> bakery.bronze.orders_raw <span class="c-k">AS</span>
+<span class="c-k">SELECT</span> *, _metadata.file_path <span class="c-k">AS</span> source_file
+<span class="c-k">FROM</span> read_files(
+  <span class="c-s">'/Volumes/bakery/landing/till_files/orders/'</span>,
+  format =&gt; <span class="c-s">'csv'</span>,
+  header =&gt; <span class="c-k">true</span>,
+  inferColumnTypes =&gt; <span class="c-k">false</span>   <span class="c-c">-- do not guess types yet: keep every column as text</span>
+);
+
+<span class="c-c">-- SILVER: one clean row per order, with proper types.</span>
+<span class="c-k">CREATE OR REPLACE TABLE</span> bakery.silver.orders <span class="c-k">AS</span>
+<span class="c-k">SELECT DISTINCT</span>
+  try_cast(order_id <span class="c-k">AS INT</span>)         <span class="c-k">AS</span> order_id,   <span class="c-c">-- try_cast gives NULL, not an error, for a bad value</span>
+  initcap(trim(shop))               <span class="c-k">AS</span> shop,
+  try_cast(price <span class="c-k">AS DECIMAL</span>(10,2))  <span class="c-k">AS</span> price
+<span class="c-k">FROM</span> bakery.bronze.orders_raw
+<span class="c-k">WHERE</span> try_cast(price <span class="c-k">AS DECIMAL</span>(10,2)) <span class="c-k">IS NOT NULL</span>;
+
+<span class="c-c">-- GOLD: shaped for the finance report.</span>
+<span class="c-k">CREATE OR REPLACE TABLE</span> bakery.gold.sales_by_shop <span class="c-k">AS</span>
+<span class="c-k">SELECT</span> shop, <span class="c-k">COUNT</span>(*) <span class="c-k">AS</span> orders, <span class="c-k">SUM</span>(price) <span class="c-k">AS</span> total_sales
+<span class="c-k">FROM</span> bakery.silver.orders
+<span class="c-k">GROUP BY</span> shop;</code></pre>
+  <p class="note">These statements rebuild each table in full every time, which keeps the example short. Real pipelines load bronze and silver incrementally (lesson 00-04). Modules 02 and 03 show how.</p>
+</section>
+
+<section id="whatif">
+  <div class="sec-num">What if I change this?</div>
+  <h2>Bending the pattern</h2>
+  <div class="tbl"><table class="whatif">
+    <tr><th>Change</th><th>Effect</th></tr>
+    <tr><td>Skip bronze and clean data as it arrives</td><td>One table fewer to store. But a wrong cleaning rule now loses data permanently, and you cannot check what the source really sent.</td></tr>
+    <tr><td>Convert types in bronze (prices as numbers on arrival)</td><td>A single odd value such as "n/a" can make the load fail or turn into NULL before you have a raw copy. Keeping bronze as plain text is the safe default.</td></tr>
+    <tr><td>Let analysts query bronze directly</td><td>They meet duplicates and bad values, and each analyst cleans them differently. Two reports then disagree.</td></tr>
+    <tr><td>Put business summaries in silver</td><td>Silver stops being a general, reusable clean copy. The next team that needs row-level detail has nowhere to get it.</td></tr>
+    <tr><td>Build one gold table for everybody</td><td>It grows wide and confusing. Several small gold tables, one per need, are easier to trust and to secure.</td></tr>
+  </table></div>
+</section>
+
+<section id="compare">
+  <div class="sec-num">Compare</div>
+  <h2>The three layers side by side</h2>
+  <div class="tbl"><table>
+    <tr><th></th><th class="bronze">Bronze</th><th class="silver">Silver</th><th class="gold">Gold</th></tr>
+    <tr><td>Contains</td><td>Raw data as received</td><td>Cleaned, checked rows</td><td>Summaries for one purpose</td></tr>
+    <tr><td>Level of detail</td><td>Every row, even bad ones</td><td>Every good row, once</td><td>Usually totals and averages</td></tr>
+    <tr><td>Data types</td><td>Mostly text</td><td>Proper types</td><td>Proper types</td></tr>
+    <tr><td>Typical work</td><td>Ingest and append</td><td>Deduplicate, convert types, validate, join</td><td>Group and aggregate</td></tr>
+    <tr><td>Main users</td><td>Data engineers</td><td>Engineers, analysts, data scientists</td><td>Business users, dashboards</td></tr>
+    <tr><td>Where it is taught</td><td>Module 02</td><td>Module 03</td><td>Module 03</td></tr>
+  </table></div>
+  <h3>What the pattern buys you</h3>
+  <div class="grid3">
+    <div class="card"><span class="tag">A way back</span><p>Any layer can be rebuilt from the one before it, right back to the raw data.</p></div>
+    <div class="card"><span class="tag">One version of clean</span><p>Cleaning is done once, in silver. Every report inherits the same rules.</p></div>
+    <div class="card"><span class="tag">Simpler access rules</span><p>Many people can read gold. Few need silver. Almost nobody needs bronze.</p></div>
+  </div>
+</section>
+
+<section id="scenarios">
+  <div class="sec-num">Real life</div>
+  <h2>The layers in use</h2>
+  <div class="tbl"><table>
+    <tr><th>Scenario</th><th>What happens</th><th>Fix</th></tr>
+    <tr><td>A cleaning rule has dropped valid orders for a month</td><td>Silver and gold have been short all month</td><td>Correct the rule and rebuild silver and gold from bronze. Nothing was lost.</td></tr>
+    <tr><td>The source system's owner says "we never sent that value"</td><td>You need proof of what arrived</td><td>Look in bronze, which holds the row as received and the file it came from</td></tr>
+    <tr><td>Finance and marketing report different sales totals</td><td>Each team cleaned raw data its own way</td><td>Both should build their gold tables from the same silver table</td></tr>
+    <tr><td>A dashboard is slow</td><td>It adds up millions of silver rows on every refresh</td><td>Point it at a gold table where the totals are already worked out</td></tr>
+  </table></div>
+</section>
+
+<section id="traps">
+  <div class="sec-num">Don't confuse these</div>
+  <h2>Medallion misunderstandings</h2>
+  <div class="grid2">
+    <div class="card trap"><span class="tag">Pattern vs feature</span><p>Medallion is a way of organising tables. There is no "medallion" button or setting. Bronze, silver and gold tables are ordinary tables with meaningful names.</p></div>
+    <div class="card trap"><span class="tag">Bronze vs the source</span><p>Bronze is your own copy of what the source sent, kept in your platform. It is not the source system itself.</p></div>
+    <div class="card trap"><span class="tag">Silver vs gold</span><p>Silver is clean but still detailed and general. Gold is shaped for one question. "Cleaned and deduplicated" points to silver. "Aggregated for a dashboard" points to gold.</p></div>
+    <div class="card trap"><span class="tag">Exactly three?</span><p>Three is the usual number, not a law. Some teams add a landing area before bronze or split silver in two. The idea of step-by-step refinement stays the same.</p></div>
+  </div>
+</section>
+
+<section id="quiz">
+  <div class="sec-num">Check yourself</div>
+  <h2>Quiz</h2>
+  <div class="quiz">
+    <fieldset>
+      <legend>1. Which layer should hold data exactly as the source sent it?</legend>
+      <label><input type="radio" data-correct> Bronze</label>
+      <label><input type="radio"> Silver</label>
+      <label><input type="radio"> Gold</label>
+      <p class="explain" hidden>Bronze is the untouched raw copy. Cleaning starts in silver.</p>
+    </fieldset>
+    <fieldset>
+      <legend>2. In the demo, why could the lost South orders be recovered when a bronze layer was kept?</legend>
+      <label><input type="radio"> The source system sent them again</label>
+      <label><input type="radio" data-correct> They were still in bronze, so silver and gold could be rebuilt with the fixed rule</label>
+      <label><input type="radio"> Gold tables keep a hidden copy of every row</label>
+      <p class="explain" hidden>The bug only affected what was written to silver. The raw rows were safe in bronze the whole time.</p>
+    </fieldset>
+    <fieldset>
+      <legend>3. A table has one row per shop per day with total sales, built for a finance dashboard. Which layer is it?</legend>
+      <label><input type="radio"> Bronze</label>
+      <label><input type="radio"> Silver</label>
+      <label><input type="radio" data-correct> Gold</label>
+      <p class="explain" hidden>It is aggregated and made for one specific use. That is the description of gold.</p>
+    </fieldset>
+    <fieldset>
+      <legend>4. Two teams get different totals from the same source data. What is the usual cause?</legend>
+      <label><input type="radio" data-correct> Each team cleaned the raw data separately instead of sharing one silver table</label>
+      <label><input type="radio"> Gold tables are always slightly inaccurate</label>
+      <label><input type="radio"> Bronze was vacuumed too often</label>
+      <p class="explain" hidden>Shared cleaning in silver is what gives every downstream table the same starting point.</p>
+    </fieldset>
+  </div>
+</section>
+
+<section id="wrap">
+  <div class="sec-num">Wrap up</div>
+  <h2>Key takeaways</h2>
+  <ul>
+    <li>Bronze is raw, silver is cleaned, gold is shaped for a purpose.</li>
+    <li>Each layer is built only from the one before it.</li>
+    <li>Keeping bronze means any mistake further on can be repaired.</li>
+    <li>Cleaning once in silver gives everyone the same numbers.</li>
+    <li>Medallion is a pattern for organising tables, not a product feature.</li>
+  </ul>
+  <p class="note">That completes Foundations. You now have every word the exam modules rely on. Module 01 starts on the platform itself.</p>
+  <h3>Glossary terms used</h3>
+  <p><a href="../../glossary.html#medallion-architecture">medallion architecture</a> · <a href="../../glossary.html#bronze">bronze</a> · <a href="../../glossary.html#silver">silver</a> · <a href="../../glossary.html#gold">gold</a> · <a href="../../glossary.html#aggregate">aggregate</a></p>
+  <h3>Official docs</h3>
+  <ul>
+    <li><a href="https://docs.databricks.com/aws/en/lakehouse/medallion">What is the medallion lakehouse architecture?</a></li>
+    <li><a href="https://docs.databricks.com/aws/en/lakehouse/">What is a data lakehouse?</a></li>
+    <li><a href="https://docs.databricks.com/aws/en/sql/language-manual/functions/read_files">read_files function</a></li>
+  </ul>
+  <p class="cap">Last verified: 16 November 2026</p>
+</section>
+
+</main>
+
+<script>
+(function () {
+  var C = window.Course, $ = function (id) { return document.getElementById(id); }, L = $('dLog');
+  var truth, bronze, silver, nextId;   /* truth: every real order. bronze: raw rows incl. junk. silver: cleaned rows. */
+
+  /* The cleaning rule. Removes duplicates and missing prices; the buggy one also loses South. */
+  function clean(rows, rule) {
+    var seen = {};
+    return rows.filter(function (r) {
+      if (seen[r.id] || r.price == null) return false;
+      seen[r.id] = 1;
+      return !(rule === 'bug' && r.shop === 'South');
+    });
+  }
+  function byShop(rows) {
+    var s = {};
+    rows.forEach(function (r) { s[r.shop] = (s[r.shop] || 0) + r.price; });
+    return Object.keys(s).sort().map(function (k) { return { shop: k, total_sales: s[k].toFixed(2) }; });
+  }
+  function draw() {
+    var keep = $('dKeep').checked;
+    $('pB').textContent = keep ? bronze.length : 'none';
+    $('pBn').textContent = keep ? 'includes duplicates and rows with no price' : 'raw rows are thrown away after cleaning';
+    $('pS').textContent = silver.length;
+    $('pSn').textContent = silver.length === truth.length ? 'matches the truth' : (truth.length - silver.length) + ' real order(s) missing';
+    $('pG').innerHTML = C.table(byShop(silver));
+    $('pT').innerHTML = C.table(byShop(truth));
+  }
+  $('dArrive').onclick = function () {
+    var batch = [];
+    for (var i = 0; i < 4; i++) { var o = { id: nextId++, shop: i % 2 ? 'South' : 'North', price: 3 }; batch.push(o); truth.push(o); }
+    batch.push({ id: batch[0].id, shop: batch[0].shop, price: 3 });   /* a duplicate */
+    batch.push({ id: nextId++, shop: 'North', price: null });         /* a row with no price: not a real sale */
+    if ($('dKeep').checked) {
+      bronze = bronze.concat(batch);
+      C.log(L, 'ok', 'Batch landed in bronze untouched: 6 raw rows (4 real orders, 1 duplicate, 1 with no price).');
+    } else {
+      var got = clean(batch, $('dRule').value);
+      silver = silver.concat(got);
+      C.log(L, got.length === 4 ? 'ok' : 'bad', 'No bronze: batch cleaned on arrival with the ' + ($('dRule').value === 'bug' ? 'BUGGY' : 'correct') + ' rule. ' + got.length + ' of 4 real orders kept. The raw rows were discarded.');
+    }
+    draw();
+  };
+  $('dBuild').onclick = function () {
+    if (!$('dKeep').checked) { C.log(L, 'bad', 'Rebuild: impossible. There is no raw data to rebuild from. Silver stays at ' + silver.length + ' rows; missing orders are gone for good.'); draw(); return; }
+    silver = clean(bronze, $('dRule').value);
+    C.log(L, silver.length === truth.length ? 'ok' : 'bad', 'Rebuilt silver from all ' + bronze.length + ' bronze rows with the ' + ($('dRule').value === 'bug' ? 'BUGGY' : 'correct') + ' rule: ' + silver.length + ' of ' + truth.length + ' real orders. Gold recalculated from silver.');
+    draw(); C.bump($('pS'));
+  };
+  $('dRule').onchange = function () { C.log(L, 'skip', 'Cleaning rule changed. Tables already built are not affected until you rebuild.'); };
+  $('dKeep').onchange = function () { reset(); };
+  function reset() {
+    truth = []; bronze = []; silver = []; nextId = 101; L.innerHTML = '';
+    C.log(L, 'skip', $('dKeep').checked ? 'Three layers: bronze, silver, gold.' : 'Two layers only: data is cleaned on arrival and the raw version is not kept.'); draw();
+  }
+  $('dReset').onclick = function () { $('dKeep').checked = true; $('dRule').value = 'bug'; reset(); };
+  reset();
+})();
+</script>
+</body>
+</html>

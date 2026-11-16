@@ -1,0 +1,288 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>00-07 What is Databricks? · DE Associate course</title>
+<link rel="stylesheet" href="../../assets/course.css">
+<script src="../../assets/course.js"></script>
+</head>
+<body data-lesson="00-07">
+
+<aside class="disclaimer" aria-label="Disclaimer"><strong>Learning resource only.</strong> This is an independent, unofficial study guide made for learning purposes. It is not affiliated with, endorsed by or sponsored by Databricks. Databricks features change often, so always check the details in the <a href="https://docs.databricks.com">official Databricks documentation</a> and the official exam guide on databricks.com before relying on anything here. Databricks and related names are trademarks of their respective owners.</aside>
+
+<main class="wrap">
+
+<header class="hero">
+  <div class="eyebrow">Module 00 · Foundations · Lesson 7 of 10</div>
+  <h1>What is Databricks? Workspace, compute, notebooks</h1>
+  <p class="lede">You now know Spark and cloud storage. Databricks is the product that puts them together behind one website, so you can get on with the data.</p>
+  <dl class="where">
+    <div><dt>Module</dt><dd>00 Foundations</dd></div>
+    <div><dt>Exam objective</dt><dd>None directly. It prepares you for Module 01, which examines the platform's parts and its compute options.</dd></div>
+    <div><dt>Time to read</dt><dd>About 13 minutes</dd></div>
+    <div><dt>Before this</dt><dd><a href="05-what-is-spark.html">00-05 What is Apache Spark?</a> · <a href="06-cloud-object-storage.html">00-06 Cloud object storage</a></dd></div>
+  </dl>
+</header>
+
+<section id="idea">
+  <div class="sec-num">The idea</div>
+  <h2>One place to store, process and control data</h2>
+  <p>Running Spark yourself is hard. You would have to rent computers, install software on each one, connect them to storage, keep them secure and switch them off afterwards.</p>
+  <p><a href="../../glossary.html#databricks">Databricks</a> is a cloud platform that does all of that for you. You log in through a web browser and find three things you will use every day:</p>
+  <ul>
+    <li>A <a href="../../glossary.html#workspace">workspace</a>: the website itself. It holds your code, your jobs and your team's work, organised in folders.</li>
+    <li><a href="../../glossary.html#compute">Compute</a>: the computers that run your code. You switch them on when needed and pay while they are on.</li>
+    <li><a href="../../glossary.html#notebook">Notebooks</a>: documents made of small boxes called cells. Each cell holds some code or some notes. You run a cell and see the result right under it.</li>
+  </ul>
+  <p>Your data is not stored "in Databricks". It stays in cloud object storage (lesson 00-06). Databricks reads it from there and writes it back.</p>
+  <div class="analogy">
+    <span class="tag">Everyday analogy</span>
+    <p><strong>A shared commercial kitchen.</strong> The building, with its door key and your labelled shelf, is the workspace. The ovens are compute: they cost money only while they are on, and you pick a small or a large one. A notebook is your recipe card, where you carry out one step at a time and taste as you go. The pantry in the next room, which stays stocked when the ovens are off, is cloud storage.</p>
+  </div>
+</section>
+
+<section id="how">
+  <div class="sec-num">How it works</div>
+  <h2>From your browser to your data</h2>
+  <div class="stage">
+    <svg class="tall" viewBox="0 0 360 400" role="img" aria-label="You use a browser to reach the workspace. The workspace sends your notebook code to compute. Compute reads and writes data in cloud storage.">
+      <defs>
+        <path id="a1" d="M180 52 V88"/><path id="a2" d="M180 156 V192"/><path id="a3" d="M150 260 V296"/><path id="a4" d="M210 296 V260"/>
+      </defs>
+      <g class="wire"><use href="#a1"/><use href="#a2"/><use href="#a3"/><use href="#a4"/></g>
+      <g class="mover">
+        <circle r="5" class="dot"><animateMotion dur="1.5s" repeatCount="indefinite"><mpath href="#a1"/></animateMotion></circle>
+        <circle r="5" class="dot"><animateMotion dur="1.5s" begin="-0.5s" repeatCount="indefinite"><mpath href="#a2"/></animateMotion></circle>
+        <circle r="5" class="dot"><animateMotion dur="1.5s" begin="-1s" repeatCount="indefinite"><mpath href="#a3"/></animateMotion></circle>
+        <circle r="5" class="dot-ok"><animateMotion dur="1.5s" begin="-0.2s" repeatCount="indefinite"><mpath href="#a4"/></animateMotion></circle>
+      </g>
+      <rect class="box-soft" x="90" y="10" width="180" height="42" rx="8"/><text x="180" y="36" text-anchor="middle">You, in a web browser</text>
+      <rect class="box" x="40" y="88" width="280" height="68" rx="8"/>
+      <text class="t-b" x="180" y="112" text-anchor="middle">Workspace</text>
+      <text class="t-m" x="180" y="130" text-anchor="middle">notebooks · SQL editor · jobs · catalog</text>
+      <text class="t-m" x="180" y="146" text-anchor="middle">holds your code and settings</text>
+      <rect class="box-acc" x="40" y="192" width="280" height="68" rx="8"/>
+      <text class="t-b" x="180" y="216" text-anchor="middle">Compute</text>
+      <text class="t-m" x="180" y="234" text-anchor="middle">Spark driver and executors</text>
+      <text class="t-m" x="180" y="250" text-anchor="middle">runs your code · on only when needed</text>
+      <rect class="box" x="40" y="296" width="280" height="68" rx="8"/>
+      <text class="t-b" x="180" y="320" text-anchor="middle">Cloud object storage</text>
+      <text class="t-m" x="180" y="338" text-anchor="middle">your files and tables</text>
+      <text class="t-m" x="180" y="354" text-anchor="middle">always there</text>
+      <text class="t-m" x="180" y="386" text-anchor="middle">Code travels down. Results travel back up.</text>
+    </svg>
+  </div>
+  <h3>Attaching a notebook</h3>
+  <p>A notebook by itself is only text. To run it, you <strong>attach</strong> it to compute. The compute then remembers what your cells have done so far, such as variables you created. That memory is lost when the compute stops. Data you saved into tables is not lost, because tables live in storage.</p>
+</section>
+
+<section id="demo">
+  <div class="sec-num">Try it</div>
+  <h2>A notebook, some compute and a bill</h2>
+  <p>Try to run a cell before starting compute. Start compute, run the cells in order, then out of order. Let time pass and watch the cost. Stop compute and see what is remembered.</p>
+  <div class="stage">
+    <div class="ctrls">
+      <label class="tog">Compute type: <select id="dType">
+        <option value="classic">Classic (you configure it)</option>
+        <option value="serverless">Serverless (managed for you)</option>
+      </select></label>
+      <button id="dStart" type="button" class="primary">Start compute</button>
+      <button id="dStop" type="button">Stop compute</button>
+      <button id="dWait" type="button">30 minutes pass</button>
+      <label class="tog"><input type="checkbox" id="dAuto" checked> Stop automatically when idle</label>
+      <button id="dReset" type="button">Reset</button>
+    </div>
+    <div class="panes">
+      <div class="pane"><h4>Notebook: daily_sales</h4>
+        <div class="item"><span>1: orders = spark.table("bakery.silver.orders")</span><button type="button" data-cell="1">Run</button></div>
+        <div class="item"><span>2: north = orders.filter(shop == "North")</span><button type="button" data-cell="2">Run</button></div>
+        <div class="item"><span>3: north.write.saveAsTable("bakery.gold.north_sales")</span><button type="button" data-cell="3">Run</button></div>
+      </div>
+      <div class="pane"><h4>Compute</h4><div class="big" id="pState"></div><p class="cap" id="pMem"></p>
+        <h4>Minutes billed</h4><div class="big" id="pCost"></div>
+        <h4>Tables in storage</h4><div id="pTables"></div></div>
+    </div>
+    <div class="log" id="dLog" role="log" aria-label="What happened"></div>
+  </div>
+</section>
+
+<section id="code">
+  <div class="sec-num">Code</div>
+  <h2>What a notebook looks like</h2>
+  <p>Each block below is one cell. A notebook has a main language, and a first line starting with <code>%</code> switches the language for a single cell. Those lines are called magic commands.</p>
+<pre><code><span class="c-c"># Cell 1 (Python). The variable `spark` already exists in every notebook.</span>
+orders = spark.table(<span class="c-s">"bakery.silver.orders"</span>)
+display(orders)          <span class="c-c"># shows the rows as a table you can sort and chart</span></code></pre>
+<pre><code><span class="c-k">%sql</span>
+<span class="c-c">-- Cell 2 (SQL), in the same notebook.</span>
+<span class="c-k">SELECT</span> shop, <span class="c-k">SUM</span>(price) <span class="c-k">AS</span> total_sales
+<span class="c-k">FROM</span> bakery.silver.orders
+<span class="c-k">GROUP BY</span> shop;</code></pre>
+<pre><code><span class="c-k">%md</span>
+## Cell 3 (Markdown)
+Notes for the next reader. This cell shows formatted text and runs no code.</code></pre>
+<pre><code><span class="c-k">%run</span> ./shared_settings
+<span class="c-c"># Cell 4: runs another notebook, so its variables and functions can be used here.</span></code></pre>
+</section>
+
+<section id="whatif">
+  <div class="sec-num">What if I change this?</div>
+  <h2>Everyday choices in the workspace</h2>
+  <div class="tbl"><table class="whatif">
+    <tr><th>Change</th><th>Effect</th></tr>
+    <tr><td>Leave classic compute running overnight with auto-stop off</td><td>You pay for every idle hour. Auto-stop (called automatic termination) switches it off after a quiet period you choose.</td></tr>
+    <tr><td>Stop or restart the compute</td><td>Variables from earlier cells are gone, so you run those cells again. Tables you saved are untouched.</td></tr>
+    <tr><td>Run cells out of order</td><td>A cell that needs a variable from an earlier cell fails, because that variable does not exist yet.</td></tr>
+    <tr><td>Choose serverless instead of classic</td><td>Nothing to size or configure, and it starts in seconds, not minutes. In return you have fewer settings to tune.</td></tr>
+    <tr><td>Run a nightly job on all-purpose compute</td><td>It works, but that kind of compute is meant for people working by hand. Scheduled work belongs on jobs compute or serverless (Module 01).</td></tr>
+  </table></div>
+</section>
+
+<section id="compare">
+  <div class="sec-num">Compare</div>
+  <h2>The kinds of compute, at first glance</h2>
+  <p>Module 01 goes into cost and limits. For now, learn the names and what each is for.</p>
+  <div class="tbl"><table>
+    <tr><th></th><th>Who sets it up</th><th>Made for</th></tr>
+    <tr><td><a href="../../glossary.html#serverless">Serverless</a> compute</td><td>Databricks. You just pick it.</td><td>Notebooks, jobs and pipelines, with no setup and a fast start</td></tr>
+    <tr><td>All-purpose compute (classic)</td><td>You: machine size, number of workers, Spark version</td><td>People exploring data by hand in notebooks</td></tr>
+    <tr><td>Jobs compute (classic)</td><td>You, as part of a job's settings</td><td>Scheduled work. Starts for the run and stops after it.</td></tr>
+    <tr><td><a href="../../glossary.html#sql-warehouse">SQL warehouse</a></td><td>You pick a size. Comes in serverless, pro and classic types.</td><td>Running SQL: the SQL editor, dashboards and reporting tools</td></tr>
+  </table></div>
+  <p class="note">You will often see the word "cluster". It is the older, still common name for a classic compute resource: a driver plus its executors.</p>
+  <h3>What you find in the workspace</h3>
+  <div class="grid3">
+    <div class="card"><span class="tag">Notebooks</span><p>Cells of Python, SQL, Scala or R, with results shown inline.</p></div>
+    <div class="card"><span class="tag">SQL editor</span><p>A place to write and run SQL queries against a SQL warehouse.</p></div>
+    <div class="card"><span class="tag">Catalog</span><p>A browser for all your tables and files, and who may use them (lesson 00-09).</p></div>
+    <div class="card"><span class="tag">Jobs and pipelines</span><p>Where notebooks and queries are scheduled to run without a person (Module 04).</p></div>
+    <div class="card"><span class="tag">Compute</span><p>The page where compute is created, started, stopped and watched.</p></div>
+    <div class="card"><span class="tag">Git folders</span><p>Folders linked to a code repository, so changes are tracked (Module 05).</p></div>
+  </div>
+</section>
+
+<section id="scenarios">
+  <div class="sec-num">Real life</div>
+  <h2>First-week mistakes</h2>
+  <div class="tbl"><table>
+    <tr><th>Scenario</th><th>What happens</th><th>Fix</th></tr>
+    <tr><td>You open a notebook after lunch and cell 5 fails with "name is not defined"</td><td>The compute stopped while idle and forgot your variables</td><td>Run the earlier cells again from the top</td></tr>
+    <tr><td>The monthly bill is far higher than expected</td><td>Large all-purpose compute was left on over several weekends</td><td>Turn on automatic termination, or use serverless</td></tr>
+    <tr><td>A colleague cannot see your notebook</td><td>It sits in your personal folder</td><td>Move it to a shared folder or a Git folder and grant access</td></tr>
+    <tr><td>A notebook works when you run it by hand but fails as a job</td><td>It relied on variables left over from cells you ran earlier, in a different order</td><td>Make sure it runs correctly from top to bottom on fresh compute</td></tr>
+  </table></div>
+</section>
+
+<section id="traps">
+  <div class="sec-num">Don't confuse these</div>
+  <h2>Easy mix-ups</h2>
+  <div class="grid2">
+    <div class="card trap"><span class="tag">Workspace vs storage</span><p>The workspace keeps code and settings. Your data sits in cloud object storage. Deleting a notebook does not delete a table.</p></div>
+    <div class="card trap"><span class="tag">Notebook state vs saved data</span><p>Variables live in the compute's memory and vanish when it stops. Tables live in storage and stay.</p></div>
+    <div class="card trap"><span class="tag">All-purpose vs jobs compute</span><p>All-purpose is for interactive work by people. Jobs compute exists only for the length of one scheduled run.</p></div>
+    <div class="card trap"><span class="tag">Cluster vs SQL warehouse</span><p>Both are compute. A cluster runs notebooks in any language. A SQL warehouse is built to run SQL.</p></div>
+  </div>
+</section>
+
+<section id="quiz">
+  <div class="sec-num">Check yourself</div>
+  <h2>Quiz</h2>
+  <div class="quiz">
+    <fieldset>
+      <legend>1. Where is the data in your tables actually kept?</legend>
+      <label><input type="radio"> Inside the notebook</label>
+      <label><input type="radio"> In the memory of the compute</label>
+      <label><input type="radio" data-correct> In cloud object storage</label>
+      <p class="explain" hidden>Compute only processes data. The files behind every table sit in storage and outlive any compute.</p>
+    </fieldset>
+    <fieldset>
+      <legend>2. In the demo, you stopped the compute after running all three cells. What survived?</legend>
+      <label><input type="radio"> The variables <code>orders</code> and <code>north</code></label>
+      <label><input type="radio" data-correct> The table <code>bakery.gold.north_sales</code></label>
+      <label><input type="radio"> Nothing at all</label>
+      <p class="explain" hidden>Variables are held in the compute's memory and are lost. The table was written to storage, so it is still there.</p>
+    </fieldset>
+    <fieldset>
+      <legend>3. What does the <code>%sql</code> line at the top of a notebook cell do?</legend>
+      <label><input type="radio" data-correct> Makes that one cell run as SQL</label>
+      <label><input type="radio"> Changes the language of the whole notebook</label>
+      <label><input type="radio"> Starts a SQL warehouse</label>
+      <p class="explain" hidden>A magic command applies to its own cell only. The other cells keep the notebook's main language.</p>
+    </fieldset>
+    <fieldset>
+      <legend>4. Which compute is intended for a person exploring data by hand in a notebook, with settings they chose themselves?</legend>
+      <label><input type="radio"> Jobs compute</label>
+      <label><input type="radio" data-correct> All-purpose compute</label>
+      <label><input type="radio"> None. Notebooks need no compute.</label>
+      <p class="explain" hidden>All-purpose compute stays up for interactive work. Jobs compute starts and stops with one scheduled run.</p>
+    </fieldset>
+  </div>
+</section>
+
+<section id="wrap">
+  <div class="sec-num">Wrap up</div>
+  <h2>Key takeaways</h2>
+  <ul>
+    <li>Databricks is a cloud platform that runs Spark and manages the pieces around it.</li>
+    <li>The workspace holds your code. Compute runs it. Storage holds the data.</li>
+    <li>A notebook must be attached to compute before its cells can run.</li>
+    <li>You pay for compute while it is on, so let it stop when idle.</li>
+    <li>Stopping compute loses variables, never tables.</li>
+  </ul>
+  <h3>Glossary terms used</h3>
+  <p><a href="../../glossary.html#databricks">Databricks</a> · <a href="../../glossary.html#workspace">workspace</a> · <a href="../../glossary.html#compute">compute</a> · <a href="../../glossary.html#notebook">notebook</a> · <a href="../../glossary.html#cluster">cluster</a> · <a href="../../glossary.html#serverless">serverless</a> · <a href="../../glossary.html#sql-warehouse">SQL warehouse</a></p>
+  <h3>Official docs</h3>
+  <ul>
+    <li><a href="https://docs.databricks.com/aws/en/getting-started/concepts">Databricks components</a></li>
+    <li><a href="https://docs.databricks.com/aws/en/compute/">Compute</a></li>
+    <li><a href="https://docs.databricks.com/aws/en/notebooks/">Notebooks</a></li>
+    <li><a href="https://docs.databricks.com/aws/en/workspace/">Workspace</a></li>
+  </ul>
+  <p class="cap">Last verified: 16 November 2026</p>
+</section>
+
+</main>
+
+<script>
+(function () {
+  var C = window.Course, $ = function (id) { return document.getElementById(id); }, L = $('dLog');
+  var on, vars, tables, billed, idle;
+  function draw() {
+    $('pState').textContent = on ? 'Running' : 'Stopped';
+    $('pMem').textContent = on ? 'Remembers: ' + (Object.keys(vars).join(', ') || 'nothing yet') : 'Remembers nothing while stopped';
+    $('pCost').textContent = billed;
+    $('pTables').innerHTML = tables.map(function (t) { return '<div class="item"><span>' + t + '</span></div>'; }).join('');
+  }
+  function stop(why) { on = false; var lost = Object.keys(vars); vars = {}; C.log(L, 'bad', why + (lost.length ? ' Variables lost: ' + lost.join(', ') + '.' : '') + ' Tables in storage: unchanged.'); }
+  $('dStart').onclick = function () {
+    if (on) { C.log(L, 'skip', 'Compute is already running.'); return; }
+    on = true; idle = 0;
+    var classic = $('dType').value === 'classic'; if (classic) billed += 5;
+    C.log(L, 'ok', classic ? 'Classic compute started after a few minutes of setting up machines (5 in this demo).' : 'Serverless compute was ready in seconds.'); draw();
+  };
+  $('dStop').onclick = function () { if (on) stop('Compute stopped by you.'); else C.log(L, 'skip', 'Compute is already stopped.'); draw(); };
+  $('dWait').onclick = function () {
+    if (!on) { C.log(L, 'skip', '30 minutes pass. Compute is off, so nothing is billed.'); return; }
+    billed += 30; idle += 30; C.log(L, 'skip', '30 minutes pass with nobody running anything. 30 more minutes billed.');
+    if ($('dAuto').checked && idle >= 60) stop('Idle for 60 minutes: compute stopped itself.');
+    draw();
+  };
+  document.querySelectorAll('[data-cell]').forEach(function (b) {
+    b.onclick = function () {
+      var n = b.getAttribute('data-cell');
+      if (!on) { C.log(L, 'bad', 'Cell ' + n + ': cannot run. The notebook is not attached to running compute.'); return; }
+      idle = 0; billed += 1;
+      if (n === '1') { vars.orders = 1; C.log(L, 'ok', 'Cell 1: ran. The variable "orders" now exists on the compute.'); }
+      else if (n === '2') { if (!vars.orders) C.log(L, 'bad', 'Cell 2: error, name "orders" is not defined. Run cell 1 first.'); else { vars.north = 1; C.log(L, 'ok', 'Cell 2: ran. The variable "north" now exists.'); } }
+      else { if (!vars.north) C.log(L, 'bad', 'Cell 3: error, name "north" is not defined. Run cell 2 first.'); else { if (tables.indexOf('bakery.gold.north_sales') < 0) tables.push('bakery.gold.north_sales'); C.log(L, 'ok', 'Cell 3: ran. Table bakery.gold.north_sales written to storage.'); } }
+      draw();
+    };
+  });
+  function reset() { on = false; vars = {}; tables = ['bakery.silver.orders']; billed = 0; idle = 0; L.innerHTML = ''; C.log(L, 'skip', 'The notebook is open. Compute is stopped.'); draw(); }
+  $('dReset').onclick = reset;
+  reset();
+})();
+</script>
+</body>
+</html>

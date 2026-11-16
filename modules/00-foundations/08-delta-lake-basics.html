@@ -1,0 +1,313 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>00-08 Delta Lake basics · DE Associate course</title>
+<link rel="stylesheet" href="../../assets/course.css">
+<script src="../../assets/course.js"></script>
+</head>
+<body data-lesson="00-08">
+
+<aside class="disclaimer" aria-label="Disclaimer"><strong>Learning resource only.</strong> This is an independent, unofficial study guide made for learning purposes. It is not affiliated with, endorsed by or sponsored by Databricks. Databricks features change often, so always check the details in the <a href="https://docs.databricks.com">official Databricks documentation</a> and the official exam guide on databricks.com before relying on anything here. Databricks and related names are trademarks of their respective owners.</aside>
+
+<main class="wrap">
+
+<header class="hero">
+  <div class="eyebrow">Module 00 · Foundations · Lesson 8 of 10</div>
+  <h1>Delta Lake basics</h1>
+  <p class="lede">Object storage only holds files that cannot be edited. Delta Lake is the trick that makes those files behave like a proper, safe, changeable table.</p>
+  <dl class="where">
+    <div><dt>Module</dt><dd>00 Foundations</dd></div>
+    <div><dt>Exam objective</dt><dd>None directly. It prepares you for objective 1.1 in Module 01, which expects you to know what Delta Lake does for the platform.</dd></div>
+    <div><dt>Time to read</dt><dd>About 14 minutes</dd></div>
+    <div><dt>Before this</dt><dd><a href="03-file-formats.html">00-03 File formats</a> · <a href="07-what-is-databricks.html">00-07 What is Databricks?</a></dd></div>
+  </dl>
+</header>
+
+<section id="idea">
+  <div class="sec-num">The idea</div>
+  <h2>Data files plus a diary of every change</h2>
+  <p>Lesson 00-06 left us with a problem. Objects in cloud storage cannot be edited, only replaced. So how do you change one row in a table of a billion rows? And what do readers see if a job crashes halfway through writing?</p>
+  <p><a href="../../glossary.html#delta-lake">Delta Lake</a> is the answer. It is an open-source way of storing a table as two things in one folder:</p>
+  <ul>
+    <li><strong>Data files</strong> in Parquet format, holding the rows.</li>
+    <li>A <a href="../../glossary.html#transaction-log">transaction log</a>: a small diary that records, in order, every change ever made. Each entry says which data files were added and which are no longer in use.</li>
+  </ul>
+  <p>The log is the boss. A data file counts as part of the table only if the log says so. To read the table, Spark reads the log first to learn which files to open.</p>
+  <p>On Databricks, tables are Delta tables by default. You have been looking at Delta tables since lesson 00-01.</p>
+  <div class="analogy">
+    <span class="tag">Everyday analogy</span>
+    <p><strong>A club's membership book.</strong> Membership cards sit in a drawer (the data files). The book at the front desk (the log) lists who is a member right now. When someone leaves, nobody hunts for their card. The secretary writes "card 17 no longer valid" in the book. The old card stays in the drawer for a while, but the book is what counts. Because every line in the book is dated, you can also work out who was a member last Tuesday.</p>
+  </div>
+</section>
+
+<section id="how">
+  <div class="sec-num">How it works</div>
+  <h2>A write is two steps, and only the second one counts</h2>
+  <div class="stage">
+    <svg class="tall" viewBox="0 0 360 356" role="img" aria-label="A writer first adds a new data file, then adds an entry to the transaction log. Readers consult the log to know which files to read.">
+      <defs>
+        <path id="w1" d="M90 50 V228"/>
+        <path id="w2" d="M270 50 V98"/>
+        <path id="r1" d="M270 196 V228"/>
+      </defs>
+      <g class="wire"><use href="#w1"/><use href="#w2"/><use href="#r1"/></g>
+      <g class="mover">
+        <circle r="5" class="dot"><animateMotion dur="2.4s" repeatCount="indefinite"><mpath href="#w1"/></animateMotion></circle>
+        <circle r="5" class="dot"><animateMotion dur="1.2s" begin="-0.4s" repeatCount="indefinite"><mpath href="#w2"/></animateMotion></circle>
+        <circle r="5" class="dot-ok"><animateMotion dur="1.2s" repeatCount="indefinite"><mpath href="#r1"/></animateMotion></circle>
+      </g>
+      <rect class="box-soft" x="60" y="10" width="240" height="40" rx="8"/><text x="180" y="35" text-anchor="middle">A write: UPDATE one price</text>
+      <text class="t-m" x="98" y="140">1. write a</text><text class="t-m" x="98" y="156">new data file</text>
+      <rect class="box-acc" x="190" y="98" width="160" height="98" rx="8"/>
+      <text class="t-b" x="270" y="120" text-anchor="middle">_delta_log</text>
+      <text class="mono" x="202" y="142">0: add file A</text>
+      <text class="mono" x="202" y="160">1: add file B</text>
+      <text class="mono" x="202" y="178">2: remove A, add C</text>
+      <text class="t-m" x="270" y="216" text-anchor="middle">2. commit: add a log entry</text>
+      <rect class="box" x="10" y="228" width="340" height="86" rx="8"/>
+      <text class="t-b" x="180" y="250" text-anchor="middle">Data files (Parquet)</text>
+      <g class="box-soft"><rect x="26" y="264" width="92" height="36" rx="4"/><rect x="134" y="264" width="92" height="36" rx="4"/><rect x="242" y="264" width="92" height="36" rx="4"/></g>
+      <text x="72" y="287" text-anchor="middle">A (old)</text><text x="180" y="287" text-anchor="middle">B</text><text x="288" y="287" text-anchor="middle">C (new)</text>
+      <text class="t-m" x="180" y="338" text-anchor="middle">Current table = B + C. File A is ignored but still on disk.</text>
+    </svg>
+    <p class="cap">If the job crashes after step 1 and before step 2, the new file is never mentioned in the log. Readers never see it.</p>
+  </div>
+  <p>Each log entry creates a new numbered <strong>version</strong> of the table, starting at 0. Because old files stay on disk for a while, you can ask for the table as it was at an earlier version. This is called <a href="../../glossary.html#time-travel">time travel</a>.</p>
+  <p>Old, unused files do not stay for ever. A clean-up command called <a href="../../glossary.html#vacuum">VACUUM</a> deletes files that the current version no longer uses and that are older than a retention period.</p>
+</section>
+
+<section id="demo">
+  <div class="sec-num">Try it</div>
+  <h2>Be the transaction log</h2>
+  <p>Insert, update and delete. Watch files pile up while the log decides which ones count. Travel back to an old version. Then run VACUUM and try the same trip again.</p>
+  <div class="stage">
+    <div class="ctrls">
+      <button id="dIns" type="button" class="primary">INSERT an order</button>
+      <button id="dUpd" type="button" class="primary">UPDATE: +1.00 on the first order</button>
+      <button id="dDel" type="button" class="primary">DELETE the last order</button>
+      <button id="dCrash" type="button">Write that crashes halfway</button>
+    </div>
+    <div class="ctrls">
+      <label class="tog">Read as of version: <select id="dVer"></select></label>
+      <button id="dVac" type="button">8 days pass, then VACUUM</button>
+      <button id="dReset" type="button">Reset</button>
+    </div>
+    <div class="panes">
+      <div class="pane"><h4>Transaction log</h4><div id="pLog"></div></div>
+      <div class="pane"><h4>Data files on disk</h4><div id="pFiles"></div></div>
+      <div class="pane"><h4 id="hRows">Table contents</h4><div id="pRows"></div></div>
+    </div>
+    <div class="log" id="dLog" role="log" aria-label="What happened"></div>
+    <p class="cap">In this demo every write makes one small file holding all the rows. Real tables have many files and only rewrite the ones that contain changed rows.</p>
+  </div>
+</section>
+
+<section id="code">
+  <div class="sec-num">Code</div>
+  <h2>Everyday Delta commands</h2>
+<pre><code><span class="c-c">-- A new table on Databricks is a Delta table unless you say otherwise.</span>
+<span class="c-k">CREATE TABLE</span> bakery.silver.orders (order_id <span class="c-k">INT</span>, shop <span class="c-k">STRING</span>, price <span class="c-k">DECIMAL</span>(10,2));
+
+<span class="c-k">INSERT INTO</span> bakery.silver.orders <span class="c-k">VALUES</span> (101, <span class="c-s">'North'</span>, 4.50);      <span class="c-c">-- version 1</span>
+<span class="c-k">UPDATE</span> bakery.silver.orders <span class="c-k">SET</span> price = 5.50 <span class="c-k">WHERE</span> order_id = 101;  <span class="c-c">-- version 2</span>
+<span class="c-k">DELETE FROM</span> bakery.silver.orders <span class="c-k">WHERE</span> order_id = 101;             <span class="c-c">-- version 3</span>
+
+<span class="c-c">-- Read the diary: one line per version, with who did what and when.</span>
+<span class="c-k">DESCRIBE HISTORY</span> bakery.silver.orders;
+
+<span class="c-c">-- Time travel: read the table as it used to be.</span>
+<span class="c-k">SELECT</span> * <span class="c-k">FROM</span> bakery.silver.orders <span class="c-k">VERSION AS OF</span> 2;
+<span class="c-k">SELECT</span> * <span class="c-k">FROM</span> bakery.silver.orders <span class="c-k">TIMESTAMP AS OF</span> <span class="c-s">'2026-11-15 09:00:00'</span>;
+
+<span class="c-c">-- Undo a mistake: make an old version the current one again.</span>
+<span class="c-k">RESTORE TABLE</span> bakery.silver.orders <span class="c-k">TO VERSION AS OF</span> 2;
+
+<span class="c-c">-- Clean up data files that are no longer used and are past the retention period.</span>
+<span class="c-k">VACUUM</span> bakery.silver.orders;</code></pre>
+  <p>The same time travel in Python:</p>
+<pre><code>old_orders = spark.read.option(<span class="c-s">"versionAsOf"</span>, 2).table(<span class="c-s">"bakery.silver.orders"</span>)</code></pre>
+</section>
+
+<section id="whatif">
+  <div class="sec-num">What if I change this?</div>
+  <h2>History, clean-up and safety</h2>
+  <div class="tbl"><table class="whatif">
+    <tr><th>Change</th><th>Effect</th></tr>
+    <tr><td>Run <code>VACUUM</code></td><td>Unused data files older than the retention period are deleted for good. The default period is 7 days. Time travel to versions that needed those files stops working.</td></tr>
+    <tr><td>Never run <code>VACUUM</code></td><td>Every old file is kept, and storage costs keep growing. On Databricks, a feature called predictive optimization can run this clean-up for you on managed tables (Module 06).</td></tr>
+    <tr><td>Want more than 7 days of time travel</td><td>Raise the table property <code>delta.deletedFileRetentionDuration</code>. Log entries are kept for 30 days by default (<code>delta.logRetentionDuration</code>). The shorter of the two is your real limit, and keeping more costs more storage.</td></tr>
+    <tr><td>Insert a row whose columns do not match the table</td><td>The write is refused. Delta checks every write against the table's schema. This is called schema enforcement.</td></tr>
+    <tr><td>Delete data files by hand in cloud storage</td><td>The log still points at them, and reads fail. Always change a Delta table through SQL or Spark, never through the storage browser.</td></tr>
+  </table></div>
+</section>
+
+<section id="compare">
+  <div class="sec-num">Compare</div>
+  <h2>A folder of Parquet files vs a Delta table</h2>
+  <div class="tbl"><table>
+    <tr><th></th><th>Plain Parquet folder</th><th>Delta table</th></tr>
+    <tr><td>What is in the folder</td><td>Data files only</td><td>Data files and a <code>_delta_log</code> folder</td></tr>
+    <tr><td>Update or delete rows</td><td>Rewrite files yourself</td><td><code>UPDATE</code>, <code>DELETE</code>, <code>MERGE</code></td></tr>
+    <tr><td>A job crashes mid-write</td><td>Readers may see half the data</td><td>Readers see the old version, complete</td></tr>
+    <tr><td>Read while someone writes</td><td>Results can be inconsistent</td><td>Each reader sees one complete version</td></tr>
+    <tr><td>See yesterday's data</td><td>Not possible</td><td>Time travel</td></tr>
+    <tr><td>Reject wrong columns</td><td>No</td><td>Yes, schema enforcement</td></tr>
+  </table></div>
+  <h3>ACID: four promises of a reliable table</h3>
+  <p>The guarantees above have a collective name, <a href="../../glossary.html#acid">ACID</a>. A change that keeps all four promises is called a transaction.</p>
+  <div class="grid2">
+    <div class="card"><span class="tag">Atomicity</span><p>A change happens completely or not at all. Never half.</p></div>
+    <div class="card"><span class="tag">Consistency</span><p>The table always obeys its rules, such as its schema, before and after every change.</p></div>
+    <div class="card"><span class="tag">Isolation</span><p>People working at the same time do not see each other's unfinished changes.</p></div>
+    <div class="card"><span class="tag">Durability</span><p>Once a change is confirmed, it stays, even if a machine fails a second later.</p></div>
+  </div>
+</section>
+
+<section id="scenarios">
+  <div class="sec-num">Real life</div>
+  <h2>Delta earning its keep</h2>
+  <div class="tbl"><table>
+    <tr><th>Scenario</th><th>What happens</th><th>Fix</th></tr>
+    <tr><td>Someone runs <code>DELETE</code> without a <code>WHERE</code> and empties a table</td><td>The table has zero rows, but the old files are still on disk</td><td><code>RESTORE TABLE ... TO VERSION AS OF</code> the version before the delete</td></tr>
+    <tr><td>The nightly load fails halfway</td><td>No partial data appears. Morning reports show yesterday's complete data.</td><td>Rerun the load. Nothing needs cleaning up first.</td></tr>
+    <tr><td>Finance asks "what did this table say on the 1st?" three weeks later</td><td>With default settings, files that old may already be vacuumed away</td><td>If you need long history, raise the retention settings in advance, or save dated copies</td></tr>
+    <tr><td>Storage for one table is ten times the size of its data</td><td>Years of old file versions were never cleaned up</td><td>Run <code>VACUUM</code>, or let predictive optimization do it</td></tr>
+  </table></div>
+</section>
+
+<section id="traps">
+  <div class="sec-num">Don't confuse these</div>
+  <h2>Delta mix-ups</h2>
+  <div class="grid2">
+    <div class="card trap"><span class="tag">DELETE vs VACUUM</span><p><code>DELETE</code> removes rows from the current version. The files stay, so you can travel back. <code>VACUUM</code> removes old files from disk. After that, there is no going back.</p></div>
+    <div class="card trap"><span class="tag">Delta vs Parquet</span><p>Delta stores its data in Parquet files. The log is the extra part. Without the log it is only a folder of files.</p></div>
+    <div class="card trap"><span class="tag">Three "Delta" names</span><p>Delta Lake is the table format. Delta Live Tables is the old name of a pipeline product, now Lakeflow Spark Declarative Pipelines. Delta Sharing is a way to share data with other organisations.</p></div>
+    <div class="card trap"><span class="tag">Time travel vs backup</span><p>Time travel depends on old files that <code>VACUUM</code> removes. It is a short-term undo, not a long-term archive.</p></div>
+  </div>
+</section>
+
+<section id="quiz">
+  <div class="sec-num">Check yourself</div>
+  <h2>Quiz</h2>
+  <div class="quiz">
+    <fieldset>
+      <legend>1. What decides which data files are part of a Delta table right now?</legend>
+      <label><input type="radio"> Every Parquet file in the folder</label>
+      <label><input type="radio" data-correct> The transaction log</label>
+      <label><input type="radio"> The newest file only</label>
+      <p class="explain" hidden>Files the log does not list are ignored, even though they sit in the same folder.</p>
+    </fieldset>
+    <fieldset>
+      <legend>2. In the demo, what did readers see after the write that crashed halfway?</legend>
+      <label><input type="radio"> Half of the new rows</label>
+      <label><input type="radio"> An error on every query</label>
+      <label><input type="radio" data-correct> The previous version, unchanged</label>
+      <p class="explain" hidden>The crashed write left a file on disk but no log entry. With no entry, the file is not part of the table.</p>
+    </fieldset>
+    <fieldset>
+      <legend>3. With default settings, how far back should you rely on time travel?</legend>
+      <label><input type="radio"> 24 hours</label>
+      <label><input type="radio" data-correct> 7 days</label>
+      <label><input type="radio"> For ever</label>
+      <p class="explain" hidden>Unused data files are kept for 7 days by default before VACUUM may delete them. The log is kept for 30 days, but the log alone cannot rebuild rows whose files are gone.</p>
+    </fieldset>
+    <fieldset>
+      <legend>4. A colleague wiped a table with a bad <code>DELETE</code> ten minutes ago. What is the quickest safe fix?</legend>
+      <label><input type="radio"> Run <code>VACUUM</code></label>
+      <label><input type="radio" data-correct> <code>RESTORE TABLE</code> to the version before the delete</label>
+      <label><input type="radio"> Copy the Parquet files back by hand</label>
+      <p class="explain" hidden>RESTORE makes the earlier version current again. VACUUM would do the opposite and destroy the files you need.</p>
+    </fieldset>
+  </div>
+</section>
+
+<section id="wrap">
+  <div class="sec-num">Wrap up</div>
+  <h2>Key takeaways</h2>
+  <ul>
+    <li>A Delta table is Parquet data files plus a transaction log.</li>
+    <li>The log decides which files count, so writes are all-or-nothing.</li>
+    <li>Every change makes a new version. Old versions can be read with time travel.</li>
+    <li><code>VACUUM</code> deletes old files and, with them, old history. The default retention is 7 days.</li>
+    <li>Delta is the default table format on Databricks.</li>
+  </ul>
+  <h3>Glossary terms used</h3>
+  <p><a href="../../glossary.html#delta-lake">Delta Lake</a> · <a href="../../glossary.html#transaction-log">transaction log</a> · <a href="../../glossary.html#time-travel">time travel</a> · <a href="../../glossary.html#vacuum">VACUUM</a> · <a href="../../glossary.html#acid">ACID</a> · <a href="../../glossary.html#parquet">Parquet</a></p>
+  <h3>Official docs</h3>
+  <ul>
+    <li><a href="https://docs.databricks.com/aws/en/delta/">What is Delta Lake?</a></li>
+    <li><a href="https://docs.databricks.com/aws/en/delta/history">Work with table history</a></li>
+    <li><a href="https://docs.databricks.com/aws/en/delta/vacuum">Remove unused data files with vacuum</a></li>
+    <li><a href="https://docs.databricks.com/aws/en/lakehouse/acid">ACID guarantees on Databricks</a></li>
+  </ul>
+  <p class="cap">Last verified: 16 November 2026</p>
+</section>
+
+</main>
+
+<script>
+(function () {
+  var C = window.Course, $ = function (id) { return document.getElementById(id); }, L = $('dLog');
+  /* files: name -> {rows, onDisk, orphan}. versions: [{op, file}] where file is the one data file that version points at. */
+  var files, versions, nextFile, nextId;
+  function current() { return files[versions[versions.length - 1].file].rows; }
+  function commit(op, rows) {
+    var name = 'part-' + String(nextFile++).padStart(3, '0') + '.parquet';
+    files[name] = { rows: rows, onDisk: true };
+    versions.push({ op: op, file: name });
+    C.log(L, 'ok', op + ': wrote ' + name + ', then committed version ' + (versions.length - 1) + ' to the log.');
+    $('dVer').dataset.keep = ''; draw(true);
+  }
+  function draw(latest) {
+    var sel = $('dVer'), want = latest ? versions.length - 1 : +sel.value;
+    sel.innerHTML = versions.map(function (v, i) { return '<option value="' + i + '">' + i + (i === versions.length - 1 ? ' (current)' : '') + '</option>'; }).join('');
+    sel.value = Math.min(want, versions.length - 1);
+    var live = versions[versions.length - 1].file;
+    $('pLog').innerHTML = versions.map(function (v, i) { return '<div class="item' + (i === +sel.value ? ' hot' : '') + '"><span>' + i + ': ' + v.op + '</span><span>' + v.file.slice(5, 8) + '</span></div>'; }).join('');
+    $('pFiles').innerHTML = Object.keys(files).map(function (n) {
+      var f = files[n];
+      return '<div class="item' + (f.onDisk ? '' : ' off') + '"><span>' + n + '</span><span>' + (!f.onDisk ? 'deleted' : n === live ? 'in use' : f.orphan ? 'not in log' : 'old') + '</span></div>';
+    }).join('');
+    var v = versions[+sel.value], f = files[v.file];
+    $('hRows').textContent = 'Table as of version ' + sel.value;
+    $('pRows').innerHTML = f.onDisk ? C.table(f.rows) : '<p class="note trap">Cannot read: ' + v.file + ' was removed by VACUUM.</p>';
+  }
+  $('dIns').onclick = function () { var id = nextId++; commit('INSERT', current().concat([{ order_id: id, shop: id % 2 ? 'North' : 'South', price: '3.00' }])); };
+  $('dUpd').onclick = function () {
+    var rows = current(); if (!rows.length) { C.log(L, 'skip', 'UPDATE: the table is empty, nothing to change.'); return; }
+    commit('UPDATE', rows.map(function (r, i) { return i ? r : { order_id: r.order_id, shop: r.shop, price: (+r.price + 1).toFixed(2) }; }));
+  };
+  $('dDel').onclick = function () {
+    var rows = current(); if (!rows.length) { C.log(L, 'skip', 'DELETE: the table is already empty.'); return; }
+    commit('DELETE', rows.slice(0, -1));
+  };
+  $('dCrash').onclick = function () {
+    var name = 'part-' + String(nextFile++).padStart(3, '0') + '.parquet';
+    files[name] = { rows: [], onDisk: true, orphan: true };
+    C.log(L, 'bad', 'Crash: ' + name + ' was written, but the job died before the log entry. The table is still at version ' + (versions.length - 1) + '.'); draw(true);
+  };
+  $('dVer').onchange = function () {
+    var v = versions[+$('dVer').value];
+    C.log(L, files[v.file].onDisk ? 'ok' : 'bad', 'SELECT ... VERSION AS OF ' + $('dVer').value + (files[v.file].onDisk ? ': read ' + v.file + '.' : ': FAILED. The file it needs is gone.'));
+    draw(false);
+  };
+  $('dVac').onclick = function () {
+    var live = versions[versions.length - 1].file, gone = 0;
+    Object.keys(files).forEach(function (n) { if (n !== live && files[n].onDisk) { files[n].onDisk = false; gone++; } });
+    C.log(L, gone ? 'bad' : 'skip', 'VACUUM after 8 days: ' + gone + ' unused file(s) older than the 7-day retention deleted. The log still lists every version, but old versions can no longer be read.');
+    draw(false);
+  };
+  function reset() {
+    files = {}; versions = []; nextFile = 0; nextId = 101; L.innerHTML = '';
+    files['part-000.parquet'] = { rows: [], onDisk: true }; nextFile = 1; versions.push({ op: 'CREATE TABLE', file: 'part-000.parquet' });
+    C.log(L, 'skip', 'CREATE TABLE: version 0, an empty table.');
+    draw(true);
+  }
+  $('dReset').onclick = reset;
+  reset();
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,277 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>00-03 File formats · DE Associate course</title>
+<link rel="stylesheet" href="../../assets/course.css">
+<script src="../../assets/course.js"></script>
+</head>
+<body data-lesson="00-03">
+
+<aside class="disclaimer" aria-label="Disclaimer"><strong>Learning resource only.</strong> This is an independent, unofficial study guide made for learning purposes. It is not affiliated with, endorsed by or sponsored by Databricks. Databricks features change often, so always check the details in the <a href="https://docs.databricks.com">official Databricks documentation</a> and the official exam guide on databricks.com before relying on anything here. Databricks and related names are trademarks of their respective owners.</aside>
+
+<main class="wrap">
+
+<header class="hero">
+  <div class="eyebrow">Module 00 · Foundations · Lesson 3 of 10</div>
+  <h1>File formats: CSV, JSON, Parquet and friends</h1>
+  <p class="lede">The same orders can be written to disk in very different ways. The way you choose decides how big the file is and how fast it can be read.</p>
+  <dl class="where">
+    <div><dt>Module</dt><dd>00 Foundations</dd></div>
+    <div><dt>Exam objective</dt><dd>None directly. You need this to follow ingestion (Module 02), where files in these formats are loaded into tables.</dd></div>
+    <div><dt>Time to read</dt><dd>About 12 minutes</dd></div>
+    <div><dt>Before this</dt><dd><a href="02-files-vs-tables.html">00-02 Files vs tables</a></dd></div>
+  </dl>
+</header>
+
+<section id="idea">
+  <div class="sec-num">The idea</div>
+  <h2>A format is a set of rules for writing data into a file</h2>
+  <p>A <a href="../../glossary.html#file-format">file format</a> is an agreement about how the data inside a file is laid out. The part of the file name after the dot usually tells you the format: <code>.csv</code>, <code>.json</code>, <code>.parquet</code>.</p>
+  <p>Some formats are plain text that a person can open and read. Others are written for machines: smaller and faster, but unreadable to the eye.</p>
+  <p>The biggest difference is the direction the data is stored in. <strong>Row-based</strong> formats write one whole record after another. <a href="../../glossary.html#columnar">Columnar</a> formats write all the values of one column together, then the next column.</p>
+  <div class="analogy">
+    <span class="tag">Everyday analogy</span>
+    <p><strong>A class register.</strong> Row-based is one index card per pupil, with name, age and grade on each card. To find the average grade you must pick up every card. Columnar is three lists: all the names, all the ages, all the grades. For the average grade you read only the grades list and ignore the rest.</p>
+  </div>
+</section>
+
+<section id="how">
+  <div class="sec-num">How it works</div>
+  <h2>Reading one column from each kind of file</h2>
+  <p>The question is "what is the total price?". Only the price column is needed. Watch how much each reader has to touch.</p>
+  <div class="stage">
+    <svg class="tall" viewBox="0 0 360 330" role="img" aria-label="A row-based reader visits every cell. A columnar reader visits only the price column.">
+      <defs>
+        <path id="zig" d="M52 62 H308 M52 92 H308 M52 122 H308"/>
+        <path id="col" d="M266 212 V300"/>
+      </defs>
+      <text class="t-b" x="20" y="24">Row-based (CSV, JSON, Avro)</text>
+      <text class="t-m" x="20" y="40">reads every value of every row</text>
+      <g class="box"><rect x="20" y="48" width="320" height="90" rx="6"/></g>
+      <g class="wire"><path d="M20 78 H340 M20 108 H340 M126 48 V138 M232 48 V138"/></g>
+      <text x="32" y="67">101</text><text x="138" y="67">North</text><text x="244" y="67">4.50</text>
+      <text x="32" y="97">102</text><text x="138" y="97">South</text><text x="244" y="97">3.00</text>
+      <text x="32" y="127">103</text><text x="138" y="127">North</text><text x="244" y="127">1.80</text>
+      <text class="t-b" x="20" y="176">Columnar (Parquet, ORC)</text>
+      <text class="t-m" x="20" y="192">reads only the column it needs</text>
+      <g class="box"><rect x="20" y="200" width="320" height="110" rx="6"/></g>
+      <rect class="box-acc" x="232" y="200" width="108" height="110" rx="6"/>
+      <g class="wire"><path d="M126 200 V310 M232 200 V310"/></g>
+      <text x="32" y="225">101</text><text x="32" y="255">102</text><text x="32" y="285">103</text>
+      <text x="138" y="225">North</text><text x="138" y="255">South</text><text x="138" y="285">North</text>
+      <text x="282" y="225">4.50</text><text x="282" y="255">3.00</text><text x="282" y="285">1.80</text>
+      <g class="mover">
+        <circle r="6" class="dot"><animateMotion dur="4.5s" repeatCount="indefinite"><mpath href="#zig"/></animateMotion></circle>
+        <circle r="6" class="dot-ok"><animateMotion dur="1.5s" repeatCount="indefinite"><mpath href="#col"/></animateMotion></circle>
+      </g>
+    </svg>
+    <p class="cap">With 3 columns the saving is small. Real tables often have 50 or more columns, and most questions use only a few of them.</p>
+  </div>
+  <p>Columnar files have a second advantage. Values in one column look alike (many "North", many "South"), so they squash down well. Making data smaller this way is called <a href="../../glossary.html#compression">compression</a>.</p>
+</section>
+
+<section id="demo">
+  <div class="sec-num">Try it</div>
+  <h2>See the same orders in each format</h2>
+  <p>Switch the format and watch the file contents change. Add orders and compare the sizes. Then tick the box to ask for just one column.</p>
+  <div class="stage">
+    <div class="ctrls">
+      <label class="tog">Format: <select id="dFmt"><option>CSV</option><option>JSON</option><option>Parquet</option></select></label>
+      <button id="dAdd" type="button" class="primary">+ Add 12 orders</button>
+      <label class="tog"><input type="checkbox" id="dOne"> Query needs only the price column</label>
+      <button id="dReset" type="button">Reset</button>
+    </div>
+    <div class="panes">
+      <div class="pane"><h4 id="hFile">File contents</h4><pre class="filetext" id="pFile"></pre></div>
+      <div class="pane">
+        <h4>File size</h4><div class="big" id="pSize"></div>
+        <h4>Read to answer the query</h4><div class="big" id="pRead"></div>
+        <div class="meter"><i id="pBar"></i></div>
+        <p class="cap">Sizes are counted from the text you see. The Parquet figure is a simple model of columnar storage, not a benchmark.</p>
+      </div>
+    </div>
+    <div class="log" id="dLog" role="log" aria-label="What happened"></div>
+  </div>
+</section>
+
+<section id="code">
+  <div class="sec-num">Code</div>
+  <h2>Reading and writing each format</h2>
+  <p>In Spark the pattern is always the same: name the format, set a few options, give the path.</p>
+<pre><code>path = <span class="c-s">"/Volumes/bakery/landing/till_files/"</span>
+
+<span class="c-c"># CSV: plain text, values separated by commas. No types inside the file.</span>
+csv_orders = (spark.read.format(<span class="c-s">"csv"</span>)
+    .option(<span class="c-s">"header"</span>, <span class="c-s">"true"</span>)    <span class="c-c"># the first line holds the column names</span>
+    .load(path + <span class="c-s">"orders_csv/"</span>))
+
+<span class="c-c"># JSON: plain text, every value carries its label. By default: one record per line.</span>
+json_orders = spark.read.format(<span class="c-s">"json"</span>).load(path + <span class="c-s">"orders_json/"</span>)
+
+<span class="c-c"># Parquet: columnar, compressed, and the schema is stored inside the file.</span>
+<span class="c-c"># No header or type options are needed.</span>
+parquet_orders = spark.read.format(<span class="c-s">"parquet"</span>).load(path + <span class="c-s">"orders_parquet/"</span>)
+
+<span class="c-c"># Converting is just: read one format, write another.</span>
+csv_orders.write.format(<span class="c-s">"parquet"</span>).mode(<span class="c-s">"overwrite"</span>).save(path + <span class="c-s">"orders_converted/"</span>)</code></pre>
+  <p class="note">On Databricks you rarely save plain Parquet yourself. You save a table, and the table stores its data as Parquet files for you, plus a log of changes. That combination is called Delta Lake, the subject of lesson 00-08.</p>
+</section>
+
+<section id="whatif">
+  <div class="sec-num">What if I change this?</div>
+  <h2>Options that matter when reading files</h2>
+  <div class="tbl"><table class="whatif">
+    <tr><th>Change</th><th>Effect</th></tr>
+    <tr><td>CSV: add <code>.option("inferSchema", "true")</code></td><td>Spark looks through the data and guesses the types, so numbers become numbers. It costs an extra pass over the files, and a guess can be wrong.</td></tr>
+    <tr><td>CSV: add <code>.option("sep", ";")</code></td><td>Values are split on semicolons instead of commas. Needed for files from countries that write prices as <code>4,50</code>.</td></tr>
+    <tr><td>JSON: the file is "pretty-printed", one record spread over many lines</td><td>The default reader expects one record per line and cannot make sense of it. Add <code>.option("multiLine", "true")</code>.</td></tr>
+    <tr><td>Parquet: ask for only two columns with <code>.select(...)</code></td><td>Only those two columns are read from storage. With CSV or JSON, the whole file is read anyway.</td></tr>
+    <tr><td>Open a Parquet file in a text editor</td><td>You see unreadable symbols. It is a binary format, made for programs, not people.</td></tr>
+  </table></div>
+</section>
+
+<section id="compare">
+  <div class="sec-num">Compare</div>
+  <h2>The five formats you will meet</h2>
+  <div class="tbl"><table>
+    <tr><th></th><th>CSV</th><th>JSON</th><th>Avro</th><th>Parquet</th><th>ORC</th></tr>
+    <tr><td>Layout</td><td>Row</td><td>Row</td><td>Row</td><td>Columnar</td><td>Columnar</td></tr>
+    <tr><td>Readable by a person</td><td>Yes</td><td>Yes</td><td>No</td><td>No</td><td>No</td></tr>
+    <tr><td>Schema stored in the file</td><td>No</td><td>Names only, no fixed types</td><td>Yes</td><td>Yes</td><td>Yes</td></tr>
+    <tr><td>Nested data (a list inside a record)</td><td>No</td><td>Yes</td><td>Yes</td><td>Yes</td><td>Yes</td></tr>
+    <tr><td>Size</td><td>Large</td><td>Largest</td><td>Small</td><td>Smallest</td><td>Smallest</td></tr>
+    <tr><td>Where you meet it</td><td>Exports from spreadsheets and old systems</td><td>Websites and apps talking to each other</td><td>Messages in streaming systems</td><td>Analytics. The storage under Delta tables.</td><td>Analytics, mostly in older Hadoop systems</td></tr>
+  </table></div>
+  <h3>Which shape of data fits which format</h3>
+  <div class="grid3">
+    <div class="card"><span class="tag">Structured</span><p>CSV, Parquet, ORC and Avro all hold tidy rows and columns.</p></div>
+    <div class="card"><span class="tag">Semi-structured</span><p><a href="../../glossary.html#json">JSON</a> is the usual choice. Records can differ from one another and can contain lists and sub-records.</p></div>
+    <div class="card"><span class="tag">Unstructured</span><p>Images, audio and PDFs have their own formats (<code>.png</code>, <code>.mp3</code>, <code>.pdf</code>). They are stored as whole files, not as rows.</p></div>
+  </div>
+</section>
+
+<section id="scenarios">
+  <div class="sec-num">Real life</div>
+  <h2>Format problems you will actually hit</h2>
+  <div class="tbl"><table>
+    <tr><th>Scenario</th><th>What happens</th><th>Fix</th></tr>
+    <tr><td>A CSV value contains a comma: <code>Bread, sliced</code></td><td>The line splits into one column too many and values shift sideways</td><td>The sender must wrap such values in quotes: <code>"Bread, sliced"</code></td></tr>
+    <tr><td>A JSON file loads as one column of errors</td><td>It is pretty-printed, but the reader expected one record per line</td><td>Turn on the <code>multiLine</code> option</td></tr>
+    <tr><td>Dates in a CSV load as text</td><td>CSV has no types. Without a schema everything is text.</td><td>Supply a schema, or convert the column after reading</td></tr>
+    <tr><td>A dashboard over raw CSV files is slow</td><td>Every query reads every byte of every file</td><td>Load the data into a table once. Queries then read columnar files.</td></tr>
+  </table></div>
+</section>
+
+<section id="traps">
+  <div class="sec-num">Don't confuse these</div>
+  <h2>Formats that sound alike</h2>
+  <div class="grid2">
+    <div class="card trap"><span class="tag">Parquet vs Delta</span><p>Parquet is a file format. Delta is a table format: Parquet files plus a log that records every change. A folder of Parquet files alone is not a Delta table.</p></div>
+    <div class="card trap"><span class="tag">JSON vs JSON Lines</span><p>A JSON Lines file holds one complete record on each line. That is what Spark's JSON reader expects by default. One big record or list spread over many lines needs <code>multiLine</code>.</p></div>
+    <div class="card trap"><span class="tag">Stored schema vs guessed schema</span><p>Parquet and Avro carry their schema inside the file, so it is exact. For CSV, any schema is supplied by you or guessed by the reader.</p></div>
+    <div class="card trap"><span class="tag">Row-based vs columnar</span><p>Row-based is good for writing one record at a time. Columnar is good for reading a few columns from many records. Analytics is mostly the second.</p></div>
+  </div>
+</section>
+
+<section id="quiz">
+  <div class="sec-num">Check yourself</div>
+  <h2>Quiz</h2>
+  <div class="quiz">
+    <fieldset>
+      <legend>1. A report needs 2 columns out of 60. Which format lets the reader skip the other 58?</legend>
+      <label><input type="radio"> CSV</label>
+      <label><input type="radio"> JSON</label>
+      <label><input type="radio" data-correct> Parquet</label>
+      <p class="explain" hidden>Parquet is columnar, so each column is stored separately and unneeded ones are never read.</p>
+    </fieldset>
+    <fieldset>
+      <legend>2. Which of these formats stores no data types at all?</legend>
+      <label><input type="radio" data-correct> CSV</label>
+      <label><input type="radio"> Avro</label>
+      <label><input type="radio"> Parquet</label>
+      <p class="explain" hidden>A CSV file is only text separated by commas. Whether "4.50" is a number is decided by whoever reads it.</p>
+    </fieldset>
+    <fieldset>
+      <legend>3. In the demo, why was the JSON file the largest?</legend>
+      <label><input type="radio"> JSON stores each value twice</label>
+      <label><input type="radio" data-correct> Every record repeats the name of every field</label>
+      <label><input type="radio"> JSON cannot be compressed</label>
+      <p class="explain" hidden>CSV writes the column names once, in the header. JSON writes them again in every single record.</p>
+    </fieldset>
+    <fieldset>
+      <legend>4. What is the relationship between Parquet and Delta?</legend>
+      <label><input type="radio"> They are two names for the same thing</label>
+      <label><input type="radio"> Delta replaced Parquet, which is no longer used</label>
+      <label><input type="radio" data-correct> A Delta table keeps its data in Parquet files and adds a log of changes</label>
+      <p class="explain" hidden>Delta builds on Parquet. The data files are Parquet. The log is what turns a folder of files into a reliable table.</p>
+    </fieldset>
+  </div>
+</section>
+
+<section id="wrap">
+  <div class="sec-num">Wrap up</div>
+  <h2>Key takeaways</h2>
+  <ul>
+    <li>A file format is the set of rules for how data is written inside a file.</li>
+    <li>CSV and JSON are readable text. They are large and slow to query.</li>
+    <li>Parquet is columnar and compressed, and it carries its own schema.</li>
+    <li>Columnar formats let a query read only the columns it needs.</li>
+    <li>Data usually arrives as CSV or JSON and is stored as Parquet inside tables.</li>
+  </ul>
+  <h3>Glossary terms used</h3>
+  <p><a href="../../glossary.html#file-format">file format</a> · <a href="../../glossary.html#csv">CSV</a> · <a href="../../glossary.html#json">JSON</a> · <a href="../../glossary.html#parquet">Parquet</a> · <a href="../../glossary.html#avro">Avro</a> · <a href="../../glossary.html#orc">ORC</a> · <a href="../../glossary.html#columnar">columnar</a> · <a href="../../glossary.html#compression">compression</a></p>
+  <h3>Official docs</h3>
+  <ul>
+    <li><a href="https://docs.databricks.com/aws/en/query/formats/">Data format options</a></li>
+    <li><a href="https://docs.databricks.com/aws/en/query/formats/csv">CSV files</a></li>
+    <li><a href="https://docs.databricks.com/aws/en/query/formats/json">JSON files</a></li>
+    <li><a href="https://docs.databricks.com/aws/en/query/formats/parquet">Parquet files</a></li>
+  </ul>
+  <p class="cap">Last verified: 16 November 2026</p>
+</section>
+
+</main>
+
+<script>
+(function () {
+  var C = window.Course, $ = function (id) { return document.getElementById(id); }, L = $('dLog');
+  var SHOPS = ['North', 'South'], PRICES = ['4.50', '3.00', '1.80', '2.20'], rows;
+  function add(n) { for (var i = 0; i < n; i++) { var k = rows.length; rows.push({ order_id: 101 + k, shop: SHOPS[k % 2], price: PRICES[k % 4] }); } }
+
+  /* Build the text of the file for a format. For Parquet this is a picture of the layout: each column stored once,
+     repeated values stored as "value x count". */
+  function build(fmt) {
+    if (fmt === 'CSV') return { all: 'order_id,shop,price\n' + rows.map(function (r) { return r.order_id + ',' + r.shop + ',' + r.price; }).join('\n') };
+    if (fmt === 'JSON') return { all: rows.map(function (r) { return JSON.stringify(r); }).join('\n') };
+    function column(k) {
+      var counts = {}, order = [];
+      rows.forEach(function (r) { if (!counts[r[k]]) { counts[r[k]] = 0; order.push(r[k]); } counts[r[k]]++; });
+      /* ids are all different, so store first value and count; other columns store each distinct value once */
+      return k === 'order_id' ? k + ': ' + rows[0].order_id + '..' + rows[rows.length - 1].order_id
+        : k + ': ' + order.map(function (v) { return v + ' x' + counts[v]; }).join(', ');
+    }
+    var cols = ['order_id', 'shop', 'price'].map(column);
+    return { all: 'schema: order_id INT, shop STRING, price DECIMAL\n' + cols.join('\n'), one: cols[2] };
+  }
+  function draw(say) {
+    var fmt = $('dFmt').value, one = $('dOne').checked, f = build(fmt);
+    var size = f.all.length, read = one && f.one ? f.one.length : size;
+    $('hFile').textContent = 'orders.' + fmt.toLowerCase() + (fmt === 'Parquet' ? ' (layout shown as text)' : '');
+    $('pFile').textContent = f.all;
+    $('pSize').textContent = size + ' bytes';
+    $('pRead').textContent = read + ' bytes';
+    $('pBar').style.width = (100 * read / size) + '%';
+    if (say) C.log(L, read < size ? 'ok' : 'skip', fmt + ', ' + rows.length + ' orders: file is ' + size + ' bytes. ' +
+      (one ? (read < size ? 'Only the price column is read: ' + read + ' bytes.' : 'Row-based, so the whole file is read even for one column.') : 'Reading all columns: ' + read + ' bytes.'));
+  }
+  function reset() { rows = []; add(12); L.innerHTML = ''; $('dOne').checked = false; $('dFmt').value = 'CSV'; draw(true); }
+  $('dFmt').onchange = $('dOne').onchange = function () { draw(true); };
+  $('dAdd').onclick = function () { add(12); draw(true); C.bump($('pSize')); };
+  $('dReset').onclick = reset;
+  reset();
+})();
+</script>
+</body>
+</html>

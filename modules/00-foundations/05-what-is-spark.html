@@ -1,0 +1,293 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>00-05 What is Apache Spark? · DE Associate course</title>
+<link rel="stylesheet" href="../../assets/course.css">
+<script src="../../assets/course.js"></script>
+</head>
+<body data-lesson="00-05">
+
+<aside class="disclaimer" aria-label="Disclaimer"><strong>Learning resource only.</strong> This is an independent, unofficial study guide made for learning purposes. It is not affiliated with, endorsed by or sponsored by Databricks. Databricks features change often, so always check the details in the <a href="https://docs.databricks.com">official Databricks documentation</a> and the official exam guide on databricks.com before relying on anything here. Databricks and related names are trademarks of their respective owners.</aside>
+
+<main class="wrap">
+
+<header class="hero">
+  <div class="eyebrow">Module 00 · Foundations · Lesson 5 of 10</div>
+  <h1>What is Apache Spark?</h1>
+  <p class="lede">Spark is the engine under the bonnet of Databricks. It handles data too big for one computer by sharing the work between many.</p>
+  <dl class="where">
+    <div><dt>Module</dt><dd>00 Foundations</dd></div>
+    <div><dt>Exam objective</dt><dd>None directly. Transformation (Module 03) and troubleshooting (Module 06) both assume you know how Spark splits up work.</dd></div>
+    <div><dt>Time to read</dt><dd>About 13 minutes</dd></div>
+    <div><dt>Before this</dt><dd><a href="02-files-vs-tables.html">00-02 Files vs tables</a> · <a href="04-batch-vs-streaming.html">00-04 Batch vs streaming</a></dd></div>
+  </dl>
+</header>
+
+<section id="idea">
+  <div class="sec-num">The idea</div>
+  <h2>Many computers working as one</h2>
+  <p>A laptop can sort a spreadsheet of a few thousand rows. It cannot sort ten billion rows. The data does not fit in its memory, and it would take days.</p>
+  <p><a href="../../glossary.html#apache-spark">Apache Spark</a> is free, open-source software that solves this. It cuts the data into chunks and hands the chunks to a group of computers that work at the same time. Such a group is called a <a href="../../glossary.html#cluster">cluster</a>.</p>
+  <p>Three words describe how it is organised:</p>
+  <ul>
+    <li>The <a href="../../glossary.html#driver">driver</a> is the one computer in charge. It reads your code, makes a plan and hands out work.</li>
+    <li>The <a href="../../glossary.html#executor">executors</a> are the workers. They do the actual reading, filtering and adding up.</li>
+    <li>A <a href="../../glossary.html#partition">partition</a> is one chunk of the data. One executor works on one partition at a time.</li>
+  </ul>
+  <div class="analogy">
+    <span class="tag">Everyday analogy</span>
+    <p><strong>A restaurant kitchen with a big order.</strong> A table orders 400 sandwiches. The head chef (driver) does not make them. The chef splits the order into trays of 50 (partitions) and gives each tray to a line cook (executor). Eight cooks finish far sooner than one. The chef only collects the finished trays and hands the order over.</p>
+  </div>
+</section>
+
+<section id="how">
+  <div class="sec-num">How it works</div>
+  <h2>The driver plans, the executors work</h2>
+  <div class="stage">
+    <svg class="tall" viewBox="0 0 360 330" role="img" aria-label="Your code goes to the driver. The driver sends tasks to three executors, each working on partitions of data, and results flow back.">
+      <defs>
+        <path id="c0" d="M180 40 V70"/>
+        <path id="d1" d="M180 124 C 180 150, 62 150, 62 180"/>
+        <path id="d2" d="M180 124 V180"/>
+        <path id="d3" d="M180 124 C 180 150, 298 150, 298 180"/>
+        <path id="u1" d="M62 180 C 62 150, 180 150, 180 124"/>
+        <path id="u3" d="M298 180 C 298 150, 180 150, 180 124"/>
+      </defs>
+      <g class="wire"><use href="#c0"/><use href="#d1"/><use href="#d2"/><use href="#d3"/></g>
+      <g class="mover">
+        <circle r="5" class="dot"><animateMotion dur="2s" repeatCount="indefinite"><mpath href="#d1"/></animateMotion></circle>
+        <circle r="5" class="dot"><animateMotion dur="2s" begin="-0.6s" repeatCount="indefinite"><mpath href="#d2"/></animateMotion></circle>
+        <circle r="5" class="dot"><animateMotion dur="2s" begin="-1.2s" repeatCount="indefinite"><mpath href="#d3"/></animateMotion></circle>
+        <circle r="4" class="dot-ok"><animateMotion dur="2s" begin="-1s" repeatCount="indefinite"><mpath href="#u1"/></animateMotion></circle>
+        <circle r="4" class="dot-ok"><animateMotion dur="2s" begin="-0.3s" repeatCount="indefinite"><mpath href="#u3"/></animateMotion></circle>
+      </g>
+      <rect class="box-soft" x="110" y="6" width="140" height="34" rx="6"/><text x="180" y="28" text-anchor="middle">Your code</text>
+      <rect class="box-acc" x="90" y="70" width="180" height="54" rx="8"/><text class="t-b" x="180" y="93" text-anchor="middle">Driver</text><text class="t-m" x="180" y="111" text-anchor="middle">plans and hands out tasks</text>
+      <g>
+        <rect class="box" x="10" y="180" width="104" height="54" rx="8"/><text class="t-b" x="62" y="203" text-anchor="middle">Executor 1</text><text class="t-m" x="62" y="221" text-anchor="middle">does the work</text>
+        <rect class="box" x="128" y="180" width="104" height="54" rx="8"/><text class="t-b" x="180" y="203" text-anchor="middle">Executor 2</text><text class="t-m" x="180" y="221" text-anchor="middle">does the work</text>
+        <rect class="box" x="246" y="180" width="104" height="54" rx="8"/><text class="t-b" x="298" y="203" text-anchor="middle">Executor 3</text><text class="t-m" x="298" y="221" text-anchor="middle">does the work</text>
+      </g>
+      <g class="wire"><path d="M62 234 V262 M180 234 V262 M298 234 V262"/></g>
+      <rect class="box-soft" x="10" y="262" width="340" height="56" rx="8"/>
+      <text class="t-m" x="180" y="282" text-anchor="middle">DATA, cut into partitions</text>
+      <g class="box"><rect x="24" y="290" width="34" height="18" rx="3"/><rect x="62" y="290" width="34" height="18" rx="3"/><rect x="142" y="290" width="34" height="18" rx="3"/><rect x="180" y="290" width="34" height="18" rx="3"/><rect x="262" y="290" width="34" height="18" rx="3"/><rect x="300" y="290" width="34" height="18" rx="3"/></g>
+    </svg>
+    <p class="cap">Blue dots are tasks going out. Green dots are results coming back. A task is "do this step on this one partition".</p>
+  </div>
+  <h3>Spark is lazy, on purpose</h3>
+  <p>When you write a step such as "keep only North shop orders", Spark does not do it straight away. It writes the step into a plan and waits. This is called <a href="../../glossary.html#lazy-evaluation">lazy evaluation</a>.</p>
+  <p>Steps that only add to the plan are called <a href="../../glossary.html#transformation-spark">transformations</a>. Steps that ask for a result, such as "count the rows" or "save the table", are called <a href="../../glossary.html#action">actions</a>. Only an action makes Spark run the plan. Waiting lets Spark see the whole plan first and find the cheapest way to do it.</p>
+</section>
+
+<section id="demo">
+  <div class="sec-num">Try it</div>
+  <h2>Two experiments</h2>
+  <h3>1. Share out the work</h3>
+  <p>A job has 8 partitions. Each takes one executor 10 seconds. Change the number of executors and run it.</p>
+  <div class="stage">
+    <div class="ctrls">
+      <label class="tog">Executors: <input type="range" id="dExec" min="1" max="12" value="2"> <strong id="dExecN">2</strong></label>
+      <label class="tog"><input type="checkbox" id="dSkew"> One partition is 6 times bigger than the rest</label>
+      <button id="dRun" type="button" class="primary">Run the job</button>
+    </div>
+    <div class="panes">
+      <div class="pane"><h4>Who gets which partition</h4><div id="pPlan"></div></div>
+      <div class="pane"><h4>Time for the whole job</h4><div class="big" id="pTime">-</div><p class="cap" id="pWhy"></p></div>
+    </div>
+  </div>
+  <h3>2. Lazy evaluation</h3>
+  <p>Press the transformation buttons a few times. Nothing runs. Then press an action.</p>
+  <div class="stage">
+    <div class="ctrls">
+      <button id="tFilter" type="button">.filter(shop == "North")</button>
+      <button id="tSelect" type="button">.select("shop", "price")</button>
+      <button id="tCount" type="button" class="primary">.count()  (action)</button>
+      <button id="tReset" type="button">Reset</button>
+    </div>
+    <div class="panes">
+      <div class="pane"><h4>The plan so far</h4><div id="pSteps"></div></div>
+      <div class="pane"><h4>Times Spark actually ran</h4><div class="big" id="pRuns">0</div></div>
+    </div>
+    <div class="log" id="dLog" role="log" aria-label="What happened"></div>
+  </div>
+</section>
+
+<section id="code">
+  <div class="sec-num">Code</div>
+  <h2>Transformations build the plan. An action runs it.</h2>
+  <p>In Spark, a table you are working with in code is called a <a href="../../glossary.html#dataframe">DataFrame</a>. Think of it as a table held by the cluster, not by your laptop.</p>
+<pre><code><span class="c-k">from</span> pyspark.sql <span class="c-k">import</span> functions <span class="c-k">as</span> F
+
+orders = spark.table(<span class="c-s">"bakery.silver.orders"</span>)       <span class="c-c"># nothing is read yet</span>
+
+north = orders.filter(F.col(<span class="c-s">"shop"</span>) == <span class="c-s">"North"</span>)   <span class="c-c"># transformation: added to the plan</span>
+slim  = north.select(<span class="c-s">"shop"</span>, <span class="c-s">"price"</span>)             <span class="c-c"># transformation: added to the plan</span>
+
+slim.explain()         <span class="c-c"># prints the plan Spark has built. Still nothing has run.</span>
+
+n = slim.count()       <span class="c-c"># ACTION: now the executors read, filter and count</span>
+slim.show(5)           <span class="c-c"># ACTION: runs the plan again to fetch 5 rows</span></code></pre>
+  <p>The same work can be written in SQL. Spark turns both into the same plan, so neither is faster than the other.</p>
+<pre><code><span class="c-k">SELECT COUNT</span>(*) <span class="c-k">FROM</span> bakery.silver.orders <span class="c-k">WHERE</span> shop = <span class="c-s">'North'</span>;</code></pre>
+</section>
+
+<section id="whatif">
+  <div class="sec-num">What if I change this?</div>
+  <h2>More workers, more partitions, more actions</h2>
+  <div class="tbl"><table class="whatif">
+    <tr><th>Change</th><th>Effect</th></tr>
+    <tr><td>Add more executors</td><td>Faster, until there are as many executors as partitions. After that the extra ones have nothing to do, and you pay for them anyway.</td></tr>
+    <tr><td>One partition is much bigger than the others</td><td>The whole job waits for that one. Adding executors does not help. This problem is called skew (Module 06).</td></tr>
+    <tr><td>Cut the data into thousands of tiny partitions</td><td>The driver spends more time handing out tasks than the executors spend working.</td></tr>
+    <tr><td>Call two actions on the same DataFrame</td><td>The plan runs twice, from the start, unless you ask Spark to keep the result.</td></tr>
+    <tr><td>Use <code>.collect()</code> on a huge DataFrame</td><td>Every row is sent to the driver, a single computer. It can run out of memory and crash.</td></tr>
+  </table></div>
+</section>
+
+<section id="compare">
+  <div class="sec-num">Compare</div>
+  <h2>Transformation or action?</h2>
+  <div class="tbl"><table>
+    <tr><th></th><th>Transformation</th><th>Action</th></tr>
+    <tr><td>What it does</td><td>Describes a new DataFrame</td><td>Asks for a result or writes data</td></tr>
+    <tr><td>Runs straight away?</td><td>No. It is added to the plan.</td><td>Yes. It runs the whole plan.</td></tr>
+    <tr><td>Gives back</td><td>Another DataFrame</td><td>A number, some rows, or saved data</td></tr>
+    <tr><td>Examples</td><td><code>filter</code>, <code>select</code>, <code>withColumn</code>, <code>join</code>, <code>groupBy</code></td><td><code>count</code>, <code>show</code>, <code>collect</code>, <code>write</code></td></tr>
+  </table></div>
+  <h3>The parts of Spark you will use</h3>
+  <div class="grid3">
+    <div class="card"><span class="tag">Spark SQL</span><p>Write plain SQL against tables. The most common way to work on Databricks.</p></div>
+    <div class="card"><span class="tag">DataFrame API</span><p>The same operations as code, in Python (<a href="../../glossary.html#pyspark">PySpark</a>), Scala or R.</p></div>
+    <div class="card"><span class="tag">Structured Streaming</span><p>The same DataFrames, fed by data that keeps arriving (lesson 00-04).</p></div>
+  </div>
+</section>
+
+<section id="scenarios">
+  <div class="sec-num">Real life</div>
+  <h2>Spark behaviour that surprises beginners</h2>
+  <div class="tbl"><table>
+    <tr><th>Scenario</th><th>What happens</th><th>Fix</th></tr>
+    <tr><td>A notebook cell with ten transformations finishes instantly</td><td>Nothing ran. Only the plan was built.</td><td>That is normal. The work happens at the next action.</td></tr>
+    <tr><td>A typo in a column name is only reported three cells later</td><td>The mistake sat in the plan until an action ran it</td><td>Run a small action such as <code>.show(5)</code> while developing</td></tr>
+    <tr><td>Doubling the cluster size does not speed up a job</td><td>One giant partition is the bottleneck</td><td>Fix the skew instead of adding machines</td></tr>
+    <tr><td>The driver crashes with an out-of-memory error</td><td>The code pulled a huge result to the driver with <code>collect()</code></td><td>Write the result to a table, or look at a few rows only</td></tr>
+  </table></div>
+</section>
+
+<section id="traps">
+  <div class="sec-num">Don't confuse these</div>
+  <h2>Pairs that get mixed up</h2>
+  <div class="grid2">
+    <div class="card trap"><span class="tag">Spark vs Databricks</span><p>Spark is the open-source engine. Databricks is a company and a platform that runs Spark for you and adds storage, security and tools around it.</p></div>
+    <div class="card trap"><span class="tag">Driver vs executor</span><p>One driver plans and coordinates. Many executors do the work. Results that you "collect" land on the driver.</p></div>
+    <div class="card trap"><span class="tag">Transformation vs transformation</span><p>In lesson 00-01, "transform" meant the cleaning stage of a pipeline. In Spark, a "transformation" is one lazy step such as <code>filter</code>. Same word, different size.</p></div>
+    <div class="card trap"><span class="tag">Spark partition vs table partition</span><p>A Spark partition is a chunk of data being worked on in memory. A partitioned table is a way of arranging stored files into folders. They are separate ideas.</p></div>
+  </div>
+</section>
+
+<section id="quiz">
+  <div class="sec-num">Check yourself</div>
+  <h2>Quiz</h2>
+  <div class="quiz">
+    <fieldset>
+      <legend>1. What is the driver's job?</legend>
+      <label><input type="radio"> To store the data permanently</label>
+      <label><input type="radio" data-correct> To plan the work and hand tasks to the executors</label>
+      <label><input type="radio"> To do most of the heavy processing itself</label>
+      <p class="explain" hidden>The driver is the coordinator. The executors do the heavy work, and storage is a separate thing altogether.</p>
+    </fieldset>
+    <fieldset>
+      <legend>2. Which of these makes Spark actually run?</legend>
+      <label><input type="radio"> <code>.filter(...)</code></label>
+      <label><input type="radio"> <code>.select(...)</code></label>
+      <label><input type="radio" data-correct> <code>.count()</code></label>
+      <p class="explain" hidden><code>count</code> is an action: it needs a real answer. The other two are transformations that only extend the plan.</p>
+    </fieldset>
+    <fieldset>
+      <legend>3. A job has 8 equal partitions. You go from 8 executors to 12. What happens to the run time?</legend>
+      <label><input type="radio" data-correct> It stays about the same</label>
+      <label><input type="radio"> It drops by a third</label>
+      <label><input type="radio"> It doubles</label>
+      <p class="explain" hidden>With 8 partitions, only 8 executors can be busy at once. The extra 4 wait with nothing to do.</p>
+    </fieldset>
+    <fieldset>
+      <legend>4. In the first experiment, why did the skewed job stay slow with many executors?</legend>
+      <label><input type="radio"> Executors slow down when there are many of them</label>
+      <label><input type="radio"> The driver ran out of memory</label>
+      <label><input type="radio" data-correct> One partition cannot be shared, and the job waits for it</label>
+      <p class="explain" hidden>A partition is handled by one executor. If one partition is huge, that single executor sets the finish time.</p>
+    </fieldset>
+  </div>
+</section>
+
+<section id="wrap">
+  <div class="sec-num">Wrap up</div>
+  <h2>Key takeaways</h2>
+  <ul>
+    <li>Spark splits data into partitions and works on them in parallel.</li>
+    <li>One driver plans. Many executors work.</li>
+    <li>Transformations are lazy. Only an action runs the plan.</li>
+    <li>More executors help only while there are partitions to share out.</li>
+    <li>Spark is the engine. Databricks is the platform that runs it.</li>
+  </ul>
+  <h3>Glossary terms used</h3>
+  <p><a href="../../glossary.html#apache-spark">Apache Spark</a> · <a href="../../glossary.html#cluster">cluster</a> · <a href="../../glossary.html#driver">driver</a> · <a href="../../glossary.html#executor">executor</a> · <a href="../../glossary.html#partition">partition</a> · <a href="../../glossary.html#lazy-evaluation">lazy evaluation</a> · <a href="../../glossary.html#transformation-spark">transformation (Spark)</a> · <a href="../../glossary.html#action">action</a> · <a href="../../glossary.html#dataframe">DataFrame</a> · <a href="../../glossary.html#pyspark">PySpark</a></p>
+  <h3>Official docs</h3>
+  <ul>
+    <li><a href="https://docs.databricks.com/aws/en/spark/">Apache Spark on Databricks</a></li>
+    <li><a href="https://docs.databricks.com/aws/en/pyspark/">PySpark on Databricks</a></li>
+    <li><a href="https://spark.apache.org/docs/latest/cluster-overview.html">Apache Spark: cluster overview</a></li>
+  </ul>
+  <p class="cap">Last verified: 16 November 2026</p>
+</section>
+
+</main>
+
+<script>
+(function () {
+  var C = window.Course, $ = function (id) { return document.getElementById(id); }, L = $('dLog');
+
+  /* Experiment 1: give each partition to the executor that is free soonest. */
+  function plan() {
+    var n = +$('dExec').value, parts = [];
+    for (var i = 0; i < 8; i++) parts.push(i === 0 && $('dSkew').checked ? 60 : 10);
+    var busy = []; for (var e = 0; e < n; e++) busy.push({ t: 0, got: [] });
+    parts.forEach(function (secs, i) {
+      var who = busy.reduce(function (a, b) { return b.t < a.t ? b : a; });
+      who.t += secs; who.got.push('P' + (i + 1) + (secs > 10 ? ' (big)' : ''));
+    });
+    return { busy: busy, time: Math.max.apply(null, busy.map(function (b) { return b.t; })), idle: busy.filter(function (b) { return !b.got.length; }).length };
+  }
+  function drawPlan(ran) {
+    var p = plan(); $('dExecN').textContent = $('dExec').value;
+    $('pPlan').innerHTML = p.busy.map(function (b, i) {
+      return '<div class="item' + (b.got.length ? '' : ' off') + '"><span>Executor ' + (i + 1) + '</span><span>' + (b.got.join(', ') || 'idle') + '</span></div>';
+    }).join('');
+    if (!ran) { $('pTime').textContent = '-'; $('pWhy').textContent = 'Press "Run the job".'; return; }
+    $('pTime').textContent = p.time + ' s';
+    $('pWhy').textContent = $('dSkew').checked && p.time === 60 ? 'The job waited for the one big partition.' + (p.idle ? ' ' + p.idle + ' executor(s) sat idle.' : '') : p.idle ? p.idle + ' executor(s) had nothing to do.' : 'Every executor was busy.';
+    C.bump($('pTime'));
+  }
+  $('dExec').oninput = $('dSkew').onchange = function () { drawPlan(false); };
+  $('dRun').onclick = function () { drawPlan(true); };
+  drawPlan(false);
+
+  /* Experiment 2: transformations only add to the plan; the action runs it. */
+  var steps, runs;
+  function drawLazy() {
+    $('pSteps').innerHTML = '<div class="item"><span>read bakery.silver.orders</span></div>' + steps.map(function (s) { return '<div class="item"><span>' + s + '</span></div>'; }).join('');
+    $('pRuns').textContent = runs;
+  }
+  function addStep(s) { steps.push(s); C.log(L, 'skip', s + ' added to the plan. Nothing ran.'); drawLazy(); }
+  $('tFilter').onclick = function () { addStep('filter shop == "North"'); };
+  $('tSelect').onclick = function () { addStep('select shop, price'); };
+  $('tCount').onclick = function () { runs++; C.log(L, 'ok', 'count() is an action: Spark ran the whole plan (' + (steps.length + 1) + ' step(s)) on the executors. Run number ' + runs + '.'); drawLazy(); C.bump($('pRuns')); };
+  $('tReset').onclick = function () { steps = []; runs = 0; L.innerHTML = ''; C.log(L, 'skip', 'A new DataFrame. The plan has one step: read the table.'); drawLazy(); };
+  $('tReset').onclick();
+})();
+</script>
+</body>
+</html>

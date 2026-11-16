@@ -18,15 +18,15 @@ Objectives:
 | Status | Lesson | File | Objective | Prerequisites |
 |---|---|---|---|---|
 | [x] | 00-01 What is data engineering? | `01-what-is-data-engineering.html` | F | none |
-| [ ] | 00-02 Files vs tables | `02-files-vs-tables.html` | F | 00-01 |
-| [ ] | 00-03 File formats: CSV, JSON, Parquet and friends | `03-file-formats.html` | F | 00-02 |
-| [ ] | 00-04 Batch vs streaming | `04-batch-vs-streaming.html` | F | 00-01 |
-| [ ] | 00-05 What is Apache Spark? | `05-what-is-spark.html` | F | 00-02, 00-04 |
-| [ ] | 00-06 Cloud object storage | `06-cloud-object-storage.html` | F | 00-02 |
-| [ ] | 00-07 What is Databricks? Workspace, compute, notebooks | `07-what-is-databricks.html` | F | 00-05, 00-06 |
-| [ ] | 00-08 Delta Lake basics | `08-delta-lake-basics.html` | F | 00-03, 00-07 |
-| [ ] | 00-09 Unity Catalog basics | `09-unity-catalog-basics.html` | F | 00-07, 00-08 |
-| [ ] | 00-10 Medallion architecture: bronze, silver, gold | `10-medallion-architecture.html` | F | 00-08, 00-09 |
+| [x] | 00-02 Files vs tables | `02-files-vs-tables.html` | F | 00-01 |
+| [x] | 00-03 File formats: CSV, JSON, Parquet and friends | `03-file-formats.html` | F | 00-02 |
+| [x] | 00-04 Batch vs streaming | `04-batch-vs-streaming.html` | F | 00-01 |
+| [x] | 00-05 What is Apache Spark? | `05-what-is-spark.html` | F | 00-02, 00-04 |
+| [x] | 00-06 Cloud object storage | `06-cloud-object-storage.html` | F | 00-02 |
+| [x] | 00-07 What is Databricks? Workspace, compute, notebooks | `07-what-is-databricks.html` | F | 00-05, 00-06 |
+| [x] | 00-08 Delta Lake basics | `08-delta-lake-basics.html` | F | 00-03, 00-07 |
+| [x] | 00-09 Unity Catalog basics | `09-unity-catalog-basics.html` | F | 00-07, 00-08 |
+| [x] | 00-10 Medallion architecture: bronze, silver, gold | `10-medallion-architecture.html` | F | 00-08, 00-09 |
 
 ## Module 01: Databricks Intelligence Platform (6% of the exam)
 

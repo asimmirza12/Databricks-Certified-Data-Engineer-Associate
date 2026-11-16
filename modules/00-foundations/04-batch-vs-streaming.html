@@ -1,0 +1,273 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>00-04 Batch vs streaming · DE Associate course</title>
+<link rel="stylesheet" href="../../assets/course.css">
+<script src="../../assets/course.js"></script>
+</head>
+<body data-lesson="00-04">
+
+<aside class="disclaimer" aria-label="Disclaimer"><strong>Learning resource only.</strong> This is an independent, unofficial study guide made for learning purposes. It is not affiliated with, endorsed by or sponsored by Databricks. Databricks features change often, so always check the details in the <a href="https://docs.databricks.com">official Databricks documentation</a> and the official exam guide on databricks.com before relying on anything here. Databricks and related names are trademarks of their respective owners.</aside>
+
+<main class="wrap">
+
+<header class="hero">
+  <div class="eyebrow">Module 00 · Foundations · Lesson 4 of 10</div>
+  <h1>Batch vs streaming</h1>
+  <p class="lede">Every pipeline has to answer one question: do we process data in big piles now and then, or bit by bit as it arrives?</p>
+  <dl class="where">
+    <div><dt>Module</dt><dd>00 Foundations</dd></div>
+    <div><dt>Exam objective</dt><dd>None directly. Module 02 asks you to choose between batch, streaming and incremental loading, so the words must be clear first.</dd></div>
+    <div><dt>Time to read</dt><dd>About 12 minutes</dd></div>
+    <div><dt>Before this</dt><dd><a href="01-what-is-data-engineering.html">00-01 What is data engineering?</a></dd></div>
+  </dl>
+</header>
+
+<section id="idea">
+  <div class="sec-num">The idea</div>
+  <h2>A pile now and then, or a steady trickle</h2>
+  <p><a href="../../glossary.html#batch">Batch</a> processing means collecting data for a while, then handling the whole pile in one go. For example: every night at 1 am, load all of yesterday's orders.</p>
+  <p><a href="../../glossary.html#streaming">Streaming</a> means handling each piece of data shortly after it arrives, all day long, without waiting for a pile to build up.</p>
+  <p>There is a useful middle way. <a href="../../glossary.html#incremental">Incremental</a> processing runs now and then like batch, but each run handles only what is new since the last run. It never redoes old work.</p>
+  <p>The thing you are trading is <a href="../../glossary.html#latency">latency</a>: the delay between something happening and it showing up in your tables. Lower latency costs more money and more care.</p>
+  <div class="analogy">
+    <span class="tag">Everyday analogy</span>
+    <p><strong>Washing up.</strong> Batch is filling the dishwasher and running it once in the evening. It is efficient, but a plate used at breakfast stays dirty all day. Streaming is washing each plate the moment it is used. Plates are always clean, but someone is at the sink all day. Incremental is running the dishwasher every hour with only the plates used since the last run.</p>
+  </div>
+</section>
+
+<section id="how">
+  <div class="sec-num">How it works</div>
+  <h2>Three ways for the same orders to travel</h2>
+  <div class="stage">
+    <svg class="tall" viewBox="0 0 360 300" role="img" aria-label="Three lanes from source to table: batch sends one large block rarely, incremental sends medium blocks sometimes, streaming sends small dots constantly">
+      <defs>
+        <path id="l1" d="M70 52 H290"/><path id="l2" d="M70 150 H290"/><path id="l3" d="M70 248 H290"/>
+      </defs>
+      <g class="wire"><use href="#l1"/><use href="#l2"/><use href="#l3"/></g>
+      <text class="t-b" x="10" y="22">Batch</text><text class="t-m" x="64" y="22">everything, once a night</text>
+      <text class="t-b" x="10" y="120">Incremental</text><text class="t-m" x="100" y="120">only the new rows, every hour</text>
+      <text class="t-b" x="10" y="218">Streaming</text><text class="t-m" x="88" y="218">each row, moments after it arrives</text>
+      <g class="mover">
+        <rect class="dot" x="-30" y="-9" width="60" height="18" rx="4"><animateMotion dur="6s" repeatCount="indefinite" keyPoints="0;0;1" keyTimes="0;0.75;1" calcMode="linear"><mpath href="#l1"/></animateMotion></rect>
+        <rect class="dot" x="-11" y="-8" width="22" height="16" rx="4"><animateMotion dur="3s" repeatCount="indefinite"><mpath href="#l2"/></animateMotion></rect>
+        <circle r="4" class="dot-ok"><animateMotion dur="1.5s" repeatCount="indefinite"><mpath href="#l3"/></animateMotion></circle>
+        <circle r="4" class="dot-ok"><animateMotion dur="1.5s" begin="-0.5s" repeatCount="indefinite"><mpath href="#l3"/></animateMotion></circle>
+        <circle r="4" class="dot-ok"><animateMotion dur="1.5s" begin="-1s" repeatCount="indefinite"><mpath href="#l3"/></animateMotion></circle>
+      </g>
+      <g>
+        <rect class="box-soft" x="10" y="34" width="60" height="36" rx="6"/><text x="40" y="57" text-anchor="middle">Source</text>
+        <rect class="box" x="290" y="34" width="60" height="36" rx="6"/><text x="320" y="57" text-anchor="middle">Table</text>
+        <rect class="box-soft" x="10" y="132" width="60" height="36" rx="6"/><text x="40" y="155" text-anchor="middle">Source</text>
+        <rect class="box" x="290" y="132" width="60" height="36" rx="6"/><text x="320" y="155" text-anchor="middle">Table</text>
+        <rect class="box-soft" x="10" y="230" width="60" height="36" rx="6"/><text x="40" y="253" text-anchor="middle">Source</text>
+        <rect class="box" x="290" y="230" width="60" height="36" rx="6"/><text x="320" y="253" text-anchor="middle">Table</text>
+      </g>
+    </svg>
+    <p class="cap">The batch block waits a long time, then moves a lot at once. The streaming dots never stop.</p>
+  </div>
+  <p>How does an incremental or streaming job know what is new? It keeps a bookmark called a <a href="../../glossary.html#checkpoint">checkpoint</a>: a small saved note of how far it has read. Each run starts from the bookmark and moves it forward.</p>
+</section>
+
+<section id="demo">
+  <div class="sec-num">Try it</div>
+  <h2>Run a bakery for a morning</h2>
+  <p>Each press of "10 minutes pass" brings 5 new orders. Choose a mode, let time pass, and run the load when you like. Watch two numbers: how stale the table is, and how much work was done.</p>
+  <div class="stage">
+    <div class="ctrls">
+      <label class="tog">Mode: <select id="dMode">
+        <option value="full">Batch: reload everything each run</option>
+        <option value="inc">Incremental: only new rows each run</option>
+        <option value="stream">Streaming: always on</option>
+      </select></label>
+      <button id="dTick" type="button" class="primary">10 minutes pass</button>
+      <button id="dRun" type="button" class="primary">Run the load now</button>
+      <button id="dLose" type="button">Delete the checkpoint</button>
+      <button id="dReset" type="button">Reset</button>
+    </div>
+    <div class="panes">
+      <div class="pane"><h4>Orders at the source</h4><div class="big" id="pSrc"></div></div>
+      <div class="pane"><h4>Orders in the table</h4><div class="big" id="pTbl"></div><p class="cap" id="pStale"></p></div>
+      <div class="pane"><h4>Checkpoint (bookmark)</h4><div class="big" id="pChk"></div></div>
+      <div class="pane"><h4>Rows processed so far (cost)</h4><div class="big" id="pWork"></div><p class="cap" id="pOn"></p></div>
+    </div>
+    <div class="log" id="dLog" role="log" aria-label="What happened"></div>
+    <p class="cap">Try 6 ticks in each mode with a run after every second tick. Full reload does the most work. Streaming is freshest but its compute never switches off.</p>
+  </div>
+</section>
+
+<section id="code">
+  <div class="sec-num">Code</div>
+  <h2>The same job, written three ways</h2>
+  <p>Spark's streaming feature is called <a href="../../glossary.html#structured-streaming">Structured Streaming</a>. Its code looks almost the same as batch code: <code>read</code> becomes <code>readStream</code> and <code>write</code> becomes <code>writeStream</code>.</p>
+<pre><code><span class="c-c"># 1. BATCH, full reload: read everything, replace everything.</span>
+(spark.read.table(<span class="c-s">"bakery.bronze.orders_raw"</span>)
+    .write.mode(<span class="c-s">"overwrite"</span>)
+    .saveAsTable(<span class="c-s">"bakery.silver.orders"</span>))
+
+<span class="c-c"># 2. INCREMENTAL: a stream that handles whatever is new, then stops.</span>
+(spark.readStream.table(<span class="c-s">"bakery.bronze.orders_raw"</span>)
+    .writeStream
+    .option(<span class="c-s">"checkpointLocation"</span>, <span class="c-s">"/Volumes/bakery/ops/checkpoints/orders_silver"</span>)  <span class="c-c"># the bookmark</span>
+    .trigger(availableNow=<span class="c-k">True</span>)      <span class="c-c"># process all new data, then stop</span>
+    .toTable(<span class="c-s">"bakery.silver.orders"</span>))
+
+<span class="c-c"># 3. STREAMING: the same stream, left running, checking once a minute.</span>
+(spark.readStream.table(<span class="c-s">"bakery.bronze.orders_raw"</span>)
+    .writeStream
+    .option(<span class="c-s">"checkpointLocation"</span>, <span class="c-s">"/Volumes/bakery/ops/checkpoints/orders_silver"</span>)
+    .trigger(processingTime=<span class="c-s">"1 minute"</span>)
+    .toTable(<span class="c-s">"bakery.silver.orders"</span>))</code></pre>
+  <p>The <a href="../../glossary.html#trigger">trigger</a> is the setting that says when the stream should look for new data. Changing one line moves you between "run and stop" and "run for ever".</p>
+</section>
+
+<section id="whatif">
+  <div class="sec-num">What if I change this?</div>
+  <h2>The trigger and the checkpoint</h2>
+  <div class="tbl"><table class="whatif">
+    <tr><th>Change</th><th>Effect</th></tr>
+    <tr><td><code>.trigger(availableNow=True)</code></td><td>Processes everything that has arrived since the last run, then stops. You schedule it like a batch job and pay only while it runs.</td></tr>
+    <tr><td><code>.trigger(processingTime="1 minute")</code></td><td>Stays running and checks for new data every minute. Fresher tables, but the compute is on all the time.</td></tr>
+    <tr><td>No trigger at all</td><td>The default is to check again as soon as the previous check finishes. Lowest delay, highest cost. Some compute types do not allow this: on serverless notebooks and jobs you must set a trigger, and only <code>availableNow</code> is supported there. Verify in the docs for the compute you use.</td></tr>
+    <tr><td>Delete or change the checkpoint location</td><td>The stream loses its bookmark. It starts from the beginning and loads old data again, creating duplicates.</td></tr>
+    <tr><td>Use <code>mode("overwrite")</code> batch on a table that keeps growing</td><td>Simple and always correct, but each run redoes all past work. It gets slower and dearer every day.</td></tr>
+  </table></div>
+</section>
+
+<section id="compare">
+  <div class="sec-num">Compare</div>
+  <h2>Which one when?</h2>
+  <div class="tbl"><table>
+    <tr><th></th><th>Batch (full)</th><th>Incremental</th><th>Streaming</th></tr>
+    <tr><td>Each run handles</td><td>All the data</td><td>Only new data</td><td>New data, continuously</td></tr>
+    <tr><td>Typical delay</td><td>Hours to a day</td><td>Minutes to hours</td><td>Seconds to minutes</td></tr>
+    <tr><td>Compute is on</td><td>While the run lasts</td><td>While the run lasts</td><td>Always</td></tr>
+    <tr><td>Needs a checkpoint</td><td>No</td><td>Yes</td><td>Yes</td></tr>
+    <tr><td>Good for</td><td>Small tables, monthly reports, full rebuilds</td><td>Most daily and hourly pipelines</td><td>Fraud alerts, live stock levels, monitoring</td></tr>
+  </table></div>
+  <h3>Two kinds of data</h3>
+  <div class="grid2">
+    <div class="card"><span class="tag">Bounded</span><p>Data with an end. "All orders from last year" is a fixed set. Batch suits it naturally.</p></div>
+    <div class="card"><span class="tag">Unbounded</span><p>Data with no end. Orders keep coming for as long as the shops are open. Streaming and incremental loads are built for this.</p></div>
+  </div>
+</section>
+
+<section id="scenarios">
+  <div class="sec-num">Real life</div>
+  <h2>Choosing wrongly, both ways</h2>
+  <div class="tbl"><table>
+    <tr><th>Scenario</th><th>What happens</th><th>Fix</th></tr>
+    <tr><td>A monthly finance report is fed by an always-on stream</td><td>Compute runs all month to serve a report read once</td><td>Switch to a scheduled incremental run</td></tr>
+    <tr><td>Shop managers check stock on a table loaded nightly</td><td>They see yesterday's stock and run out of bread at noon</td><td>Load every few minutes, or stream</td></tr>
+    <tr><td>A nightly full reload takes longer every week</td><td>One day it is still running when the shops open</td><td>Make it incremental so each run handles one day of data</td></tr>
+    <tr><td>A stream is restarted with a new checkpoint folder</td><td>Every old order is loaded a second time</td><td>Keep one checkpoint location per stream for its whole life</td></tr>
+  </table></div>
+</section>
+
+<section id="traps">
+  <div class="sec-num">Don't confuse these</div>
+  <h2>Streaming words that trip people up</h2>
+  <div class="grid2">
+    <div class="card trap"><span class="tag">Streaming code vs always-on</span><p>Writing <code>readStream</code> does not mean the job runs for ever. With the <code>availableNow</code> trigger a stream behaves like an incremental batch job.</p></div>
+    <div class="card trap"><span class="tag">Incremental vs full</span><p>Both can run on a schedule. Incremental touches only new data. Full reprocesses everything. Exam questions often turn on that one word.</p></div>
+    <div class="card trap"><span class="tag">Micro-batch vs real time</span><p>By default Spark streams in <a href="../../glossary.html#micro-batch">micro-batches</a>: many very small batches, one after another. That is "near real time", not instant.</p></div>
+    <div class="card trap"><span class="tag">Checkpoint vs backup</span><p>A checkpoint is a bookmark of progress. It is not a copy of your data and cannot restore a table.</p></div>
+  </div>
+</section>
+
+<section id="quiz">
+  <div class="sec-num">Check yourself</div>
+  <h2>Quiz</h2>
+  <div class="quiz">
+    <fieldset>
+      <legend>1. What does "incremental" processing mean?</legend>
+      <label><input type="radio"> Processing all the data again on every run</label>
+      <label><input type="radio" data-correct> Processing only the data that is new since the last run</label>
+      <label><input type="radio"> Processing data one row per second</label>
+      <p class="explain" hidden>Incremental runs skip work that was already done. A checkpoint remembers where the last run stopped.</p>
+    </fieldset>
+    <fieldset>
+      <legend>2. In the demo, what happened after you deleted the checkpoint and ran an incremental load?</legend>
+      <label><input type="radio"> Nothing was loaded</label>
+      <label><input type="radio"> Only new orders were loaded</label>
+      <label><input type="radio" data-correct> Every order was loaded again, so the table had duplicates</label>
+      <p class="explain" hidden>Without its bookmark the job believes it has never run, so it starts from the first order.</p>
+    </fieldset>
+    <fieldset>
+      <legend>3. A stream uses <code>.trigger(availableNow=True)</code>. What does it do?</legend>
+      <label><input type="radio" data-correct> Handles all new data, then stops</label>
+      <label><input type="radio"> Runs for ever, checking every second</label>
+      <label><input type="radio"> Reloads the whole table</label>
+      <p class="explain" hidden>This trigger gives you incremental loading with batch-style scheduling: start, catch up, stop.</p>
+    </fieldset>
+    <fieldset>
+      <legend>4. Which need is the best fit for always-on streaming?</legend>
+      <label><input type="radio"> A yearly sales summary</label>
+      <label><input type="radio" data-correct> An alert when a card is used in two countries within a minute</label>
+      <label><input type="radio"> A weekly email of top products</label>
+      <p class="explain" hidden>Only the alert loses its value if it is late. The other two are fine with scheduled runs.</p>
+    </fieldset>
+  </div>
+</section>
+
+<section id="wrap">
+  <div class="sec-num">Wrap up</div>
+  <h2>Key takeaways</h2>
+  <ul>
+    <li>Batch handles a pile at intervals. Streaming handles data continuously.</li>
+    <li>Incremental means each run handles only what is new.</li>
+    <li>A checkpoint is the bookmark that makes incremental work possible.</li>
+    <li>Lower latency costs more. Pick the slowest option the business can accept.</li>
+    <li>A stream with the <code>availableNow</code> trigger runs, catches up and stops.</li>
+  </ul>
+  <h3>Glossary terms used</h3>
+  <p><a href="../../glossary.html#batch">batch</a> · <a href="../../glossary.html#streaming">streaming</a> · <a href="../../glossary.html#incremental">incremental</a> · <a href="../../glossary.html#latency">latency</a> · <a href="../../glossary.html#checkpoint">checkpoint</a> · <a href="../../glossary.html#trigger">trigger</a> · <a href="../../glossary.html#micro-batch">micro-batch</a> · <a href="../../glossary.html#structured-streaming">Structured Streaming</a></p>
+  <h3>Official docs</h3>
+  <ul>
+    <li><a href="https://docs.databricks.com/aws/en/structured-streaming/">Structured Streaming on Databricks</a></li>
+    <li><a href="https://docs.databricks.com/aws/en/structured-streaming/triggers">Trigger intervals</a></li>
+    <li><a href="https://docs.databricks.com/aws/en/compute/serverless/limitations">Serverless compute limitations</a></li>
+  </ul>
+  <p class="cap">Last verified: 16 November 2026</p>
+</section>
+
+</main>
+
+<script>
+(function () {
+  var C = window.Course, $ = function (id) { return document.getElementById(id); }, L = $('dLog');
+  var src, tbl, chk, work, mins, lastFresh;
+  function draw() {
+    var stream = $('dMode').value === 'stream';
+    $('pSrc').textContent = src; $('pTbl').textContent = tbl; $('pChk').textContent = $('dMode').value === 'full' ? 'not used' : chk; $('pWork').textContent = work;
+    var missing = src - Math.min(tbl, src);
+    $('pStale').textContent = tbl > src ? (tbl - src) + ' DUPLICATE rows' : missing ? missing + ' order(s) not in the table yet, waiting up to ' + (mins - lastFresh) + ' min' : 'up to date';
+    $('pOn').textContent = stream ? 'Compute on for all ' + mins + ' minutes' : 'Compute on only during runs';
+    $('dRun').disabled = stream;
+  }
+  function load(why) {
+    var mode = $('dMode').value;
+    if (mode === 'full') { work += src; tbl = src; chk = src; C.log(L, 'ok', why + 'full reload: re-read all ' + src + ' orders and replaced the table.'); }
+    else {
+      var fresh = src - chk;
+      work += fresh; tbl += fresh; chk = src;
+      C.log(L, fresh ? 'ok' : 'skip', why + 'read from bookmark: ' + fresh + ' new order(s) added. Bookmark moved to ' + chk + '.' + (tbl > src ? ' The table now holds duplicates.' : ''));
+    }
+    lastFresh = mins;
+  }
+  $('dTick').onclick = function () {
+    mins += 10; src += 5; C.log(L, 'skip', mins + ' min: 5 new orders at the source (' + src + ' in total).');
+    if ($('dMode').value === 'stream') load('  stream, '); draw();
+  };
+  $('dRun').onclick = function () { load('Run, '); draw(); C.bump($('pTbl')); };
+  $('dLose').onclick = function () { chk = 0; C.log(L, 'bad', 'Checkpoint deleted. The job has forgotten everything it already loaded.'); draw(); };
+  $('dMode').onchange = function () { C.log(L, 'skip', 'Mode changed to: ' + $('dMode').selectedOptions[0].text); draw(); };
+  function reset() { src = 0; tbl = 0; chk = 0; work = 0; mins = 0; lastFresh = 0; L.innerHTML = ''; C.log(L, 'skip', 'The shops have just opened. No orders yet.'); draw(); }
+  $('dReset').onclick = reset;
+  reset();
+})();
+</script>
+</body>
+</html>

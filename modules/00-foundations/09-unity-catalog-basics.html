@@ -1,0 +1,305 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>00-09 Unity Catalog basics · DE Associate course</title>
+<link rel="stylesheet" href="../../assets/course.css">
+<script src="../../assets/course.js"></script>
+</head>
+<body data-lesson="00-09">
+
+<aside class="disclaimer" aria-label="Disclaimer"><strong>Learning resource only.</strong> This is an independent, unofficial study guide made for learning purposes. It is not affiliated with, endorsed by or sponsored by Databricks. Databricks features change often, so always check the details in the <a href="https://docs.databricks.com">official Databricks documentation</a> and the official exam guide on databricks.com before relying on anything here. Databricks and related names are trademarks of their respective owners.</aside>
+
+<main class="wrap">
+
+<header class="hero">
+  <div class="eyebrow">Module 00 · Foundations · Lesson 9 of 10</div>
+  <h1>Unity Catalog basics</h1>
+  <p class="lede">Thousands of tables, hundreds of people. Something has to keep track of what exists and who is allowed to touch it. On Databricks that something is Unity Catalog.</p>
+  <dl class="where">
+    <div><dt>Module</dt><dd>00 Foundations</dd></div>
+    <div><dt>Exam objective</dt><dd>None directly. It prepares you for objective 1.1 (what Unity Catalog does) and for all of Module 07 on governance. Almost every other objective mentions "Unity Catalog-governed tables".</dd></div>
+    <div><dt>Time to read</dt><dd>About 13 minutes</dd></div>
+    <div><dt>Before this</dt><dd><a href="07-what-is-databricks.html">00-07 What is Databricks?</a> · <a href="08-delta-lake-basics.html">00-08 Delta Lake basics</a></dd></div>
+  </dl>
+</header>
+
+<section id="idea">
+  <div class="sec-num">The idea</div>
+  <h2>One index of all your data, with a guard at the door</h2>
+  <p><a href="../../glossary.html#unity-catalog">Unity Catalog</a> is the part of Databricks that does two jobs:</p>
+  <ul>
+    <li><strong>It is the index.</strong> It knows the name of every table and file area, where its data sits in cloud storage, and who owns it.</li>
+    <li><strong>It is the guard.</strong> Every time someone tries to read or change data, Unity Catalog checks whether they are allowed.</li>
+  </ul>
+  <p>Looking after data in this way (who may see it, who changed it, where it came from) is called <a href="../../glossary.html#governance">governance</a>. A table that Unity Catalog looks after is often called a "Unity Catalog-governed table".</p>
+  <p>Data is organised in levels, like an address. Every table has a three-part name: <code>catalog.schema.table</code>. You have seen one already: <code>bakery.silver.orders</code>.</p>
+  <div class="analogy">
+    <span class="tag">Everyday analogy</span>
+    <p><strong>A public library.</strong> The library service for the whole city is the metastore. Each building is a catalog. Each room in a building is a schema. Each book is a table. To read a book you need to be let into the building, then into the room, then be allowed to open that book. The librarian at the desk, who checks your card at every step, is Unity Catalog.</p>
+  </div>
+</section>
+
+<section id="how">
+  <div class="sec-num">How it works</div>
+  <h2>Four levels, three of them in the name</h2>
+  <div class="stage">
+    <svg class="tall" viewBox="0 0 360 400" role="img" aria-label="A tree: metastore at the top, then a catalog, then schemas, then tables, views, volumes and functions">
+      <defs>
+        <path id="t1" d="M180 52 V80"/><path id="t2" d="M180 132 V160"/>
+        <path id="t3" d="M180 212 C 180 232, 62 226, 62 250"/><path id="t4" d="M180 212 V250"/><path id="t5" d="M180 212 C 180 232, 298 226, 298 250"/>
+      </defs>
+      <g class="wire"><use href="#t1"/><use href="#t2"/><use href="#t3"/><use href="#t4"/><use href="#t5"/></g>
+      <g class="mover">
+        <circle r="5" class="dot"><animateMotion dur="1.4s" repeatCount="indefinite"><mpath href="#t1"/></animateMotion></circle>
+        <circle r="5" class="dot"><animateMotion dur="1.4s" begin="-0.5s" repeatCount="indefinite"><mpath href="#t2"/></animateMotion></circle>
+        <circle r="5" class="dot-ok"><animateMotion dur="1.4s" begin="-1s" repeatCount="indefinite"><mpath href="#t3"/></animateMotion></circle>
+      </g>
+      <rect class="box-soft" x="70" y="8" width="220" height="44" rx="8"/><text class="t-b" x="180" y="27" text-anchor="middle">Metastore</text><text class="t-m" x="180" y="43" text-anchor="middle">the top container, one per region</text>
+      <rect class="box" x="70" y="80" width="220" height="52" rx="8"/><text class="t-b" x="180" y="102" text-anchor="middle">Catalog: bakery</text><text class="t-m" x="180" y="120" text-anchor="middle">1st part of the name</text>
+      <rect class="box" x="70" y="160" width="220" height="52" rx="8"/><text class="t-b" x="180" y="182" text-anchor="middle">Schema: silver</text><text class="t-m" x="180" y="200" text-anchor="middle">2nd part of the name</text>
+      <rect class="box-acc" x="10" y="250" width="104" height="52" rx="8"/><text class="t-b" x="62" y="272" text-anchor="middle">Table</text><text class="t-m" x="62" y="290" text-anchor="middle">orders</text>
+      <rect class="box" x="128" y="250" width="104" height="52" rx="8"/><text class="t-b" x="180" y="272" text-anchor="middle">View</text><text class="t-m" x="180" y="290" text-anchor="middle">a saved query</text>
+      <rect class="box" x="246" y="250" width="104" height="52" rx="8"/><text class="t-b" x="298" y="272" text-anchor="middle">Volume</text><text class="t-m" x="298" y="290" text-anchor="middle">a place for files</text>
+      <text class="t-m" x="180" y="326" text-anchor="middle">3rd part of the name. Functions and models live here too.</text>
+      <rect class="box-soft" x="50" y="344" width="260" height="40" rx="8"/><text class="mono" x="180" y="369" text-anchor="middle">bakery.silver.orders</text>
+    </svg>
+    <p class="cap">The metastore is not written in the name. Your workspace is attached to exactly one, so it is assumed.</p>
+  </div>
+  <div class="grid2">
+    <div class="card"><span class="tag">Metastore</span><p>The <a href="../../glossary.html#metastore">metastore</a> is the top-level container. An organisation normally has one per cloud region, shared by all workspaces there.</p></div>
+    <div class="card"><span class="tag">Catalog</span><p>A <a href="../../glossary.html#catalog">catalog</a> is the first level you name. Teams often make one per business area or per environment, such as <code>bakery</code> or <code>dev</code>.</p></div>
+    <div class="card"><span class="tag">Schema</span><p>A <a href="../../glossary.html#schema">schema</a> groups related objects inside a catalog. It is also called a database. This is the "container" meaning of the word from lesson 00-02.</p></div>
+    <div class="card"><span class="tag">Table, view, volume</span><p>The things you actually use. A <a href="../../glossary.html#view">view</a> is a saved query that looks like a table. A <a href="../../glossary.html#volume">volume</a> holds files that are not tables, such as the CSV files waiting to be loaded.</p></div>
+  </div>
+  <h3>Permissions</h3>
+  <p>Permission to do something is called a <a href="../../glossary.html#privilege">privilege</a>. You give one with the SQL command <code>GRANT</code> and take it away with <code>REVOKE</code>. To read a table, a person needs three privileges, one per level:</p>
+  <ul>
+    <li><code>USE CATALOG</code> on the catalog: permission to enter the building.</li>
+    <li><code>USE SCHEMA</code> on the schema: permission to enter the room.</li>
+    <li><code>SELECT</code> on the table: permission to read the book.</li>
+  </ul>
+  <p>Privileges flow downwards. If you grant <code>SELECT</code> on a whole schema, it covers every table in it, including tables created later.</p>
+</section>
+
+<section id="demo">
+  <div class="sec-num">Try it</div>
+  <h2>Be the librarian</h2>
+  <p>The analysts group wants to read <code>bakery.gold.sales_by_shop</code>. Grant privileges one at a time and run the query after each. Then try granting <code>SELECT</code> at a higher level.</p>
+  <div class="stage">
+    <div class="ctrls">
+      <label class="tog">Privilege: <select id="dPriv"><option>USE CATALOG</option><option>USE SCHEMA</option><option>SELECT</option></select></label>
+      <label class="tog">On: <select id="dOn">
+        <option value="bakery">CATALOG bakery</option>
+        <option value="bakery.gold">SCHEMA bakery.gold</option>
+        <option value="bakery.gold.sales_by_shop">TABLE bakery.gold.sales_by_shop</option>
+      </select></label>
+      <button id="dGrant" type="button" class="primary">GRANT to analysts</button>
+      <button id="dRevoke" type="button">REVOKE</button>
+    </div>
+    <div class="ctrls">
+      <label class="tog">Query as analysts: <select id="dQ">
+        <option value="bakery.gold.sales_by_shop">SELECT * FROM bakery.gold.sales_by_shop</option>
+        <option value="bakery.gold.stock_levels">SELECT * FROM bakery.gold.stock_levels</option>
+        <option value="bakery.silver.orders">SELECT * FROM bakery.silver.orders</option>
+      </select></label>
+      <button id="dRun" type="button" class="primary">Run query</button>
+      <button id="dReset" type="button">Reset</button>
+    </div>
+    <div class="panes">
+      <div class="pane"><h4>Grants held by analysts</h4><div id="pGrants"></div></div>
+      <div class="pane"><h4>The three checks for this query</h4><div id="pChecks"></div></div>
+    </div>
+    <div class="log" id="dLog" role="log" aria-label="What happened"></div>
+  </div>
+</section>
+
+<section id="code">
+  <div class="sec-num">Code</div>
+  <h2>Names and grants in SQL</h2>
+<pre><code><span class="c-c">-- Make a schema inside the catalog, then a table inside the schema.</span>
+<span class="c-k">CREATE SCHEMA IF NOT EXISTS</span> bakery.gold;
+
+<span class="c-k">CREATE TABLE</span> bakery.gold.sales_by_shop (shop <span class="c-k">STRING</span>, total_sales <span class="c-k">DECIMAL</span>(12,2));
+
+<span class="c-c">-- The full three-part name always works.</span>
+<span class="c-k">SELECT</span> * <span class="c-k">FROM</span> bakery.gold.sales_by_shop;
+
+<span class="c-c">-- Or set a starting point once and use short names after that.</span>
+<span class="c-k">USE CATALOG</span> bakery;
+<span class="c-k">USE SCHEMA</span> gold;
+<span class="c-k">SELECT</span> * <span class="c-k">FROM</span> sales_by_shop;
+
+<span class="c-c">-- Let the analysts group read one table. Names with special characters go in backticks.</span>
+<span class="c-k">GRANT USE CATALOG ON CATALOG</span> bakery <span class="c-k">TO</span> `analysts`;
+<span class="c-k">GRANT USE SCHEMA  ON SCHEMA</span>  bakery.gold <span class="c-k">TO</span> `analysts`;
+<span class="c-k">GRANT SELECT      ON TABLE</span>   bakery.gold.sales_by_shop <span class="c-k">TO</span> `analysts`;
+
+<span class="c-c">-- See who can do what, and take a privilege back.</span>
+<span class="c-k">SHOW GRANTS ON TABLE</span> bakery.gold.sales_by_shop;
+<span class="c-k">REVOKE SELECT ON TABLE</span> bakery.gold.sales_by_shop <span class="c-k">FROM</span> `analysts`;</code></pre>
+  <p>Files in a volume also get a governed address, built from the same three names:</p>
+<pre><code><span class="c-c"># /Volumes/&lt;catalog&gt;/&lt;schema&gt;/&lt;volume&gt;/&lt;path inside the volume&gt;</span>
+path = <span class="c-s">"/Volumes/bakery/landing/till_files/orders/2026/11/16/north.csv"</span></code></pre>
+</section>
+
+<section id="whatif">
+  <div class="sec-num">What if I change this?</div>
+  <h2>Granting at different levels</h2>
+  <div class="tbl"><table class="whatif">
+    <tr><th>Change</th><th>Effect</th></tr>
+    <tr><td>Grant <code>SELECT</code> on the table, but forget <code>USE SCHEMA</code></td><td>The query is refused. All three levels must be passed, like three doors in a row.</td></tr>
+    <tr><td>Grant <code>SELECT</code> on the schema instead of the table</td><td>Every table and view in that schema becomes readable, including ones created in future.</td></tr>
+    <tr><td>Grant <code>SELECT</code> on the whole catalog</td><td>Readable: every table in every schema of the catalog. Convenient, and easy to overdo.</td></tr>
+    <tr><td>Grant to one person instead of a group</td><td>It works, but each joiner and leaver means more grants to change. Granting to groups is the normal practice.</td></tr>
+    <tr><td>Use a one-part name such as <code>orders</code></td><td>Databricks fills in the current catalog and schema. If those are not what you think, you read a different table or get "not found".</td></tr>
+  </table></div>
+</section>
+
+<section id="compare">
+  <div class="sec-num">Compare</div>
+  <h2>What can live in a schema</h2>
+  <div class="tbl"><table>
+    <tr><th></th><th>Table</th><th>View</th><th>Volume</th><th>Function</th></tr>
+    <tr><td>Holds</td><td>Rows and columns</td><td>A saved query. No data of its own.</td><td>Files of any kind</td><td>Reusable logic you can call in SQL</td></tr>
+    <tr><td>You use it with</td><td><code>SELECT</code>, <code>INSERT</code>...</td><td><code>SELECT</code></td><td>A path starting <code>/Volumes/</code></td><td>Calling it by name</td></tr>
+    <tr><td>Typical use</td><td>Orders, customers, sales</td><td>A simpler or restricted look at a table</td><td>Raw CSV and JSON files, images, PDFs</td><td>A shared calculation, or a masking rule</td></tr>
+  </table></div>
+  <h3>Who can be given access</h3>
+  <div class="grid3">
+    <div class="card"><span class="tag">User</span><p>One person, identified by their email address.</p></div>
+    <div class="card"><span class="tag">Group</span><p>A named set of users, such as <code>analysts</code>. The recommended target for grants.</p></div>
+    <div class="card"><span class="tag">Service principal</span><p>An identity for a program, not a person. Scheduled jobs run as one (Module 07).</p></div>
+  </div>
+</section>
+
+<section id="scenarios">
+  <div class="sec-num">Real life</div>
+  <h2>Access problems and their causes</h2>
+  <div class="tbl"><table>
+    <tr><th>Scenario</th><th>What happens</th><th>Fix</th></tr>
+    <tr><td>An analyst was granted <code>SELECT</code> on a table but still gets "permission denied"</td><td>They lack <code>USE CATALOG</code> or <code>USE SCHEMA</code> on the levels above</td><td>Grant the two "use" privileges as well</td></tr>
+    <tr><td>A new starter needs the same access as their team</td><td>Dozens of grants would have to be copied</td><td>Add them to the team's group. The group already has the grants.</td></tr>
+    <tr><td>An intern can read salary data</td><td><code>SELECT</code> was granted on the whole catalog to "all users"</td><td>Grant at schema or table level, and only to the groups that need it</td></tr>
+    <tr><td>A query for <code>orders</code> returns the wrong data</td><td>The current schema was <code>bronze</code>, not <code>silver</code></td><td>Use the full three-part name in anything that runs unattended</td></tr>
+  </table></div>
+</section>
+
+<section id="traps">
+  <div class="sec-num">Don't confuse these</div>
+  <h2>Unity Catalog mix-ups</h2>
+  <div class="grid2">
+    <div class="card trap"><span class="tag">USE CATALOG vs USE CATALOG</span><p>As a command, <code>USE CATALOG bakery;</code> sets your current catalog. As a privilege, <code>GRANT USE CATALOG</code> lets someone enter it. Same words, different jobs.</p></div>
+    <div class="card trap"><span class="tag">Schema = database</span><p>On Databricks the two words mean the same container. And neither is the "column list" meaning of schema from lesson 00-02.</p></div>
+    <div class="card trap"><span class="tag">Metastore vs catalog</span><p>The metastore is the top container and never appears in a name. A catalog is the first part of the name. Unity Catalog is the whole system.</p></div>
+    <div class="card trap"><span class="tag">Volume vs table</span><p>A volume governs files. A table governs rows. A CSV file in a volume is not a table until you load it into one.</p></div>
+  </div>
+</section>
+
+<section id="quiz">
+  <div class="sec-num">Check yourself</div>
+  <h2>Quiz</h2>
+  <div class="quiz">
+    <fieldset>
+      <legend>1. In <code>bakery.silver.orders</code>, what is <code>silver</code>?</legend>
+      <label><input type="radio"> The catalog</label>
+      <label><input type="radio" data-correct> The schema</label>
+      <label><input type="radio"> The metastore</label>
+      <p class="explain" hidden>The order is always catalog, then schema, then the object. The metastore is not part of the name.</p>
+    </fieldset>
+    <fieldset>
+      <legend>2. Which set of privileges lets a group read one table and nothing else?</legend>
+      <label><input type="radio"> <code>SELECT</code> on the table only</label>
+      <label><input type="radio"> <code>SELECT</code> on the catalog</label>
+      <label><input type="radio" data-correct> <code>USE CATALOG</code>, <code>USE SCHEMA</code> and <code>SELECT</code> on the table</label>
+      <p class="explain" hidden>SELECT alone is not enough without the two "use" privileges above it. SELECT on the catalog would open far more than one table.</p>
+    </fieldset>
+    <fieldset>
+      <legend>3. In the demo, what happened when you granted <code>SELECT</code> on the schema <code>bakery.gold</code>?</legend>
+      <label><input type="radio" data-correct> Every table in that schema became readable</label>
+      <label><input type="radio"> Only the first table became readable</label>
+      <label><input type="radio"> Tables in <code>bakery.silver</code> became readable too</label>
+      <p class="explain" hidden>Privileges flow down from a container to everything inside it. They do not flow sideways to another schema.</p>
+    </fieldset>
+    <fieldset>
+      <legend>4. Where should raw CSV files that are waiting to be loaded be kept, so access to them is governed?</legend>
+      <label><input type="radio"> In a notebook</label>
+      <label><input type="radio"> In a view</label>
+      <label><input type="radio" data-correct> In a volume</label>
+      <p class="explain" hidden>Volumes are the Unity Catalog object for files that are not tables.</p>
+    </fieldset>
+  </div>
+</section>
+
+<section id="wrap">
+  <div class="sec-num">Wrap up</div>
+  <h2>Key takeaways</h2>
+  <ul>
+    <li>Unity Catalog is the index of all data and the guard that checks access.</li>
+    <li>Levels: metastore, catalog, schema, then tables, views and volumes.</li>
+    <li>Every table has a three-part name: <code>catalog.schema.table</code>.</li>
+    <li>Reading a table needs <code>USE CATALOG</code>, <code>USE SCHEMA</code> and <code>SELECT</code>.</li>
+    <li>Privileges flow downwards. Grant to groups, not to individuals.</li>
+  </ul>
+  <h3>Glossary terms used</h3>
+  <p><a href="../../glossary.html#unity-catalog">Unity Catalog</a> · <a href="../../glossary.html#governance">governance</a> · <a href="../../glossary.html#metastore">metastore</a> · <a href="../../glossary.html#catalog">catalog</a> · <a href="../../glossary.html#schema">schema</a> · <a href="../../glossary.html#view">view</a> · <a href="../../glossary.html#volume">volume</a> · <a href="../../glossary.html#privilege">privilege</a> · <a href="../../glossary.html#three-level-namespace">three-level namespace</a></p>
+  <h3>Official docs</h3>
+  <ul>
+    <li><a href="https://docs.databricks.com/aws/en/data-governance/unity-catalog/">What is Unity Catalog?</a></li>
+    <li><a href="https://docs.databricks.com/aws/en/catalogs/">Catalogs</a></li>
+    <li><a href="https://docs.databricks.com/aws/en/schemas/">Schemas</a></li>
+    <li><a href="https://docs.databricks.com/aws/en/volumes/">Volumes</a></li>
+  </ul>
+  <p class="cap">Last verified: 16 November 2026</p>
+</section>
+
+</main>
+
+<script>
+(function () {
+  var C = window.Course, $ = function (id) { return document.getElementById(id); }, L = $('dLog');
+  var KIND = { 1: 'CATALOG', 2: 'SCHEMA', 3: 'TABLE' }, grants;   /* grants: list of "PRIVILEGE|object" */
+  function level(obj) { return obj.split('.').length; }
+  /* A privilege on an object is held if it was granted on that object or on any container above it. */
+  function holds(priv, obj) {
+    var parts = obj.split('.');
+    for (var i = parts.length; i >= 1; i--) if (grants.indexOf(priv + '|' + parts.slice(0, i).join('.')) >= 0) return parts.slice(0, i).join('.');
+    return null;
+  }
+  function checks(table) {
+    var p = table.split('.');
+    return [['USE CATALOG', p[0]], ['USE SCHEMA', p[0] + '.' + p[1]], ['SELECT', table]].map(function (c) { return { priv: c[0], obj: c[1], via: holds(c[0], c[1]) }; });
+  }
+  function draw() {
+    $('pGrants').innerHTML = grants.length ? grants.map(function (g) { var x = g.split('|'); return '<div class="item"><span>' + x[0] + '</span><span>' + x[1] + '</span></div>'; }).join('') : '<p class="cap">none</p>';
+    $('pChecks').innerHTML = checks($('dQ').value).map(function (c) {
+      return '<div class="item"><span>' + c.priv + ' on ' + c.obj + '</span><span class="chip ' + (c.via ? 'ok">yes' + (c.via !== c.obj ? ', inherited' : '') : 'bad">no') + '</span></div>';
+    }).join('');
+  }
+  function sql(verb) {
+    var priv = $('dPriv').value, obj = $('dOn').value, key = priv + '|' + obj, lv = level(obj);
+    if (priv === 'USE CATALOG' && lv !== 1) { C.log(L, 'bad', 'USE CATALOG can only be granted on a catalog.'); return; }
+    if (priv === 'USE SCHEMA' && lv === 3) { C.log(L, 'bad', 'USE SCHEMA cannot be granted on a table. Grant it on the schema or the catalog.'); return; }
+    var i = grants.indexOf(key);
+    if (verb === 'GRANT') { if (i < 0) grants.push(key); }
+    else if (i >= 0) grants.splice(i, 1);
+    C.log(L, 'skip', verb + ' ' + priv + ' ON ' + KIND[lv] + ' ' + obj + (verb === 'GRANT' ? ' TO' : ' FROM') + ' `analysts`;' + (verb === 'REVOKE' && i < 0 ? '  (nothing to take back at this level)' : ''));
+    draw();
+  }
+  $('dGrant').onclick = function () { sql('GRANT'); };
+  $('dRevoke').onclick = function () { sql('REVOKE'); };
+  $('dQ').onchange = draw;
+  $('dRun').onclick = function () {
+    var t = $('dQ').value, miss = checks(t).filter(function (c) { return !c.via; });
+    if (miss.length) C.log(L, 'bad', 'SELECT * FROM ' + t + ': PERMISSION DENIED. Missing ' + miss.map(function (c) { return c.priv + ' on ' + c.obj; }).join(' and ') + '.');
+    else C.log(L, 'ok', 'SELECT * FROM ' + t + ': allowed. All three checks passed.');
+    draw(); C.bump($('pChecks'));
+  };
+  function reset() { grants = []; L.innerHTML = ''; C.log(L, 'skip', 'The analysts group has no privileges yet.'); draw(); }
+  $('dReset').onclick = reset;
+  reset();
+})();
+</script>
+</body>
+</html>

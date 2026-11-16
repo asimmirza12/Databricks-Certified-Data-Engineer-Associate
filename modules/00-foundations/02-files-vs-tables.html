@@ -1,0 +1,283 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>00-02 Files vs tables · DE Associate course</title>
+<link rel="stylesheet" href="../../assets/course.css">
+<script src="../../assets/course.js"></script>
+</head>
+<body data-lesson="00-02">
+
+<aside class="disclaimer" aria-label="Disclaimer"><strong>Learning resource only.</strong> This is an independent, unofficial study guide made for learning purposes. It is not affiliated with, endorsed by or sponsored by Databricks. Databricks features change often, so always check the details in the <a href="https://docs.databricks.com">official Databricks documentation</a> and the official exam guide on databricks.com before relying on anything here. Databricks and related names are trademarks of their respective owners.</aside>
+
+<main class="wrap">
+
+<header class="hero">
+  <div class="eyebrow">Module 00 · Foundations · Lesson 2 of 10</div>
+  <h1>Files vs tables</h1>
+  <p class="lede">Data arrives as files. People want tables. Most of data engineering happens in the gap between the two.</p>
+  <dl class="where">
+    <div><dt>Module</dt><dd>00 Foundations</dd></div>
+    <div><dt>Exam objective</dt><dd>None directly. Ingestion (Module 02) is all about turning files into tables, so this comes first.</dd></div>
+    <div><dt>Time to read</dt><dd>About 10 minutes</dd></div>
+    <div><dt>Before this</dt><dd><a href="01-what-is-data-engineering.html">00-01 What is data engineering?</a></dd></div>
+  </dl>
+</header>
+
+<section id="idea">
+  <div class="sec-num">The idea</div>
+  <h2>A file holds anything. A table has rules.</h2>
+  <p>A <a href="../../glossary.html#file">file</a> is a named lump of data. The computer storing it does not care what is inside. It could be orders, a photo or nonsense. Nothing checks it.</p>
+  <p>A <a href="../../glossary.html#table">table</a> is data arranged in <a href="../../glossary.html#row">rows</a> and <a href="../../glossary.html#column">columns</a>, like a spreadsheet. Each row is one thing, such as one order. Each column is one fact about it, such as the price.</p>
+  <p>What makes a table special is its <a href="../../glossary.html#schema">schema</a>: the list of column names and the <a href="../../glossary.html#data-type">data type</a> of each one. A data type says what kind of value is allowed: a whole number, text, a date and so on. The table refuses anything that does not fit.</p>
+  <div class="analogy">
+    <span class="tag">Everyday analogy</span>
+    <p><strong>A shoebox of receipts versus an accounts book.</strong> You can throw anything into the shoebox: receipts, a bus ticket, a shopping list. Finding last month's total means reading every scrap. The accounts book has ruled columns for date, shop and amount. You cannot write "three pounds-ish" in the amount column. Because of that rule, adding up the column takes seconds.</p>
+  </div>
+</section>
+
+<section id="how">
+  <div class="sec-num">How it works</div>
+  <h2>A schema turns text into a table</h2>
+  <p>The file below is plain text. To use it as a table, something has to read each line, split it into columns and check each value against the schema.</p>
+  <div class="stage">
+    <svg class="tall" viewBox="0 0 360 372" role="img" aria-label="Lines of a text file pass through a schema and come out as rows of a table">
+      <defs>
+        <path id="f1" d="M180 104 L 180 138"/>
+        <path id="f2" d="M180 212 L 180 246"/>
+      </defs>
+      <g class="wire"><use href="#f1"/><use href="#f2"/></g>
+      <g class="mover">
+        <circle r="5" class="dot"><animateMotion dur="1.6s" repeatCount="indefinite"><mpath href="#f1"/></animateMotion></circle>
+        <circle r="5" class="dot-ok"><animateMotion dur="1.6s" begin="-0.8s" repeatCount="indefinite"><mpath href="#f2"/></animateMotion></circle>
+      </g>
+      <rect class="box-soft" x="40" y="8" width="280" height="96" rx="8"/>
+      <text class="t-m" x="52" y="26">FILE · orders.csv · just text</text>
+      <text class="mono" x="52" y="48">order_id,shop,price</text>
+      <text class="mono" x="52" y="68">101,North,4.50</text>
+      <text class="mono" x="52" y="88">102,South,3.00</text>
+      <rect class="box-acc" x="40" y="138" width="280" height="74" rx="8"/>
+      <text class="t-b" x="180" y="160" text-anchor="middle">Schema</text>
+      <text class="t-m" x="180" y="180" text-anchor="middle">order_id is a whole number · shop is text</text>
+      <text class="t-m" x="180" y="198" text-anchor="middle">price is a decimal number</text>
+      <rect class="box" x="40" y="246" width="280" height="118" rx="8"/>
+      <text class="t-m" x="52" y="264">TABLE · orders · checked values</text>
+      <g class="wire"><path d="M52 296 H308 M52 326 H308 M136 274 V356 M222 274 V356"/></g>
+      <text class="t-b" x="60" y="290">order_id</text><text class="t-b" x="144" y="290">shop</text><text class="t-b" x="230" y="290">price</text>
+      <text x="60" y="316">101</text><text x="144" y="316">North</text><text x="230" y="316">4.50</text>
+      <text x="60" y="346">102</text><text x="144" y="346">South</text><text x="230" y="346">3.00</text>
+    </svg>
+    <p class="cap">In the file, <code>4.50</code> is three characters of text. In the table it is a number you can add up.</p>
+  </div>
+  <p class="note">A secret worth knowing early: on Databricks, a table is still stored as files underneath. The table is those files plus a schema plus rules about how they change. Lesson 00-08 shows how.</p>
+</section>
+
+<section id="demo">
+  <div class="sec-num">Try it</div>
+  <h2>Send the same line to a file and to a table</h2>
+  <p>Pick a line. Add it to the file, then try to insert it into the table. Then ask each one for the total price.</p>
+  <div class="stage">
+    <div class="ctrls">
+      <label class="tog">Line: <select id="dLine">
+        <option value="106,North,3.50">106,North,3.50 (fine)</option>
+        <option value="107,South,three pounds">107,South,three pounds (price is words)</option>
+        <option value="abc,North,2.00">abc,North,2.00 (id is letters)</option>
+        <option value="108,North">108,North (price missing)</option>
+      </select></label>
+      <button id="dFile" type="button" class="primary">Append to file</button>
+      <button id="dTable" type="button" class="primary">Insert into table</button>
+    </div>
+    <div class="ctrls">
+      <button id="dSumF" type="button">Total price from file</button>
+      <button id="dSumT" type="button">Total price from table</button>
+      <button id="dReset" type="button">Reset</button>
+    </div>
+    <div class="panes">
+      <div class="pane"><h4>File: orders.csv (no rules)</h4><pre class="filetext" id="pFile"></pre></div>
+      <div class="pane"><h4>Table: order_id INT, shop STRING, price DECIMAL</h4><div id="pTable"></div></div>
+    </div>
+    <div class="log" id="dLog" role="log" aria-label="What happened"></div>
+    <p class="cap">The file never complains, so problems are found late, when someone tries to use the data. The table complains at once, so problems are found early.</p>
+  </div>
+</section>
+
+<section id="code">
+  <div class="sec-num">Code</div>
+  <h2>Making a table, and reading a file as a table</h2>
+  <p>In <a href="../../glossary.html#sql">SQL</a>, you state the schema when you create the table.</p>
+<pre><code><span class="c-c">-- The schema: three columns, each with a name and a data type.</span>
+<span class="c-k">CREATE TABLE</span> bakery.silver.orders (
+  order_id <span class="c-k">INT</span>,            <span class="c-c">-- whole numbers only</span>
+  shop     <span class="c-k">STRING</span>,         <span class="c-c">-- any text</span>
+  price    <span class="c-k">DECIMAL</span>(10,2)   <span class="c-c">-- numbers with 2 digits after the point</span>
+);
+
+<span class="c-k">INSERT INTO</span> bakery.silver.orders <span class="c-k">VALUES</span> (106, <span class="c-s">'North'</span>, 3.50);   <span class="c-c">-- accepted</span>
+
+<span class="c-c">-- Because price is a number, this just works:</span>
+<span class="c-k">SELECT SUM</span>(price) <span class="c-k">FROM</span> bakery.silver.orders;</code></pre>
+  <p>In Python, you give a schema when reading a file, so Spark knows how to treat each column.</p>
+<pre><code><span class="c-c"># Read a text file AS IF it were a table, using a schema we supply.</span>
+orders = (spark.read
+    .format(<span class="c-s">"csv"</span>)
+    .option(<span class="c-s">"header"</span>, <span class="c-s">"true"</span>)                                   <span class="c-c"># first line holds column names</span>
+    .schema(<span class="c-s">"order_id INT, shop STRING, price DECIMAL(10,2)"</span>)   <span class="c-c"># what each column should be</span>
+    .load(<span class="c-s">"/Volumes/bakery/landing/till_files/orders/"</span>))
+
+orders.printSchema()   <span class="c-c"># shows the column names and types Spark is using</span></code></pre>
+</section>
+
+<section id="whatif">
+  <div class="sec-num">What if I change this?</div>
+  <h2>Reading a file with different settings</h2>
+  <div class="tbl"><table class="whatif">
+    <tr><th>Change</th><th>Effect</th></tr>
+    <tr><td>Leave out <code>.schema(...)</code> when reading a CSV file</td><td>Every column is read as text. <code>4.50</code> is the characters "4.50", not a number, until you convert it.</td></tr>
+    <tr><td>Leave out the <code>header</code> option</td><td>The first line is treated as data, and columns get placeholder names such as <code>_c0</code>, <code>_c1</code>.</td></tr>
+    <tr><td>Give a schema, but a value does not fit (words in <code>price</code>)</td><td>By default the read carries on and that value becomes <a href="../../glossary.html#null">NULL</a>, meaning "no value". Nothing warns you. Later lessons show stricter settings.</td></tr>
+    <tr><td>Insert a value of the wrong type into a table</td><td>The table refuses the insert with an error. The bad row never gets in.</td></tr>
+    <tr><td>Add a column to the file that the table does not have</td><td>The file accepts it. The table does not, unless you choose to allow schema changes (Module 02).</td></tr>
+  </table></div>
+</section>
+
+<section id="compare">
+  <div class="sec-num">Compare</div>
+  <h2>File or table?</h2>
+  <div class="tbl"><table>
+    <tr><th></th><th>File</th><th>Table</th></tr>
+    <tr><td>What it is</td><td>A named lump of data</td><td>Rows and columns with a schema</td></tr>
+    <tr><td>Checks what goes in?</td><td>No</td><td>Yes, against the schema</td></tr>
+    <tr><td>How you find it</td><td>By a path, such as <code>/Volumes/.../orders.csv</code></td><td>By a name, such as <code>bakery.silver.orders</code></td></tr>
+    <tr><td>How you ask questions</td><td>Read and interpret it first</td><td>Query it directly with SQL</td></tr>
+    <tr><td>Change one row</td><td>Usually rewrite the whole file</td><td><code>UPDATE</code> one row</td></tr>
+    <tr><td>Typical role</td><td>How data arrives and is exchanged</td><td>How data is cleaned, stored and served</td></tr>
+  </table></div>
+  <h3>Three shapes of data</h3>
+  <div class="grid3">
+    <div class="card"><span class="tag">Structured</span><p><a href="../../glossary.html#structured-data">Structured data</a> already fits rows and columns. Example: a sales spreadsheet.</p></div>
+    <div class="card"><span class="tag">Semi-structured</span><p><a href="../../glossary.html#semi-structured-data">Semi-structured data</a> has labels but a loose shape. One record may have fields another lacks. Example: a web order with an optional gift note.</p></div>
+    <div class="card"><span class="tag">Unstructured</span><p><a href="../../glossary.html#unstructured-data">Unstructured data</a> has no rows or columns at all. Example: photos of receipts, voice recordings, PDF contracts.</p></div>
+  </div>
+</section>
+
+<section id="scenarios">
+  <div class="sec-num">Real life</div>
+  <h2>Where files and tables cause trouble</h2>
+  <div class="tbl"><table>
+    <tr><th>Scenario</th><th>What happens</th><th>Fix</th></tr>
+    <tr><td>A shop types "n/a" in the price column of its daily file</td><td>The file is accepted. The price becomes NULL when read, and the daily total is too low.</td><td>Count NULLs after loading and alert if there are any</td></tr>
+    <tr><td>The total of a column comes out as an error or as text</td><td>The column was read as text because no schema was given</td><td>Supply a schema, or convert the column to a number</td></tr>
+    <tr><td>Two people edit the same shared file</td><td>One person's changes overwrite the other's</td><td>Load the data into a table, which handles many writers safely</td></tr>
+    <tr><td>A supplier renames a column from <code>price</code> to <code>unit_price</code></td><td>Your <code>price</code> column is suddenly all NULL</td><td>Check that expected columns exist before loading</td></tr>
+  </table></div>
+</section>
+
+<section id="traps">
+  <div class="sec-num">Don't confuse these</div>
+  <h2>One word, two meanings</h2>
+  <div class="grid2">
+    <div class="card trap"><span class="tag">Schema vs schema</span><p>"Schema" can mean the columns and types of one table. On Databricks it also means a container that holds tables, like a folder. In <code>bakery.silver.orders</code>, <code>silver</code> is a schema in that second sense. Lesson 00-09 covers it.</p></div>
+    <div class="card trap"><span class="tag">NULL vs zero vs empty</span><p>NULL means "we do not know". It is not 0 and not empty text. A NULL price is left out of a total, not counted as zero.</p></div>
+    <div class="card trap"><span class="tag">Table vs file underneath</span><p>You query a table by name. The files that hold its data are an internal detail. Never edit those files by hand.</p></div>
+    <div class="card trap"><span class="tag">STRING "4.50" vs number 4.50</span><p>They look the same on screen. Only the number can be added, averaged or compared properly.</p></div>
+  </div>
+</section>
+
+<section id="quiz">
+  <div class="sec-num">Check yourself</div>
+  <h2>Quiz</h2>
+  <div class="quiz">
+    <fieldset>
+      <legend>1. What is a schema, in the sense used for a single table?</legend>
+      <label><input type="radio"> The number of rows in the table</label>
+      <label><input type="radio" data-correct> The column names and the data type of each column</label>
+      <label><input type="radio"> The path where the file is stored</label>
+      <p class="explain" hidden>The schema is the table's rulebook: which columns exist and what kind of value each may hold.</p>
+    </fieldset>
+    <fieldset>
+      <legend>2. In the demo, what happened when you appended "107,South,three pounds" to the file?</legend>
+      <label><input type="radio" data-correct> It was accepted without any check</label>
+      <label><input type="radio"> The file rejected it</label>
+      <label><input type="radio"> The price was changed to 3.00</label>
+      <p class="explain" hidden>A file has no rules. The problem only showed up later, when the total was calculated.</p>
+    </fieldset>
+    <fieldset>
+      <legend>3. You read a CSV file with a schema, and one price contains words. By default, what do you get for that value?</legend>
+      <label><input type="radio"> 0</label>
+      <label><input type="radio"> The whole read fails</label>
+      <label><input type="radio" data-correct> NULL</label>
+      <p class="explain" hidden>The default is forgiving: the value that does not fit becomes NULL and the read continues. That is convenient and also risky, because it is silent.</p>
+    </fieldset>
+    <fieldset>
+      <legend>4. Which is an example of unstructured data?</legend>
+      <label><input type="radio"> A table of orders</label>
+      <label><input type="radio" data-correct> A folder of receipt photos</label>
+      <label><input type="radio"> A CSV file of prices</label>
+      <p class="explain" hidden>Photos have no rows or columns. The table and the CSV file are both structured.</p>
+    </fieldset>
+  </div>
+</section>
+
+<section id="wrap">
+  <div class="sec-num">Wrap up</div>
+  <h2>Key takeaways</h2>
+  <ul>
+    <li>A file accepts anything. A table accepts only what fits its schema.</li>
+    <li>A schema is column names plus data types.</li>
+    <li>Files are how data arrives. Tables are how data is used.</li>
+    <li>Reading a file without a schema gives you text, not numbers.</li>
+    <li>NULL means "unknown". It is not zero.</li>
+  </ul>
+  <h3>Glossary terms used</h3>
+  <p><a href="../../glossary.html#file">file</a> · <a href="../../glossary.html#table">table</a> · <a href="../../glossary.html#row">row</a> · <a href="../../glossary.html#column">column</a> · <a href="../../glossary.html#schema">schema</a> · <a href="../../glossary.html#data-type">data type</a> · <a href="../../glossary.html#null">NULL</a> · <a href="../../glossary.html#structured-data">structured data</a> · <a href="../../glossary.html#semi-structured-data">semi-structured data</a> · <a href="../../glossary.html#unstructured-data">unstructured data</a></p>
+  <h3>Official docs</h3>
+  <ul>
+    <li><a href="https://docs.databricks.com/aws/en/tables/">Tables on Databricks</a></li>
+    <li><a href="https://docs.databricks.com/aws/en/query/formats/csv">Reading CSV files</a></li>
+    <li><a href="https://docs.databricks.com/aws/en/volumes/">Unity Catalog volumes (where files live)</a></li>
+  </ul>
+  <p class="cap">Last verified: 16 November 2026</p>
+</section>
+
+</main>
+
+<script>
+(function () {
+  var C = window.Course, $ = function (id) { return document.getElementById(id); }, L = $('dLog');
+  var START = ['101,North,4.50', '102,South,3.00'], lines, rows;
+
+  /* Check one text line against the schema. Returns {row} or {why}. */
+  function check(line) {
+    var p = line.split(',');
+    if (p.length !== 3) return { why: 'expected 3 columns, found ' + p.length };
+    if (!/^\d+$/.test(p[0])) return { why: 'order_id "' + p[0] + '" is not a whole number' };
+    if (!/^\d+(\.\d+)?$/.test(p[2])) return { why: 'price "' + p[2] + '" is not a number' };
+    return { row: { order_id: +p[0], shop: p[1], price: (+p[2]).toFixed(2) } };
+  }
+  function draw() { $('pFile').textContent = 'order_id,shop,price\n' + lines.join('\n'); $('pTable').innerHTML = C.table(rows); }
+  function reset() {
+    lines = START.slice(); rows = START.map(function (l) { return check(l).row; }); L.innerHTML = '';
+    C.log(L, 'skip', 'The file and the table both start with the same two orders.'); draw();
+  }
+  $('dFile').onclick = function () { lines.push($('dLine').value); C.log(L, 'ok', 'File: appended "' + $('dLine').value + '". No questions asked.'); draw(); C.bump($('pFile')); };
+  $('dTable').onclick = function () {
+    var r = check($('dLine').value);
+    if (r.row) { rows.push(r.row); C.log(L, 'ok', 'Table: inserted order ' + r.row.order_id + '. It fits the schema.'); }
+    else C.log(L, 'bad', 'Table: REJECTED. ' + r.why + '. Nothing was inserted.');
+    draw(); C.bump($('pTable'));
+  };
+  $('dSumF').onclick = function () {
+    var sum = 0, bad = 0;
+    lines.forEach(function (l) { var r = check(l); if (r.row) sum += +r.row.price; else bad++; });
+    C.log(L, bad ? 'bad' : 'ok', 'File: had to read and interpret all ' + lines.length + ' lines first. Total ' + sum.toFixed(2) + (bad ? '. ' + bad + ' line(s) could not be understood and were silently left out.' : '.'));
+  };
+  $('dSumT').onclick = function () {
+    C.log(L, 'ok', 'Table: SUM(price) = ' + rows.reduce(function (a, r) { return a + +r.price; }, 0).toFixed(2) + '. Every value was already checked on the way in.');
+  };
+  $('dReset').onclick = reset;
+  reset();
+})();
+</script>
+</body>
+</html>

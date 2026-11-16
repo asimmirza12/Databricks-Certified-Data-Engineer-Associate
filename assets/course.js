@@ -8,15 +8,15 @@
   var COURSE = /*COURSE*/[
   {n:"00", slug:"foundations", title:"Foundations", weight:null, lessons:[
     ["01", "what-is-data-engineering", "What is data engineering?", 1],
-    ["02", "files-vs-tables", "Files vs tables", 0],
-    ["03", "file-formats", "File formats: CSV, JSON, Parquet and friends", 0],
-    ["04", "batch-vs-streaming", "Batch vs streaming", 0],
-    ["05", "what-is-spark", "What is Apache Spark?", 0],
-    ["06", "cloud-object-storage", "Cloud object storage", 0],
-    ["07", "what-is-databricks", "What is Databricks? Workspace, compute, notebooks", 0],
-    ["08", "delta-lake-basics", "Delta Lake basics", 0],
-    ["09", "unity-catalog-basics", "Unity Catalog basics", 0],
-    ["10", "medallion-architecture", "Medallion architecture: bronze, silver, gold", 0]
+    ["02", "files-vs-tables", "Files vs tables", 1],
+    ["03", "file-formats", "File formats: CSV, JSON, Parquet and friends", 1],
+    ["04", "batch-vs-streaming", "Batch vs streaming", 1],
+    ["05", "what-is-spark", "What is Apache Spark?", 1],
+    ["06", "cloud-object-storage", "Cloud object storage", 1],
+    ["07", "what-is-databricks", "What is Databricks? Workspace, compute, notebooks", 1],
+    ["08", "delta-lake-basics", "Delta Lake basics", 1],
+    ["09", "unity-catalog-basics", "Unity Catalog basics", 1],
+    ["10", "medallion-architecture", "Medallion architecture: bronze, silver, gold", 1]
   ]},
   {n:"01", slug:"databricks-platform", title:"Databricks Intelligence Platform", weight:6, lessons:[
     ["01", "platform-architecture", "Platform architecture: control plane and compute plane", 0],
@@ -150,8 +150,17 @@
   function bump(n) { n.classList.remove('flash'); void n.offsetWidth; n.classList.add('flash'); }
   var reduce = !!(window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches);
 
+  function esc(v) { return String(v).replace(/&/g, '&amp;').replace(/</g, '&lt;'); }
+  /* Small table from a list of same-shaped objects. null shows as a NULL chip. */
+  function table(rows) {
+    if (!rows || !rows.length) return '<p class="cap">empty</p>';
+    var keys = Object.keys(rows[0]);
+    return '<table class="mini"><tr>' + keys.map(function (k) { return '<th>' + esc(k) + '</th>'; }).join('') + '</tr>' +
+      rows.map(function (r) { return '<tr>' + keys.map(function (k) { return '<td>' + (r[k] == null ? '<span class="chip bad">NULL</span>' : esc(r[k])) + '</td>'; }).join('') + '</tr>'; }).join('') + '</table>';
+  }
+
   /* Helpers for lesson demos. */
-  window.Course = { el: el, log: log, bump: bump, reduce: reduce, lessons: lessons };
+  window.Course = { el: el, log: log, bump: bump, table: table, esc: esc, reduce: reduce, lessons: lessons };
 
   function chrome() {
     var body = document.body;

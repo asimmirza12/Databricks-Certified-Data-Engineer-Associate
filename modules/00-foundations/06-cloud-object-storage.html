@@ -1,0 +1,290 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>00-06 Cloud object storage · DE Associate course</title>
+<link rel="stylesheet" href="../../assets/course.css">
+<script src="../../assets/course.js"></script>
+</head>
+<body data-lesson="00-06">
+
+<aside class="disclaimer" aria-label="Disclaimer"><strong>Learning resource only.</strong> This is an independent, unofficial study guide made for learning purposes. It is not affiliated with, endorsed by or sponsored by Databricks. Databricks features change often, so always check the details in the <a href="https://docs.databricks.com">official Databricks documentation</a> and the official exam guide on databricks.com before relying on anything here. Databricks and related names are trademarks of their respective owners.</aside>
+
+<main class="wrap">
+
+<header class="hero">
+  <div class="eyebrow">Module 00 · Foundations · Lesson 6 of 10</div>
+  <h1>Cloud object storage</h1>
+  <p class="lede">All the files and tables in this course live somewhere. That somewhere is a rented, almost bottomless storage service in the cloud.</p>
+  <dl class="where">
+    <div><dt>Module</dt><dd>00 Foundations</dd></div>
+    <div><dt>Exam objective</dt><dd>None directly. The ingestion objectives name the three storage services (ADLS, S3, GCS), and Module 07 depends on knowing where table data really sits.</dd></div>
+    <div><dt>Time to read</dt><dd>About 11 minutes</dd></div>
+    <div><dt>Before this</dt><dd><a href="02-files-vs-tables.html">00-02 Files vs tables</a></dd></div>
+  </dl>
+</header>
+
+<section id="idea">
+  <div class="sec-num">The idea</div>
+  <h2>A huge rented cupboard for files</h2>
+  <p>"The cloud" means computers and disks owned by a large company, which you rent over the internet instead of buying. The three big providers are Amazon Web Services (AWS), Microsoft Azure and Google Cloud.</p>
+  <p>Each provider sells a service called <a href="../../glossary.html#object-storage">object storage</a>. You put files in, and you get them back later. In this world a stored file is called an <a href="../../glossary.html#object">object</a>. Objects are kept in a top-level container called a <a href="../../glossary.html#bucket">bucket</a>.</p>
+  <p>Object storage has three properties that shaped modern data engineering:</p>
+  <ul>
+    <li><strong>It is cheap and has no practical size limit.</strong> You pay for what you store.</li>
+    <li><strong>It is separate from the computers that process data.</strong> You can switch all your computers off and the data stays put.</li>
+    <li><strong>Objects are replaced, not edited.</strong> You cannot change one line in the middle of an object. You upload a new version of the whole thing.</li>
+  </ul>
+  <div class="analogy">
+    <span class="tag">Everyday analogy</span>
+    <p><strong>A cloakroom at a theatre.</strong> You hand over a coat and get a ticket with a number. Later you show the ticket and get the same coat back. You cannot ask the attendant to sew on a button while it hangs there. You must take the coat out, change it and hand it in again. The ticket number is the object's name. The cloakroom has room for everyone's coats, and it stays open when the stage lights are off.</p>
+  </div>
+</section>
+
+<section id="how">
+  <div class="sec-num">How it works</div>
+  <h2>Storage stays. Compute comes and goes.</h2>
+  <p>The computers that run Spark are called <a href="../../glossary.html#compute">compute</a>. They read objects from storage, work on them and write new objects back. They hold nothing permanent themselves.</p>
+  <div class="stage">
+    <svg class="tall" viewBox="0 0 360 318" role="img" aria-label="Compute at the top reads from and writes to a storage bucket at the bottom. The bucket holds objects named by their keys.">
+      <defs>
+        <path id="rd" d="M120 162 V84"/>
+        <path id="wr" d="M240 84 V162"/>
+      </defs>
+      <g class="wire"><use href="#rd"/><use href="#wr"/></g>
+      <g class="mover">
+        <circle r="5" class="dot"><animateMotion dur="1.8s" repeatCount="indefinite"><mpath href="#rd"/></animateMotion></circle>
+        <circle r="5" class="dot-ok"><animateMotion dur="1.8s" begin="-0.9s" repeatCount="indefinite"><mpath href="#wr"/></animateMotion></circle>
+      </g>
+      <rect class="box-acc" x="60" y="20" width="240" height="64" rx="8"/>
+      <text class="t-b" x="180" y="46" text-anchor="middle">Compute</text>
+      <text class="t-m" x="180" y="66" text-anchor="middle">rented by the minute · switched off when idle</text>
+      <text class="t-m" x="110" y="128" text-anchor="end">read</text><text class="t-m" x="250" y="128">write</text>
+      <rect class="box" x="20" y="162" width="320" height="148" rx="8"/>
+      <text class="t-b" x="180" y="184" text-anchor="middle">Bucket: bakery-landing</text>
+      <text class="t-m" x="180" y="202" text-anchor="middle">always there · paid by the amount stored</text>
+      <g class="box-soft"><rect x="34" y="214" width="292" height="24" rx="4"/><rect x="34" y="244" width="292" height="24" rx="4"/><rect x="34" y="274" width="292" height="24" rx="4"/></g>
+      <text class="mono" x="42" y="231">orders/2026/11/15/north.csv</text>
+      <text class="mono" x="42" y="261">orders/2026/11/16/north.csv</text>
+      <text class="mono" x="42" y="291">prices/supplier.csv</text>
+    </svg>
+    <p class="cap">The long name of each object is called its key. The slashes make it look like folders, but see below.</p>
+  </div>
+  <h3>Folders are an illusion</h3>
+  <p>A bucket is really one flat list of objects. Each has a name called a <a href="../../glossary.html#object-key">key</a>, such as <code>orders/2026/11/16/north.csv</code>. The slashes are simply characters in the name. Tools show them as folders to be friendly.</p>
+  <p>The start of a key, such as <code>orders/2026/11/</code>, is called a <a href="../../glossary.html#prefix">prefix</a>. "Listing a folder" really means "show me every object whose key begins with this prefix".</p>
+</section>
+
+<section id="demo">
+  <div class="sec-num">Try it</div>
+  <h2>Work a bucket by hand</h2>
+  <p>Upload a few objects. Upload the same key twice. List by prefix. Then switch compute off and see what survives.</p>
+  <div class="stage">
+    <div class="ctrls">
+      <label class="tog">Key: <select id="dKey">
+        <option>orders/2026/11/16/north.csv</option>
+        <option>orders/2026/11/16/south.csv</option>
+        <option>orders/2026/11/17/north.csv</option>
+        <option>prices/supplier.csv</option>
+      </select></label>
+      <button id="dUp" type="button" class="primary">Upload</button>
+      <button id="dDel" type="button">Delete this key</button>
+    </div>
+    <div class="ctrls">
+      <label class="tog">List prefix: <select id="dPre">
+        <option value="">(everything)</option>
+        <option>orders/</option>
+        <option>orders/2026/11/16/</option>
+        <option>prices/</option>
+      </select></label>
+      <label class="tog"><input type="checkbox" id="dCompute" checked> Compute is switched on</label>
+      <button id="dQuery" type="button">Count rows with Spark</button>
+      <button id="dReset" type="button">Reset</button>
+    </div>
+    <div class="panes">
+      <div class="pane"><h4>Objects matching the prefix</h4><div id="pList"></div></div>
+      <div class="pane"><h4>In the whole bucket</h4><div class="big" id="pCount"></div><p class="cap" id="pBill"></p></div>
+    </div>
+    <div class="log" id="dLog" role="log" aria-label="What happened"></div>
+  </div>
+</section>
+
+<section id="code">
+  <div class="sec-num">Code</div>
+  <h2>How storage paths look</h2>
+  <p>Every object has an address. The first part tells you which cloud it is in.</p>
+<pre><code><span class="c-c"># Amazon S3:      s3://&lt;bucket&gt;/&lt;key&gt;</span>
+s3_path   = <span class="c-s">"s3://bakery-landing/orders/2026/11/16/north.csv"</span>
+
+<span class="c-c"># Azure ADLS:     abfss://&lt;container&gt;@&lt;storage account&gt;.dfs.core.windows.net/&lt;key&gt;</span>
+adls_path = <span class="c-s">"abfss://landing@bakerydata.dfs.core.windows.net/orders/2026/11/16/north.csv"</span>
+
+<span class="c-c"># Google Cloud:   gs://&lt;bucket&gt;/&lt;key&gt;</span>
+gcs_path  = <span class="c-s">"gs://bakery-landing/orders/2026/11/16/north.csv"</span></code></pre>
+  <p>On Databricks you usually do not use those raw addresses. An administrator connects the bucket once, and you then reach files through a friendlier path that starts with <code>/Volumes/</code>. Lesson 00-09 explains why that is safer.</p>
+<pre><code><span class="c-c"># List what is under a prefix. Works the same on all three clouds.</span>
+files = dbutils.fs.ls(<span class="c-s">"/Volumes/bakery/landing/till_files/orders/2026/11/16/"</span>)
+<span class="c-k">for</span> f <span class="c-k">in</span> files:
+    print(f.name, f.size)
+
+<span class="c-c"># Read every object under the prefix as one DataFrame.</span>
+day_orders = (spark.read.format(<span class="c-s">"csv"</span>)
+    .option(<span class="c-s">"header"</span>, <span class="c-s">"true"</span>)
+    .load(<span class="c-s">"/Volumes/bakery/landing/till_files/orders/2026/11/16/"</span>))</code></pre>
+<pre><code><span class="c-c">-- The same listing in SQL.</span>
+<span class="c-k">LIST</span> <span class="c-s">'/Volumes/bakery/landing/till_files/orders/2026/11/16/'</span>;</code></pre>
+</section>
+
+<section id="whatif">
+  <div class="sec-num">What if I change this?</div>
+  <h2>Things that behave differently from your laptop</h2>
+  <div class="tbl"><table class="whatif">
+    <tr><th>Change</th><th>Effect</th></tr>
+    <tr><td>Upload to a key that already exists</td><td>The old object is replaced as a whole. There is no "append a line" and no warning.</td></tr>
+    <tr><td>Switch all compute off</td><td>Every object is still there. You pay only for storage. Nothing can be queried until compute is back on.</td></tr>
+    <tr><td>Point a read at a prefix instead of one object</td><td>Spark reads every object under that prefix and treats them as one dataset.</td></tr>
+    <tr><td>"Delete a folder"</td><td>Really a delete of every object with that prefix. With millions of objects it takes time.</td></tr>
+    <tr><td>Store data as millions of tiny objects</td><td>Listing and opening them becomes the slow part of every job. Fewer, larger files are better.</td></tr>
+  </table></div>
+</section>
+
+<section id="compare">
+  <div class="sec-num">Compare</div>
+  <h2>Three clouds, the same idea</h2>
+  <div class="tbl"><table>
+    <tr><th></th><th>AWS</th><th>Azure</th><th>Google Cloud</th></tr>
+    <tr><td>Service name</td><td>Amazon S3</td><td>Azure Data Lake Storage (ADLS)</td><td>Google Cloud Storage (GCS)</td></tr>
+    <tr><td>Top-level container is called</td><td>Bucket</td><td>Container, inside a storage account</td><td>Bucket</td></tr>
+    <tr><td>Address starts with</td><td><code>s3://</code></td><td><code>abfss://</code></td><td><code>gs://</code></td></tr>
+  </table></div>
+  <p>Databricks runs on all three. The exam guide names them together as "ADLS/S3/GCS", so learn the three names as a set.</p>
+  <h3>Object storage next to other places for data</h3>
+  <div class="grid3">
+    <div class="card"><span class="tag">Laptop disk</span><p>Small, fixed size, real folders, files can be edited in place. Gone if the laptop breaks.</p></div>
+    <div class="card"><span class="tag">Object storage</span><p>Huge, cheap, flat list of keys, objects replaced whole. Kept safe by the cloud provider.</p></div>
+    <div class="card"><span class="tag">Database</span><p>Stores rows, not files. Fast single-row changes. Storage and compute are usually tied together and cost more per gigabyte.</p></div>
+  </div>
+</section>
+
+<section id="scenarios">
+  <div class="sec-num">Real life</div>
+  <h2>Storage surprises</h2>
+  <div class="tbl"><table>
+    <tr><th>Scenario</th><th>What happens</th><th>Fix</th></tr>
+    <tr><td>Each till uploads one tiny file per order</td><td>Millions of objects build up and every job spends most of its time listing them</td><td>Load them into a table, which combines them into fewer, larger files</td></tr>
+    <tr><td>A shop re-sends <code>north.csv</code> with corrections under the same key</td><td>The first version is silently replaced</td><td>Put a date or time in the key, so each delivery is a new object</td></tr>
+    <tr><td>The cluster is shut down over the weekend to save money</td><td>All data is intact on Monday</td><td>Nothing to fix. This is the design working as intended.</td></tr>
+    <tr><td>Someone is given the bucket's access key to "have a quick look"</td><td>They can read and delete everything in it</td><td>Never share keys. Give access through Unity Catalog (lesson 00-09).</td></tr>
+  </table></div>
+</section>
+
+<section id="traps">
+  <div class="sec-num">Don't confuse these</div>
+  <h2>Storage words</h2>
+  <div class="grid2">
+    <div class="card trap"><span class="tag">Folder vs prefix</span><p>Object storage has no real folders. A "folder" is a shared beginning of many keys.</p></div>
+    <div class="card trap"><span class="tag">Storage vs compute</span><p>Storage keeps data and is always on. Compute processes data and is switched on only when needed. They are billed separately.</p></div>
+    <div class="card trap"><span class="tag">Bucket vs container</span><p>The same thing with two names. AWS and Google say bucket. Azure says container.</p></div>
+    <div class="card trap"><span class="tag">Object storage vs table</span><p>Storage holds files and knows nothing about rows, columns or schemas. A table is a layer built on top of those files.</p></div>
+  </div>
+</section>
+
+<section id="quiz">
+  <div class="sec-num">Check yourself</div>
+  <h2>Quiz</h2>
+  <div class="quiz">
+    <fieldset>
+      <legend>1. All compute is switched off for a week. What happens to the data in object storage?</legend>
+      <label><input type="radio"> It is deleted after 24 hours</label>
+      <label><input type="radio" data-correct> Nothing. It stays exactly as it was.</label>
+      <label><input type="radio"> It is moved to a slower disk and must be restored</label>
+      <p class="explain" hidden>Storage and compute are separate. Turning one off does not touch the other.</p>
+    </fieldset>
+    <fieldset>
+      <legend>2. In the demo, you uploaded the same key twice. How many objects were there for that key afterwards?</legend>
+      <label><input type="radio" data-correct> One. The second upload replaced the first.</label>
+      <label><input type="radio"> Two, side by side</label>
+      <label><input type="radio"> One, with the new lines added to the end</label>
+      <p class="explain" hidden>A key names exactly one object. Uploading again swaps the whole object.</p>
+    </fieldset>
+    <fieldset>
+      <legend>3. Which set lists the object storage services of AWS, Azure and Google Cloud, in that order?</legend>
+      <label><input type="radio"> GCS, S3, ADLS</label>
+      <label><input type="radio"> ADLS, GCS, S3</label>
+      <label><input type="radio" data-correct> S3, ADLS, GCS</label>
+      <p class="explain" hidden>Amazon S3, Azure Data Lake Storage, Google Cloud Storage.</p>
+    </fieldset>
+    <fieldset>
+      <legend>4. What is a prefix?</legend>
+      <label><input type="radio"> A password for a bucket</label>
+      <label><input type="radio" data-correct> The beginning of an object key, used like a folder</label>
+      <label><input type="radio"> The file format of an object</label>
+      <p class="explain" hidden>Listing by prefix returns every object whose key starts with those characters.</p>
+    </fieldset>
+  </div>
+</section>
+
+<section id="wrap">
+  <div class="sec-num">Wrap up</div>
+  <h2>Key takeaways</h2>
+  <ul>
+    <li>Object storage is cheap, huge and always available.</li>
+    <li>S3, ADLS and GCS are the same idea on three clouds.</li>
+    <li>Storage and compute are separate. Data survives when compute is off.</li>
+    <li>Objects are replaced whole. Folders are only key prefixes.</li>
+    <li>Many tiny objects are slow. Fewer large ones are fast.</li>
+  </ul>
+  <h3>Glossary terms used</h3>
+  <p><a href="../../glossary.html#object-storage">object storage</a> · <a href="../../glossary.html#object">object</a> · <a href="../../glossary.html#bucket">bucket</a> · <a href="../../glossary.html#object-key">key</a> · <a href="../../glossary.html#prefix">prefix</a> · <a href="../../glossary.html#compute">compute</a></p>
+  <h3>Official docs</h3>
+  <ul>
+    <li><a href="https://docs.databricks.com/aws/en/connect/unity-catalog/cloud-storage/">Connect to cloud object storage using Unity Catalog</a></li>
+    <li><a href="https://docs.databricks.com/aws/en/volumes/">Unity Catalog volumes</a></li>
+  </ul>
+  <p class="cap">Last verified: 16 November 2026</p>
+</section>
+
+</main>
+
+<script>
+(function () {
+  var C = window.Course, $ = function (id) { return document.getElementById(id); }, L = $('dLog');
+  var objs;   /* key -> number of uploads (version) */
+  function keys() { return Object.keys(objs).sort(); }
+  function draw() {
+    var pre = $('dPre').value, hit = keys().filter(function (k) { return k.indexOf(pre) === 0; });
+    $('pList').innerHTML = hit.length ? hit.map(function (k) { return '<div class="item"><span>' + k + '</span><span>v' + objs[k] + '</span></div>'; }).join('') : '<p class="cap">no objects start with "' + pre + '"</p>';
+    $('pCount').textContent = keys().length + ' object(s)';
+    $('pBill').textContent = 'Paying for: storage' + ($('dCompute').checked ? ' + compute' : ' only');
+  }
+  $('dUp').onclick = function () {
+    var k = $('dKey').value, had = objs[k];
+    objs[k] = (had || 0) + 1;
+    C.log(L, had ? 'bad' : 'ok', had ? 'Uploaded ' + k + ' again. The old object was replaced whole (now v' + objs[k] + ').' : 'Uploaded ' + k + '.');
+    draw(); C.bump($('pList'));
+  };
+  $('dDel').onclick = function () {
+    var k = $('dKey').value;
+    if (objs[k]) { delete objs[k]; C.log(L, 'bad', 'Deleted ' + k + '.'); } else C.log(L, 'skip', 'No object has the key ' + k + '.');
+    draw();
+  };
+  $('dPre').onchange = function () {
+    var pre = $('dPre').value, n = keys().filter(function (k) { return k.indexOf(pre) === 0; }).length;
+    C.log(L, 'skip', 'List prefix "' + pre + '": ' + n + ' of ' + keys().length + ' key(s) start with it.'); draw();
+  };
+  $('dCompute').onchange = function () {
+    C.log(L, 'skip', $('dCompute').checked ? 'Compute switched on.' : 'Compute switched off. All ' + keys().length + ' object(s) are still in the bucket.'); draw();
+  };
+  $('dQuery').onclick = function () {
+    if (!$('dCompute').checked) { C.log(L, 'bad', 'Cannot query: storage only keeps data. Switch compute on to process it.'); return; }
+    var pre = $('dPre').value, n = keys().filter(function (k) { return k.indexOf(pre) === 0; }).length;
+    C.log(L, n ? 'ok' : 'skip', 'Spark read ' + n + ' object(s) under "' + pre + '" as one dataset: ' + (n * 100) + ' rows (100 per object).');
+  };
+  function reset() { objs = { 'orders/2026/11/15/north.csv': 1, 'prices/supplier.csv': 1 }; $('dPre').value = ''; $('dCompute').checked = true; L.innerHTML = ''; C.log(L, 'skip', 'The bucket starts with 2 objects.'); draw(); }
+  $('dReset').onclick = reset;
+  reset();
+})();
+</script>
+</body>
+</html>

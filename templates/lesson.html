@@ -166,7 +166,8 @@
 </main>
 
 <script>
-/* Demo logic for this lesson only. Helpers: Course.el(tag, cls, html), Course.log(box, 'ok'|'skip'|'bad', text), Course.bump(node), Course.reduce */
+/* Demo logic for this lesson only. Helpers: Course.el(tag, cls, html), Course.log(box, 'ok'|'skip'|'bad', text), Course.table(rows), Course.esc(text), Course.bump(node), Course.reduce.
+   Demo classes in course.css: panes, pane, item (+ off, hot), chips, chip (+ ok, bad, acc), filetext, big, meter, log. */
 (function () {
   var C = window.Course, L = document.getElementById('dLog');
   document.getElementById('dRun').onclick = function () { C.log(L, 'ok', '{{what happened}}'); };
