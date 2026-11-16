@@ -1,0 +1,341 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>00-01 What is data engineering? · DE Associate course</title>
+<link rel="stylesheet" href="../../assets/course.css">
+<script src="../../assets/course.js"></script>
+</head>
+<body data-lesson="00-01">
+
+<!-- 1. Disclaimer: keep this as the first element in <body>. -->
+<aside class="disclaimer" aria-label="Disclaimer"><strong>Learning resource only.</strong> This is an independent, unofficial study guide made for learning purposes. It is not affiliated with, endorsed by or sponsored by Databricks. Databricks features change often, so always check the details in the <a href="https://docs.databricks.com">official Databricks documentation</a> and the official exam guide on databricks.com before relying on anything here. Databricks and related names are trademarks of their respective owners.</aside>
+
+<main class="wrap">
+
+<!-- 2. Where you are -->
+<header class="hero">
+  <div class="eyebrow">Module 00 · Foundations · Lesson 1 of 10</div>
+  <h1>What is data engineering?</h1>
+  <p class="lede">Before any tool, you need the big picture: what a data engineer does all day, and why anyone pays for it.</p>
+  <dl class="where">
+    <div><dt>Module</dt><dd>00 Foundations</dd></div>
+    <div><dt>Exam objective</dt><dd>None directly. This is background that every exam section builds on.</dd></div>
+    <div><dt>Time to read</dt><dd>About 12 minutes</dd></div>
+    <!-- 3. Before this -->
+    <div><dt>Before this</dt><dd>Nothing. This is the first lesson.</dd></div>
+  </dl>
+</header>
+
+<!-- 4. The idea in plain English -->
+<section id="idea">
+  <div class="sec-num">The idea</div>
+  <h2>Moving data from where it is made to where it is used</h2>
+  <p>Every business creates data all day long. A till records a sale. A website records an order. A supplier emails a price list. Each of these lives in a different place and looks different.</p>
+  <p>People in the business want answers: "How much did we sell yesterday?" "Which shop is running low on flour?" They cannot answer those questions while the data is scattered and messy.</p>
+  <p><strong>Data engineering</strong> is the work of collecting that data, storing it safely, cleaning it up and delivering it in a shape people can use. The person who does it is a <a href="../../glossary.html#data-engineer">data engineer</a>. The thing they build is called a <a href="../../glossary.html#pipeline">data pipeline</a>: a set of steps that run again and again, without anyone clicking buttons.</p>
+  <div class="analogy">
+    <span class="tag">Everyday analogy</span>
+    <p><strong>Think of the water supply to your home.</strong> Rain falls in many places. Someone collects it, stores it in a reservoir, filters it and pipes it to your tap. You only turn the tap. A data engineer is the water engineer. The analyst reading a sales chart is the person filling a glass. Nobody thinks about the pipes until the water comes out dirty, or does not come out at all.</p>
+  </div>
+</section>
+
+<!-- 5. Animated diagram -->
+<section id="how">
+  <div class="sec-num">How it works</div>
+  <h2>The four steps of every pipeline</h2>
+  <p>Our example for this lesson is a made-up bakery chain with two shops, North and South. Follow the dots from top to bottom.</p>
+  <div class="stage">
+    <svg class="tall" viewBox="0 0 360 412" role="img" aria-label="Three sources feed into four stacked steps: ingest, store, transform and serve">
+      <defs>
+        <path id="s1" d="M60 46 C 60 76, 180 66, 180 96"/>
+        <path id="s2" d="M180 46 L 180 96"/>
+        <path id="s3" d="M300 46 C 300 76, 180 66, 180 96"/>
+        <path id="g1" d="M180 150 L 180 180"/>
+        <path id="g2" d="M180 234 L 180 264"/>
+        <path id="g3" d="M180 318 L 180 348"/>
+      </defs>
+      <g class="wire"><use href="#s1"/><use href="#s2"/><use href="#s3"/><use href="#g1"/><use href="#g2"/><use href="#g3"/></g>
+      <g class="mover">
+        <circle r="5" class="dot"><animateMotion dur="2.4s" repeatCount="indefinite"><mpath href="#s1"/></animateMotion></circle>
+        <circle r="5" class="dot"><animateMotion dur="2.4s" begin="-0.8s" repeatCount="indefinite"><mpath href="#s2"/></animateMotion></circle>
+        <circle r="5" class="dot"><animateMotion dur="2.4s" begin="-1.6s" repeatCount="indefinite"><mpath href="#s3"/></animateMotion></circle>
+        <circle r="4" class="dot"><animateMotion dur="1.4s" repeatCount="indefinite"><mpath href="#g1"/></animateMotion></circle>
+        <circle r="4" class="dot"><animateMotion dur="1.4s" begin="-0.5s" repeatCount="indefinite"><mpath href="#g2"/></animateMotion></circle>
+        <circle r="4" class="dot-ok"><animateMotion dur="1.4s" begin="-1s" repeatCount="indefinite"><mpath href="#g3"/></animateMotion></circle>
+      </g>
+      <rect class="box-soft" x="8" y="10" width="104" height="36" rx="6"/><text x="60" y="33" text-anchor="middle">Shop tills</text>
+      <rect class="box-soft" x="128" y="10" width="104" height="36" rx="6"/><text x="180" y="33" text-anchor="middle">Website orders</text>
+      <rect class="box-soft" x="248" y="10" width="104" height="36" rx="6"/><text x="300" y="33" text-anchor="middle">Supplier file</text>
+      <rect class="box" x="50" y="96" width="260" height="54" rx="8"/><text class="t-b" x="180" y="119" text-anchor="middle">1 · Ingest</text><text class="t-m" x="180" y="137" text-anchor="middle">copy the raw data in</text>
+      <rect class="box" x="50" y="180" width="260" height="54" rx="8"/><text class="t-b" x="180" y="203" text-anchor="middle">2 · Store</text><text class="t-m" x="180" y="221" text-anchor="middle">keep it safe, exactly as it arrived</text>
+      <rect class="box" x="50" y="264" width="260" height="54" rx="8"/><text class="t-b" x="180" y="287" text-anchor="middle">3 · Transform</text><text class="t-m" x="180" y="305" text-anchor="middle">fix, combine and summarise</text>
+      <rect class="box-acc" x="50" y="348" width="260" height="54" rx="8"/><text class="t-b" x="180" y="371" text-anchor="middle">4 · Serve</text><text class="t-m" x="180" y="389" text-anchor="middle">reports, dashboards, apps</text>
+    </svg>
+    <p class="cap">The places data comes from are called <a href="../../glossary.html#source">sources</a>. Everything below them is the pipeline.</p>
+  </div>
+  <div class="grid2">
+    <div class="card"><span class="tag">1 · Ingest</span><p><a href="../../glossary.html#ingestion">Ingestion</a> means bringing data in from a source. Nothing is changed yet. You just make a copy.</p></div>
+    <div class="card"><span class="tag">2 · Store</span><p>The raw copy is kept somewhere cheap and safe. If you make a mistake later, you can start again from it.</p></div>
+    <div class="card"><span class="tag">3 · Transform</span><p><a href="../../glossary.html#transformation">Transformation</a> means changing data to make it useful: removing duplicates, fixing typos, adding things up.</p></div>
+    <div class="card"><span class="tag">4 · Serve</span><p>The finished data is handed to people and programs: a sales chart, a stock report, a forecasting model.</p></div>
+  </div>
+  <p>Two more jobs wrap around these four. <a href="../../glossary.html#orchestration">Orchestration</a> means running the steps in the right order at the right time. <a href="../../glossary.html#governance">Governance</a> means controlling who is allowed to see which data.</p>
+</section>
+
+<!-- 6. Live demo -->
+<section id="demo">
+  <div class="sec-num">Try it</div>
+  <h2>Run the bakery pipeline yourself</h2>
+  <p>The till data below has three problems. Can you spot them before you run anything? Press the buttons from left to right. Then reset, tick "Skip the cleaning step" and compare the report.</p>
+  <div class="stage">
+    <div class="ctrls">
+      <button id="dNew" type="button">+ New order arrives</button>
+      <button id="dIngest" type="button" class="primary">1 · Ingest</button>
+      <button id="dClean" type="button" class="primary">2 · Clean</button>
+      <button id="dSum" type="button" class="primary">3 · Summarise</button>
+      <label class="tog"><input type="checkbox" id="dSkip"> Skip the cleaning step</label>
+      <button id="dReset" type="button">Reset</button>
+    </div>
+    <div class="panes">
+      <div class="pane"><h4>Source: shop tills</h4><div id="pSrc"></div></div>
+      <div class="pane"><h4>Raw copy</h4><div id="pRaw"></div></div>
+      <div class="pane"><h4>Clean table</h4><div id="pClean"></div></div>
+      <div class="pane"><h4>Report: sales by shop</h4><div id="pRep"></div></div>
+    </div>
+    <div class="log" id="dLog" role="log" aria-label="What happened"></div>
+    <p class="cap">Notice two things. New orders do nothing until the pipeline runs again. And without cleaning, the report is still produced. It is just wrong, and nobody is warned.</p>
+  </div>
+</section>
+
+<!-- 7. Code -->
+<section id="code">
+  <div class="sec-num">Code</div>
+  <h2>The same pipeline as real code</h2>
+  <p>You do not need to understand every line yet. Later modules teach each part slowly. For now, match each block to a step in the diagram. The first example is <a href="../../glossary.html#pyspark">PySpark</a>, which is Python for working with large data.</p>
+<pre><code><span class="c-k">from</span> pyspark.sql <span class="c-k">import</span> functions <span class="c-k">as</span> F
+
+<span class="c-c"># 1 + 2. INGEST and STORE: read the till files and keep an untouched copy.</span>
+<span class="c-c"># "header" tells Spark the first line of each file holds the column names.</span>
+raw_orders = (spark.read
+    .format(<span class="c-s">"csv"</span>)
+    .option(<span class="c-s">"header"</span>, <span class="c-s">"true"</span>)
+    .load(<span class="c-s">"/Volumes/bakery/landing/till_files/orders/"</span>))
+
+raw_orders.write.mode(<span class="c-s">"append"</span>).saveAsTable(<span class="c-s">"bakery.bronze.orders_raw"</span>)
+
+<span class="c-c"># 3. TRANSFORM: fix the three problems you saw in the demo.</span>
+clean_orders = (spark.table(<span class="c-s">"bakery.bronze.orders_raw"</span>)
+    .withColumn(<span class="c-s">"shop"</span>, F.initcap(F.trim(<span class="c-s">"shop"</span>)))             <span class="c-c"># "north " becomes "North"</span>
+    .withColumn(<span class="c-s">"price"</span>, F.col(<span class="c-s">"price"</span>).cast(<span class="c-s">"decimal(10,2)"</span>))  <span class="c-c"># text becomes a number</span>
+    .dropDuplicates([<span class="c-s">"order_id"</span>])                             <span class="c-c"># the same order only once</span>
+    .filter(F.col(<span class="c-s">"price"</span>).isNotNull()))                      <span class="c-c"># leave out orders with no price</span>
+
+clean_orders.write.mode(<span class="c-s">"overwrite"</span>).saveAsTable(<span class="c-s">"bakery.silver.orders"</span>)</code></pre>
+  <p>The last step is often written in <a href="../../glossary.html#sql">SQL</a>, the standard language for asking questions of tables.</p>
+<pre><code><span class="c-c">-- 4. SERVE: one row per shop, ready for a sales chart.</span>
+<span class="c-k">CREATE OR REPLACE TABLE</span> bakery.gold.sales_by_shop <span class="c-k">AS</span>
+<span class="c-k">SELECT</span> shop, <span class="c-k">SUM</span>(price) <span class="c-k">AS</span> total_sales
+<span class="c-k">FROM</span> bakery.silver.orders
+<span class="c-k">GROUP BY</span> shop;</code></pre>
+  <p class="note">The words <span class="bronze">bronze</span>, <span class="silver">silver</span> and <span class="gold">gold</span> in the table names are a common way to label raw, cleaned and finished data. Lesson 00-10 explains it.</p>
+</section>
+
+<!-- 8. What if I change this? -->
+<section id="whatif">
+  <div class="sec-num">What if I change this?</div>
+  <h2>Small choices, big effects</h2>
+  <div class="tbl"><table class="whatif">
+    <tr><th>Change</th><th>Effect</th></tr>
+    <tr><td>Skip the cleaning step</td><td>The report still appears, but totals are wrong. Duplicates are counted twice and one shop shows up under two spellings.</td></tr>
+    <tr><td>Do not keep a raw copy</td><td>You save a little storage. But if your cleaning rule had a bug, the original data is gone and you cannot redo it.</td></tr>
+    <tr><td>Run once a night instead of every few minutes</td><td>Cheaper and simpler. The report is up to a day old. Fine for monthly sales, not fine for "are we out of bread right now?"</td></tr>
+    <tr><td>Run the steps by hand instead of on a schedule</td><td>Works until the person is on holiday. Then nothing updates and nobody notices for days.</td></tr>
+    <tr><td>Use <code>overwrite</code> instead of <code>append</code> on the raw table</td><td>Each run replaces the history with only the latest files. Yesterday's raw data is lost.</td></tr>
+  </table></div>
+</section>
+
+<!-- 9. Comparisons and categories -->
+<section id="compare">
+  <div class="sec-num">Compare</div>
+  <h2>ETL or ELT: the same steps in a different order</h2>
+  <p>You will see these two short names everywhere. E is Extract (take data out of the source). T is Transform. L is Load (put data into your storage). The only difference is the order.</p>
+  <div class="tbl"><table>
+    <tr><th></th><th>ETL</th><th>ELT</th></tr>
+    <tr><td>Order</td><td>Extract, Transform, Load</td><td>Extract, Load, Transform</td></tr>
+    <tr><td>Where cleaning happens</td><td>Before the data reaches your storage</td><td>After the raw data is already stored</td></tr>
+    <tr><td>Is the raw data kept?</td><td>Usually not</td><td>Yes</td></tr>
+    <tr><td>If a cleaning rule was wrong</td><td>Go back to the source and extract again</td><td>Rerun the transform on the raw copy</td></tr>
+    <tr><td>Common today?</td><td>Older style, still used</td><td>The usual style on Databricks, and the one this course follows</td></tr>
+  </table></div>
+  <h3>Who does what on a data team</h3>
+  <div class="grid3">
+    <div class="card"><span class="tag">Data engineer</span><p>Builds and looks after the pipelines. Makes sure data arrives, is correct and is on time.</p></div>
+    <div class="card"><span class="tag">Data analyst</span><p>Uses the finished tables to answer business questions with charts and reports.</p></div>
+    <div class="card"><span class="tag">Data scientist</span><p>Uses the same tables to build models that predict things, such as next week's bread sales.</p></div>
+  </div>
+  <h3>Where each step lives on Databricks</h3>
+  <p>Do not learn these yet. This is only a map so the names feel familiar when later lessons introduce them.</p>
+  <div class="tbl"><table>
+    <tr><th>Step</th><th>Databricks name you will meet</th><th>Taught in</th></tr>
+    <tr><td>Ingest</td><td>Lakeflow Connect, Auto Loader, <code>COPY INTO</code></td><td>Module 02</td></tr>
+    <tr><td>Store</td><td>Delta Lake tables</td><td>00-08, Module 01</td></tr>
+    <tr><td>Transform</td><td>Spark with Python or SQL; Lakeflow Spark Declarative Pipelines (formerly Delta Live Tables)</td><td>Module 03</td></tr>
+    <tr><td>Orchestrate</td><td>Lakeflow Jobs (formerly Databricks Workflows)</td><td>Module 04</td></tr>
+    <tr><td>Govern</td><td>Unity Catalog</td><td>00-09, Module 07</td></tr>
+  </table></div>
+</section>
+
+<!-- 10. Real-life scenarios -->
+<section id="scenarios">
+  <div class="sec-num">Real life</div>
+  <h2>What goes wrong, and what a data engineer does about it</h2>
+  <div class="tbl"><table>
+    <tr><th>Scenario</th><th>What happens</th><th>Fix</th></tr>
+    <tr><td>The supplier sends the same price file twice</td><td>Every price is loaded twice and averages are skewed</td><td>Remember which files were already loaded, and remove duplicates when cleaning</td></tr>
+    <tr><td>The till software adds a new "loyalty card" column</td><td>The pipeline either fails or silently ignores the new column</td><td>Decide in advance how new columns are handled (Module 02 covers this)</td></tr>
+    <tr><td>The nightly run fails at 2 am</td><td>The morning report shows yesterday's numbers</td><td>Automatic retries, plus an alert so a person finds out before the readers do</td></tr>
+    <tr><td>The finance total and the dashboard total disagree</td><td>People stop trusting the dashboard</td><td>Checks that compare row counts and totals at each step</td></tr>
+    <tr><td>An intern can see customer email addresses</td><td>A privacy problem</td><td>Access rules, so each person sees only what they need</td></tr>
+  </table></div>
+</section>
+
+<!-- 11. Exam traps -->
+<section id="traps">
+  <div class="sec-num">Don't confuse these</div>
+  <h2>Words that sound alike</h2>
+  <div class="grid2">
+    <div class="card trap"><span class="tag">pipeline vs Pipeline</span><p>In general, a pipeline is any chain of data steps. On Databricks, "pipeline" can also mean one specific product, Lakeflow Spark Declarative Pipelines. Read the question to see which is meant.</p></div>
+    <div class="card trap"><span class="tag">Ingest vs transform</span><p>Ingesting copies data in without changing it. Transforming changes it. If a question says "land the raw data", it is about ingestion.</p></div>
+    <div class="card trap"><span class="tag">ETL vs ELT</span><p>Same three letters. In ELT the raw data is loaded first and cleaned afterwards, so a raw copy always exists.</p></div>
+    <div class="card trap"><span class="tag">Pipeline vs job</span><p>The pipeline is the work to be done. A job is what runs that work on a schedule and retries it when it fails.</p></div>
+  </div>
+</section>
+
+<!-- 12. Quiz -->
+<section id="quiz">
+  <div class="sec-num">Check yourself</div>
+  <h2>Quiz</h2>
+  <div class="quiz">
+    <fieldset>
+      <legend>1. Which sentence best describes data engineering?</legend>
+      <label><input type="radio"> Drawing charts that explain last month's sales</label>
+      <label><input type="radio" data-correct> Building repeatable steps that collect, clean and deliver data</label>
+      <label><input type="radio"> Predicting next month's sales with a model</label>
+      <p class="explain" hidden>Charts are the analyst's work and predictions are the data scientist's. The engineer builds the pipelines that both of them depend on.</p>
+    </fieldset>
+    <fieldset>
+      <legend>2. In the demo, what happened when you skipped the cleaning step?</legend>
+      <label><input type="radio"> The pipeline stopped with an error</label>
+      <label><input type="radio"> The report was empty</label>
+      <label><input type="radio" data-correct> The report was produced, with wrong numbers</label>
+      <p class="explain" hidden>Bad data rarely announces itself. The report looked normal, which is exactly why cleaning and checks matter.</p>
+    </fieldset>
+    <fieldset>
+      <legend>3. Why keep an untouched raw copy of the data?</legend>
+      <label><input type="radio" data-correct> So you can rebuild everything if a cleaning rule turns out to be wrong</label>
+      <label><input type="radio"> Because raw data is faster to query</label>
+      <label><input type="radio"> Because analysts prefer raw data</label>
+      <p class="explain" hidden>The raw copy is your safety net. Raw data is usually slower and harder to use, so analysts get the cleaned tables.</p>
+    </fieldset>
+    <fieldset>
+      <legend>4. What is the difference between ETL and ELT?</legend>
+      <label><input type="radio"> ELT skips the transform step</label>
+      <label><input type="radio" data-correct> ELT loads the raw data first and transforms it afterwards</label>
+      <label><input type="radio"> ETL is only for small data</label>
+      <p class="explain" hidden>Both do all three steps. Only the order changes: in ELT the data is stored raw first and cleaned afterwards.</p>
+    </fieldset>
+  </div>
+</section>
+
+<!-- 13. Takeaways, glossary, docs, last verified -->
+<section id="wrap">
+  <div class="sec-num">Wrap up</div>
+  <h2>Key takeaways</h2>
+  <ul>
+    <li>Data engineering moves data from where it is made to where it is used.</li>
+    <li>A pipeline has four steps: ingest, store, transform, serve.</li>
+    <li>Pipelines run again and again on their own. New data waits for the next run.</li>
+    <li>Keep a raw copy. Clean a copy of it, never the original.</li>
+    <li>Wrong data is worse than late data, because nobody notices it.</li>
+  </ul>
+  <h3>Glossary terms used</h3>
+  <p><a href="../../glossary.html#data-engineer">data engineer</a> · <a href="../../glossary.html#pipeline">pipeline</a> · <a href="../../glossary.html#source">source</a> · <a href="../../glossary.html#ingestion">ingestion</a> · <a href="../../glossary.html#transformation">transformation</a> · <a href="../../glossary.html#orchestration">orchestration</a> · <a href="../../glossary.html#governance">governance</a> · <a href="../../glossary.html#etl">ETL</a> · <a href="../../glossary.html#elt">ELT</a> · <a href="../../glossary.html#pyspark">PySpark</a> · <a href="../../glossary.html#sql">SQL</a></p>
+  <h3>Official docs</h3>
+  <ul>
+    <li><a href="https://docs.databricks.com/aws/en/data-engineering/">Data engineering with Databricks</a></li>
+    <li><a href="https://docs.databricks.com/aws/en/ingestion/overview">Ingestion overview</a></li>
+    <li><a href="https://docs.databricks.com/aws/en/jobs/">Lakeflow Jobs</a></li>
+    <li><a href="https://docs.databricks.com/aws/en/lakehouse/medallion">Medallion architecture</a></li>
+  </ul>
+  <p class="cap">Last verified: 16 November 2026</p>
+</section>
+
+<!-- 14. Previous / next and "mark as complete" are added here by course.js -->
+</main>
+
+<script>
+/* Demo logic for this lesson only. */
+(function () {
+  var C = window.Course, $ = function (id) { return document.getElementById(id); };
+  var START = [
+    { id: 101, shop: 'North',  item: 'Sourdough', price: '4.50' },
+    { id: 102, shop: 'north ', item: 'Croissant', price: '2.20' },
+    { id: 103, shop: 'South',  item: 'Baguette',  price: '3.00' },
+    { id: 103, shop: 'South',  item: 'Baguette',  price: '3.00' },
+    { id: 104, shop: 'South',  item: 'Muffin',    price: '' },
+    { id: 105, shop: 'North',  item: 'Bagel',     price: '1.80' }
+  ];
+  var src, raw, clean, report, nextId, L = $('dLog');
+
+  function table(rows) {
+    if (!rows || !rows.length) return '<p class="cap">empty</p>';
+    var keys = Object.keys(rows[0]);
+    return '<table class="mini"><tr>' + keys.map(function (k) { return '<th>' + k + '</th>'; }).join('') + '</tr>' +
+      rows.map(function (r) { return '<tr>' + keys.map(function (k) { return '<td>' + (r[k] === '' ? '<span class="chip bad">missing</span>' : String(r[k]).replace(/ /g, '&nbsp;')) + '</td>'; }).join('') + '</tr>'; }).join('') + '</table>';
+  }
+  function draw() { $('pSrc').innerHTML = table(src); $('pRaw').innerHTML = table(raw); $('pClean').innerHTML = table(clean); $('pRep').innerHTML = table(report); }
+  function reset() {
+    src = START.slice(); raw = []; clean = []; report = []; nextId = 106; L.innerHTML = '';
+    C.log(L, 'skip', 'Six orders are waiting in the till system. Nothing has been copied yet.'); draw();
+  }
+
+  $('dNew').onclick = function () {
+    var o = { id: nextId++, shop: nextId % 2 ? 'North' : 'South', item: 'Loaf', price: '3.50' };
+    src.push(o); C.log(L, 'skip', '+ order ' + o.id + ' rung up at ' + o.shop + '. It stays in the source until the next ingest.'); draw();
+  };
+  $('dIngest').onclick = function () {
+    var fresh = src.length - raw.length; raw = src.slice();
+    C.log(L, fresh ? 'ok' : 'skip', '1 Ingest: copied ' + fresh + ' new row(s). Raw copy now has ' + raw.length + '. Nothing was changed.'); draw(); C.bump($('pRaw'));
+  };
+  $('dClean').onclick = function () {
+    if ($('dSkip').checked) { clean = []; C.log(L, 'bad', '2 Clean: SKIPPED. The report will read the raw copy instead.'); draw(); return; }
+    var seen = {}, dup = 0, missing = 0, fixed = 0;
+    clean = [];
+    raw.forEach(function (r) {
+      if (seen[r.id]) { dup++; return; }
+      seen[r.id] = 1;
+      if (r.price === '') { missing++; return; }
+      var shop = r.shop.trim(); shop = shop.charAt(0).toUpperCase() + shop.slice(1).toLowerCase();
+      if (shop !== r.shop) fixed++;
+      clean.push({ id: r.id, shop: shop, item: r.item, price: r.price });
+    });
+    C.log(L, 'ok', '2 Clean: removed ' + dup + ' duplicate(s), set aside ' + missing + ' row(s) with no price, fixed ' + fixed + ' shop name(s). ' + clean.length + ' good rows.');
+    draw(); C.bump($('pClean'));
+  };
+  $('dSum').onclick = function () {
+    var skip = $('dSkip').checked, from = skip ? raw : clean, sums = {};
+    from.forEach(function (r) { sums[r.shop] = (sums[r.shop] || 0) + (parseFloat(r.price) || 0); });
+    report = Object.keys(sums).map(function (s) { return { shop: s, total_sales: sums[s].toFixed(2) }; });
+    if (!from.length) C.log(L, 'skip', '3 Summarise: nothing to add up yet. Run the earlier steps first.');
+    else if (skip) C.log(L, 'bad', '3 Summarise: built from RAW data. ' + report.length + ' "shops" found, a duplicate counted twice, and no warning given.');
+    else C.log(L, 'ok', '3 Summarise: ' + report.length + ' shops, totals are correct.');
+    draw(); C.bump($('pRep'));
+  };
+  $('dReset').onclick = reset;
+  reset();
+})();
+</script>
+</body>
+</html>

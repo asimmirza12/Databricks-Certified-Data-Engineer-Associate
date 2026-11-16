@@ -1,0 +1,186 @@
+/* Shared design system for the whole course. ALL styling lives here: pages never carry their own <style>. */
+@import url("https://fonts.googleapis.com/css2?family=Archivo:wght@500;700;800&family=IBM+Plex+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;600&display=swap");
+
+/* ---------- tokens ---------- */
+:root{
+  color-scheme:light;
+  --bg:#F2F4F6; --surface:#FFFFFF; --ink:#16202A; --muted:#566370; --line:#D3DAE1;
+  --accent:#1F5FBF; --accent-soft:#E3ECFA;
+  --bronze:#A8622B; --silver:#73838F; --gold:#B38A12;
+  --ok:#23845A; --warn:#B8382B; --code-bg:#EAEEF2;
+  --notice-bg:#FFF4D6; --notice-line:#B38A12;
+  --f-display:"Archivo","Helvetica Neue",Arial,sans-serif;
+  --f-body:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --f-mono:"JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0F151B; --surface:#172029; --ink:#E5EBF0; --muted:#97A5B2; --line:#2B3846;
+  --accent:#78A8F2; --accent-soft:#1C2C44;
+  --bronze:#D3925C; --silver:#A9B7C3; --gold:#E2BE4C;
+  --ok:#5CC28C; --warn:#EE7465; --code-bg:#121A22;
+  --notice-bg:#2A2412; --notice-line:#E2BE4C; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0F151B; --surface:#172029; --ink:#E5EBF0; --muted:#97A5B2; --line:#2B3846;
+  --accent:#78A8F2; --accent-soft:#1C2C44;
+  --bronze:#D3925C; --silver:#A9B7C3; --gold:#E2BE4C;
+  --ok:#5CC28C; --warn:#EE7465; --code-bg:#121A22;
+  --notice-bg:#2A2412; --notice-line:#E2BE4C; color-scheme:dark}
+
+/* ---------- base ---------- */
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+img{max-width:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:16px;line-height:1.6;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.wrap{max-width:980px;margin:0 auto}
+h1,h2,h3{font-family:var(--f-display);text-wrap:balance;line-height:1.15;margin:0}
+h1{font-size:clamp(2rem,6vw,3.4rem);font-weight:800;letter-spacing:-.02em}
+h2{font-size:clamp(1.5rem,3.6vw,2.1rem);font-weight:800;letter-spacing:-.01em}
+h3{font-size:1.15rem;font-weight:700;margin-top:6px}
+p{margin:0;max-width:68ch}
+ul,ol{margin:0;padding-left:20px;max-width:68ch}
+code,.mono{font-family:var(--f-mono);font-size:.86em}
+:not(pre)>code{background:var(--code-bg);padding:1px 5px;border-radius:4px}
+pre{background:var(--code-bg);border:1px solid var(--line);border-radius:8px;padding:14px 16px;overflow-x:auto;margin:0;font-size:.85rem;line-height:1.55}
+pre code{font-size:inherit}
+.c-k{color:var(--accent)} .c-s{color:var(--ok)} .c-c{color:var(--muted)}
+a{color:var(--accent)}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+/* ---------- disclaimer (first thing on every page) ---------- */
+.disclaimer{background:var(--notice-bg);border:1px solid var(--notice-line);border-left-width:5px;border-radius:8px;
+  padding:10px 14px;margin:12px auto 0;max-width:980px;font-size:.84rem;line-height:1.5}
+.disclaimer strong{font-family:var(--f-display)}
+
+/* ---------- top bar (injected by course.js) ---------- */
+.topbar{position:sticky;top:0;z-index:5;background:var(--bg);border-bottom:1px solid var(--line);
+  display:flex;gap:4px;align-items:center;overflow-x:auto;padding-block:10px;max-width:980px;margin:0 auto}
+.topbar a{flex:none;text-decoration:none;color:var(--muted);font-size:.84rem;font-weight:500;padding:5px 10px;border-radius:999px;white-space:nowrap}
+.topbar a:hover,.topbar a[aria-current]{color:var(--accent);background:var(--accent-soft)}
+.topbar .brand{font-family:var(--f-display);font-weight:800;color:var(--ink)}
+.topbar button{margin-left:auto;flex:none}
+
+/* ---------- page furniture ---------- */
+header.hero{padding-block:36px 24px;display:grid;gap:16px}
+.eyebrow{font-family:var(--f-mono);font-size:.75rem;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+.lede{font-size:1.1rem;color:var(--muted)}
+.medal{display:flex;flex-wrap:wrap;gap:8px}
+.medal span{font-family:var(--f-mono);font-size:.72rem;letter-spacing:.06em;text-transform:uppercase;padding:3px 9px;border-radius:999px;border:1px solid currentColor}
+.bronze{color:var(--bronze)} .silver{color:var(--silver)} .gold{color:var(--gold)}
+section{padding-block:40px;border-top:1px solid var(--line);display:grid;gap:18px}
+section > *{min-width:0}
+.sec-num{font-family:var(--f-mono);font-size:.78rem;color:var(--accent);letter-spacing:.08em;text-transform:uppercase}
+.cap{font-size:.86rem;color:var(--muted)}
+.note{border-left:3px solid var(--accent);padding:4px 0 4px 12px;font-size:.95rem}
+.trap{border-left-color:var(--warn)}
+.analogy{background:var(--accent-soft);border-radius:10px;padding:14px 16px;display:grid;gap:6px}
+footer{padding-block:30px 50px;border-top:1px solid var(--line);color:var(--muted);font-size:.85rem;max-width:980px;margin:0 auto}
+
+/* where you are / before this */
+.where{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:14px 16px;
+  display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px}
+.where{margin:0}
+.where div{display:grid;gap:2px;align-content:start}
+.where dd{margin:0}
+.where dt,.where .k{font-family:var(--f-mono);font-size:.7rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+
+/* ---------- cards, grids, tables ---------- */
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px}
+.grid3{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:14px;display:grid;gap:6px;align-content:start}
+.card h3{margin:0}
+.card.trap{border-left:4px solid var(--warn)}
+.tag{font-family:var(--f-mono);font-size:.7rem;letter-spacing:.08em;text-transform:uppercase;color:var(--accent)}
+.tbl{overflow-x:auto;border:1px solid var(--line);border-radius:10px;background:var(--surface)}
+table{border-collapse:collapse;width:100%;font-size:.88rem;min-width:560px}
+th,td{text-align:left;padding:9px 12px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-family:var(--f-mono);font-size:.72rem;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);font-weight:600;background:var(--code-bg)}
+tr:last-child td{border-bottom:0}
+td code{white-space:nowrap}
+.whatif th:first-child{width:42%}
+table.mini{min-width:0;font-size:.78rem}
+table.mini th,table.mini td{padding:4px 6px}
+.chip{display:inline-block;font-family:var(--f-mono);font-size:.72rem;padding:2px 8px;border-radius:999px;border:1px solid var(--line);color:var(--muted)}
+.chip.ok{color:var(--ok);border-color:var(--ok)} .chip.bad{color:var(--warn);border-color:var(--warn)} .chip.acc{color:var(--accent);border-color:var(--accent)}
+
+/* ---------- diagrams ---------- */
+.stage{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:18px;display:grid;gap:14px}
+.stage svg{width:100%;height:auto;display:block;margin:0 auto}
+.stage svg.tall{max-width:460px}
+.stage svg text{font-family:var(--f-body);font-size:13px;fill:var(--ink)}
+.stage svg .t-b{font-weight:600}
+.stage svg .t-m{fill:var(--muted);font-size:11px}
+.stage svg .box{fill:var(--surface);stroke:var(--line);stroke-width:1.5}
+.stage svg .box-soft{fill:var(--code-bg);stroke:var(--line)}
+.stage svg .box-acc{fill:var(--accent-soft);stroke:var(--accent);stroke-width:1.5}
+.stage svg .wire{fill:none;stroke:var(--line);stroke-width:2}
+.stage svg .dot{fill:var(--accent)} .stage svg .dot-ok{fill:var(--ok)}
+
+/* ---------- controls and demos ---------- */
+.ctrls{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+button,select{font-family:var(--f-body);font-size:.86rem;font-weight:500;border:1px solid var(--line);background:var(--surface);color:var(--ink);
+  border-radius:8px;padding:7px 12px;cursor:pointer}
+button:hover{border-color:var(--accent)}
+button:disabled{opacity:.5;cursor:not-allowed}
+button.primary,a.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--surface)}
+a.btn{display:inline-block;text-decoration:none;font-size:.86rem;font-weight:500;border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:8px;padding:7px 12px}
+a.btn:hover{border-color:var(--accent)}
+label.tog{display:inline-flex;gap:6px;align-items:center;font-size:.86rem;cursor:pointer}
+input[type=range]{width:min(320px,100%)}
+input[type=search]{font:inherit;width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:8px;background:var(--surface);color:var(--ink)}
+.log{font-family:var(--f-mono);font-size:.78rem;background:var(--code-bg);border-radius:8px;padding:10px 12px;min-height:84px;max-height:190px;overflow:auto;display:grid;gap:2px;align-content:start}
+.log .ok{color:var(--ok)} .log .skip{color:var(--muted)} .log .bad{color:var(--warn)}
+.panes{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px}
+.pane{border:1px dashed var(--line);border-radius:10px;padding:10px;display:grid;gap:6px;align-content:start;min-height:120px;min-width:0;overflow-x:auto}
+.pane h4{margin:0;font-family:var(--f-mono);font-size:.72rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:600}
+.big{font-family:var(--f-display);font-size:2rem;font-weight:800;font-variant-numeric:tabular-nums}
+.meter{height:10px;border-radius:5px;background:var(--code-bg);overflow:hidden}
+.meter i{display:block;height:100%;background:var(--ok);transition:width .4s}
+.flash{animation:flash .6s ease-out}
+@keyframes flash{0%{background:var(--accent-soft)}100%{background:transparent}}
+@keyframes pop{from{transform:translateY(-6px);opacity:0}to{transform:none}}
+.pop{animation:pop .35s ease-out}
+
+/* ---------- quiz ---------- */
+.quiz{display:grid;gap:14px}
+.quiz fieldset{border:1px solid var(--line);border-radius:10px;background:var(--surface);padding:12px 14px;margin:0;display:grid;gap:6px;min-width:0}
+.quiz legend{font-weight:600;padding:0 6px}
+.quiz label{display:flex;gap:8px;align-items:flex-start;padding:6px 8px;border-radius:6px;cursor:pointer}
+.quiz label:hover{background:var(--code-bg)}
+.quiz label.right{background:var(--accent-soft);outline:1px solid var(--ok)}
+.quiz label.right::after{content:"correct";font-family:var(--f-mono);font-size:.7rem;color:var(--ok);margin-left:auto}
+.quiz label.wrong{outline:1px solid var(--warn)}
+.quiz label.wrong::after{content:"not this one";font-family:var(--f-mono);font-size:.7rem;color:var(--warn);margin-left:auto}
+.quiz .explain{font-size:.9rem;color:var(--muted);border-left:3px solid var(--accent);padding-left:10px}
+
+/* ---------- lesson nav (injected) ---------- */
+.lesson-nav{display:flex;flex-wrap:wrap;gap:10px;justify-content:space-between;align-items:center}
+.lesson-nav .done{background:var(--ok);border-color:var(--ok);color:var(--surface)}
+
+/* ---------- home ---------- */
+.path{display:flex;flex-wrap:wrap;gap:6px;align-items:center;list-style:none;padding:0;max-width:none}
+.path li{font-size:.84rem;border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:4px 12px}
+.path li small{color:var(--muted);font-family:var(--f-mono)}
+.mods{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:14px}
+.mods details{font-size:.9rem}
+.mods summary{cursor:pointer;color:var(--accent);font-weight:500}
+.mods ol{list-style:none;padding:6px 0 0;display:grid;gap:4px}
+.mods li.soon{color:var(--muted)}
+.mods li.done a::after{content:" ✓";color:var(--ok)}
+
+/* ---------- glossary ---------- */
+.gloss{display:grid;gap:10px;margin:0}
+.gloss > div{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:12px 14px;scroll-margin-top:70px}
+.gloss > div:target{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
+.gloss dt{font-family:var(--f-display);font-weight:700}
+.gloss dd{margin:2px 0 0}
+
+/* ---------- small screens, motion ---------- */
+@media (max-width:520px){
+  section{padding-block:30px}
+  .stage{padding:12px}
+  pre{font-size:.78rem}
+}
+@media (prefers-reduced-motion: reduce){
+  *,*::before,*::after{animation:none!important;transition:none!important}
+}

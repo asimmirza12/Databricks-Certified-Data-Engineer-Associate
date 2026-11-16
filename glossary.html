@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Glossary · DE Associate course</title>
+<link rel="stylesheet" href="assets/course.css">
+<script src="assets/course.js"></script>
+</head>
+<body>
+
+<aside class="disclaimer" aria-label="Disclaimer"><strong>Learning resource only.</strong> This is an independent, unofficial study guide made for learning purposes. It is not affiliated with, endorsed by or sponsored by Databricks. Databricks features change often, so always check the details in the <a href="https://docs.databricks.com">official Databricks documentation</a> and the official exam guide on databricks.com before relying on anything here. Databricks and related names are trademarks of their respective owners.</aside>
+
+<main class="wrap">
+<header class="hero">
+  <div class="eyebrow">Glossary</div>
+  <h1>Every term, in plain words</h1>
+  <p class="lede">Each word used in the course is explained here once. Terms are added as lessons are published.</p>
+  <label for="gsearch" class="cap">Search the glossary</label>
+  <input type="search" id="gsearch" placeholder="Type a word, for example: pipeline" autocomplete="off">
+</header>
+
+<section>
+  <p id="gnone" class="note" hidden>No term matches. It may belong to a lesson that is not published yet.</p>
+  <!-- One <div id="term-id"> per term, kept in A to Z order. Lessons link to glossary.html#term-id.
+       Format: <dt>Term</dt><dd>Plain definition, one to three short sentences. <span class="cap">First used in MM-LL.</span></dd> -->
+  <dl class="gloss">
+    <div id="data-engineer"><dt>Data engineer</dt><dd>The person who builds and looks after data pipelines, so that correct data arrives on time for everyone else. <span class="cap">First used in 00-01.</span></dd></div>
+    <div id="data-engineering"><dt>Data engineering</dt><dd>The work of collecting data, storing it, cleaning it and delivering it in a usable shape. <span class="cap">First used in 00-01.</span></dd></div>
+    <div id="elt"><dt>ELT</dt><dd>Extract, Load, Transform. Raw data is stored first and cleaned afterwards, so a raw copy always exists. <span class="cap">First used in 00-01.</span></dd></div>
+    <div id="etl"><dt>ETL</dt><dd>Extract, Transform, Load. Data is cleaned on the way in, before it reaches your storage. <span class="cap">First used in 00-01.</span></dd></div>
+    <div id="governance"><dt>Governance</dt><dd>The rules and tools that control who can see or change which data, and that keep a record of it. <span class="cap">First used in 00-01.</span></dd></div>
+    <div id="ingestion"><dt>Ingestion</dt><dd>Bringing data in from a source and making a copy of it, without changing it. <span class="cap">First used in 00-01.</span></dd></div>
+    <div id="orchestration"><dt>Orchestration</dt><dd>Running the steps of a pipeline in the right order, at the right time, and retrying them when they fail. <span class="cap">First used in 00-01.</span></dd></div>
+    <div id="pipeline"><dt>Pipeline (data pipeline)</dt><dd>A chain of steps that moves data from its source to the people who use it, and runs repeatedly without manual work. On Databricks the word can also mean the product Lakeflow Spark Declarative Pipelines. <span class="cap">First used in 00-01.</span></dd></div>
+    <div id="pyspark"><dt>PySpark</dt><dd>The Python way of using Apache Spark, a tool for processing large amounts of data. <span class="cap">First used in 00-01. Explained in 00-05.</span></dd></div>
+    <div id="source"><dt>Source</dt><dd>Any place data comes from: an app's database, a file, a website, a sensor. <span class="cap">First used in 00-01.</span></dd></div>
+    <div id="sql"><dt>SQL</dt><dd>Structured Query Language. The standard language for asking questions of tables and changing them. <span class="cap">First used in 00-01.</span></dd></div>
+    <div id="transformation"><dt>Transformation</dt><dd>Changing data to make it useful: fixing errors, removing duplicates, combining tables, adding things up. <span class="cap">First used in 00-01.</span></dd></div>
+  </dl>
+</section>
+</main>
+
+</body>
+</html>

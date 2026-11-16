@@ -1,0 +1,177 @@
+<!doctype html>
+<!--
+  LESSON TEMPLATE. Copy to modules/<NN-module-slug>/<NN-lesson-slug>.html and replace every {{...}}.
+  Read CLAUDE.md first. A finished example: modules/00-foundations/01-what-is-data-engineering.html
+  - Paths below assume the copy sits two folders deep (modules/xx/). This template file itself will look unstyled if opened directly.
+  - No <style> blocks and no style="" attributes. Need a new look? Add a reusable class to assets/course.css.
+  - Keep all 14 parts, in this order. If a part truly does not apply, keep the heading and say why in one line.
+  - Top bar, footer, previous/next buttons and "mark as complete" are added by course.js. Do not write them by hand.
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{MM-LL}} {{Lesson title}} · DE Associate course</title>
+<link rel="stylesheet" href="../../assets/course.css">
+<script src="../../assets/course.js"></script>
+</head>
+<body data-lesson="{{MM-LL}}"><!-- e.g. 02-04. Must match the id in OUTLINE.md and the COURSE list in course.js -->
+
+<!-- 1. Disclaimer: first element in <body>. Never edit or remove. -->
+<aside class="disclaimer" aria-label="Disclaimer"><strong>Learning resource only.</strong> This is an independent, unofficial study guide made for learning purposes. It is not affiliated with, endorsed by or sponsored by Databricks. Databricks features change often, so always check the details in the <a href="https://docs.databricks.com">official Databricks documentation</a> and the official exam guide on databricks.com before relying on anything here. Databricks and related names are trademarks of their respective owners.</aside>
+
+<main class="wrap">
+
+<!-- 2. Where you are + 3. Before this -->
+<header class="hero">
+  <div class="eyebrow">Module {{MM}} · {{Module title}} · Lesson {{n}} of {{total}}</div>
+  <h1>{{Lesson title}}</h1>
+  <p class="lede">{{One or two short sentences: what this is and why it matters.}}</p>
+  <dl class="where">
+    <div><dt>Module</dt><dd>{{MM Module title}} ({{weight}}% of the exam)</dd></div>
+    <div><dt>Exam objective</dt><dd>{{Objective restated in OUR OWN plain words. Never paste the guide.}}</dd></div>
+    <div><dt>Time to read</dt><dd>About {{N}} minutes</dd></div>
+    <div><dt>Before this</dt><dd><a href="{{../MM-slug/LL-slug.html}}">{{MM-LL Title}}</a></dd></div>
+  </dl>
+</header>
+
+<!-- 4. The idea in plain English, with an everyday analogy -->
+<section id="idea">
+  <div class="sec-num">The idea</div>
+  <h2>{{The concept in one plain line}}</h2>
+  <p>{{Short sentences. Define every term the first time and link it: <a href="../../glossary.html#term-id">term</a>.}}</p>
+  <div class="analogy">
+    <span class="tag">Everyday analogy</span>
+    <p><strong>{{Think of ...}}</strong> {{Map each part of the analogy to the real thing.}}</p>
+  </div>
+</section>
+
+<!-- 5. Animated diagram. Our own SVG only. Use the classes box, box-soft, box-acc, wire, dot, t-b, t-m (they follow the theme).
+     Keep viewBox about 360 wide (class="tall") so text stays readable on a phone. Wrap everything that moves in <g class="mover">. Stagger dots with NEGATIVE begin values (begin="-0.8s") so none sits parked in the corner. -->
+<section id="how">
+  <div class="sec-num">How it works</div>
+  <h2>{{...}}</h2>
+  <div class="stage">
+    <svg class="tall" viewBox="0 0 360 200" role="img" aria-label="{{Describe the diagram in words}}">
+      <defs><path id="p1" d="M60 100 L 300 100"/></defs>
+      <g class="wire"><use href="#p1"/></g>
+      <g class="mover"><circle r="5" class="dot"><animateMotion dur="2s" repeatCount="indefinite"><mpath href="#p1"/></animateMotion></circle></g>
+      <rect class="box" x="10" y="80" width="100" height="40" rx="6"/><text x="60" y="105" text-anchor="middle">{{A}}</text>
+      <rect class="box-acc" x="250" y="80" width="100" height="40" rx="6"/><text x="300" y="105" text-anchor="middle">{{B}}</text>
+    </svg>
+    <p class="cap">{{Caption}}</p>
+  </div>
+</section>
+
+<!-- 6. Live demo: something with state. Controls + panes + a log panel. Script goes at the bottom of this file. -->
+<section id="demo">
+  <div class="sec-num">Try it</div>
+  <h2>{{...}}</h2>
+  <div class="stage">
+    <div class="ctrls">
+      <button id="dRun" type="button" class="primary">{{Run}}</button>
+      <label class="tog"><input type="checkbox" id="dOpt"> {{An option}}</label>
+      <button id="dReset" type="button">Reset</button>
+    </div>
+    <div class="panes">
+      <div class="pane"><h4>{{Before}}</h4><div id="pA"></div></div>
+      <div class="pane"><h4>{{After}}</h4><div id="pB"></div></div>
+    </div>
+    <div class="log" id="dLog" role="log" aria-label="What happened"></div>
+  </div>
+</section>
+
+<!-- 7. Code: our own example, realistic made-up names, a comment on every non-obvious line.
+     Highlight with <span class="c-k">keyword</span> <span class="c-s">"string"</span> <span class="c-c"># comment</span> -->
+<section id="code">
+  <div class="sec-num">Code</div>
+  <h2>{{...}}</h2>
+<pre><code>{{code}}</code></pre>
+</section>
+
+<!-- 8. What if I change this? One row for EVERY important option. -->
+<section id="whatif">
+  <div class="sec-num">What if I change this?</div>
+  <h2>{{...}}</h2>
+  <div class="tbl"><table class="whatif">
+    <tr><th>Change</th><th>Effect</th></tr>
+    <tr><td>{{...}}</td><td>{{...}}</td></tr>
+  </table></div>
+</section>
+
+<!-- 9. Comparison tables where options compete; categories as card grids (grid2 / grid3 + card). -->
+<section id="compare">
+  <div class="sec-num">Compare</div>
+  <h2>{{...}}</h2>
+  <div class="tbl"><table>
+    <tr><th></th><th>{{Option A}}</th><th>{{Option B}}</th></tr>
+    <tr><td>{{...}}</td><td>{{...}}</td><td>{{...}}</td></tr>
+  </table></div>
+  <div class="grid3">
+    <div class="card"><span class="tag">{{Category}}</span><p>{{...}}</p></div>
+  </div>
+</section>
+
+<!-- 10. Real-life scenarios. Made-up, generic businesses only. -->
+<section id="scenarios">
+  <div class="sec-num">Real life</div>
+  <h2>{{...}}</h2>
+  <div class="tbl"><table>
+    <tr><th>Scenario</th><th>What happens</th><th>Fix</th></tr>
+    <tr><td>{{...}}</td><td>{{...}}</td><td>{{...}}</td></tr>
+  </table></div>
+</section>
+
+<!-- 11. Exam traps and "don't confuse these" cards -->
+<section id="traps">
+  <div class="sec-num">Don't confuse these</div>
+  <h2>{{...}}</h2>
+  <div class="grid2">
+    <div class="card trap"><span class="tag">{{A vs B}}</span><p>{{...}}</p></div>
+  </div>
+</section>
+
+<!-- 12. Quiz: 3 to 5 questions. Put data-correct on the right answer. course.js does the rest. -->
+<section id="quiz">
+  <div class="sec-num">Check yourself</div>
+  <h2>Quiz</h2>
+  <div class="quiz">
+    <fieldset>
+      <legend>1. {{Question}}</legend>
+      <label><input type="radio"> {{Wrong}}</label>
+      <label><input type="radio" data-correct> {{Right}}</label>
+      <label><input type="radio"> {{Wrong}}</label>
+      <p class="explain" hidden>{{Why the right answer is right and the others are not.}}</p>
+    </fieldset>
+  </div>
+</section>
+
+<!-- 13. Key takeaways (3 to 5), glossary terms used, official docs, last verified -->
+<section id="wrap">
+  <div class="sec-num">Wrap up</div>
+  <h2>Key takeaways</h2>
+  <ul>
+    <li>{{...}}</li>
+  </ul>
+  <h3>Glossary terms used</h3>
+  <p><a href="../../glossary.html#{{term-id}}">{{term}}</a> · {{...}}</p>
+  <h3>Official docs</h3>
+  <ul>
+    <li><a href="https://docs.databricks.com/aws/en/{{page}}">{{Page title}}</a></li>
+  </ul>
+  <p class="cap">Last verified: {{D Month YYYY}}</p>
+</section>
+
+<!-- 14. Previous / next and "mark as complete" are added here by course.js -->
+</main>
+
+<script>
+/* Demo logic for this lesson only. Helpers: Course.el(tag, cls, html), Course.log(box, 'ok'|'skip'|'bad', text), Course.bump(node), Course.reduce */
+(function () {
+  var C = window.Course, L = document.getElementById('dLog');
+  document.getElementById('dRun').onclick = function () { C.log(L, 'ok', '{{what happened}}'); };
+  document.getElementById('dReset').onclick = function () { L.innerHTML = ''; };
+})();
+</script>
+</body>
+</html>
