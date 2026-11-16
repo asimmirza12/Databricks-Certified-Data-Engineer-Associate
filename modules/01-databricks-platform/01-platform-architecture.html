@@ -1,0 +1,279 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>01-01 Platform architecture · DE Associate course</title>
+<link rel="stylesheet" href="../../assets/course.css">
+<script src="../../assets/course.js"></script>
+</head>
+<body data-lesson="01-01">
+
+<aside class="disclaimer" aria-label="Disclaimer"><strong>Learning resource only.</strong> This is an independent, unofficial study guide made for learning purposes. It is not affiliated with, endorsed by or sponsored by Databricks. Databricks features change often, so always check the details in the <a href="https://docs.databricks.com">official Databricks documentation</a> and the official exam guide on databricks.com before relying on anything here. Databricks and related names are trademarks of their respective owners.</aside>
+
+<main class="wrap">
+
+<header class="hero">
+  <div class="eyebrow">Module 01 · Databricks Intelligence Platform · Lesson 1 of 6</div>
+  <h1>Platform architecture: control plane and compute plane</h1>
+  <p class="lede">Databricks is split into two halves. One half is the brain that Databricks runs. The other half is the muscle that touches your data. Knowing which is which answers many exam questions.</p>
+  <dl class="where">
+    <div><dt>Module</dt><dd>01 Databricks Intelligence Platform (6% of the exam)</dd></div>
+    <div><dt>Exam objective</dt><dd>1.1 Know the main building blocks of the platform: how it is laid out, what Delta Lake does and what Unity Catalog does. This lesson covers the layout.</dd></div>
+    <div><dt>Time to read</dt><dd>About 11 minutes</dd></div>
+    <div><dt>Before this</dt><dd><a href="../00-foundations/07-what-is-databricks.html">00-07 What is Databricks?</a></dd></div>
+  </dl>
+</header>
+
+<section id="idea">
+  <div class="sec-num">The idea</div>
+  <h2>A brain that manages, and muscle that processes</h2>
+  <p>Lesson 00-07 showed three things: the workspace, compute and storage. Now we ask a sharper question: <strong>whose cloud account does each part run in?</strong> There are two accounts involved. One belongs to Databricks. One belongs to your company.</p>
+  <ul>
+    <li>The <a href="../../glossary.html#control-plane">control plane</a> is the set of services that Databricks runs in its own account. It serves the web pages you click on, stores your notebooks, schedules jobs and starts and stops compute. It manages. It does not crunch your data.</li>
+    <li>The <a href="../../glossary.html#compute-plane">compute plane</a> is where your data is actually processed. This is where Spark's driver and executors run.</li>
+  </ul>
+  <p>The compute plane comes in two kinds, and the difference is simply where the machines live:</p>
+  <ul>
+    <li>The <a href="../../glossary.html#classic-compute-plane">classic compute plane</a> is in <strong>your</strong> cloud account. The machines are created inside your company's own network.</li>
+    <li>The <a href="../../glossary.html#serverless-compute-plane">serverless compute plane</a> is in the <strong>Databricks</strong> account, in the same region as your workspace. Databricks owns and runs the machines.</li>
+  </ul>
+  <div class="analogy">
+    <span class="tag">Everyday analogy</span>
+    <p><strong>A catering company.</strong> The head office takes bookings, plans menus and sends out staff rotas. That is the control plane. The cooking can happen in two places. With classic compute, the caterer's chefs come and cook in your own kitchen: your building, your ovens, their recipes. With serverless, the food is cooked in the caterer's kitchen and brought to you: nothing for you to set up, and it arrives quickly. Either way the ingredients, your data, belong to you and are kept in your pantry.</p>
+  </div>
+</section>
+
+<section id="how">
+  <div class="sec-num">How it works</div>
+  <h2>Two accounts, three boxes, one store of data</h2>
+  <div class="stage">
+    <svg class="tall" viewBox="0 0 360 420" role="img" aria-label="The Databricks account holds the control plane and the serverless compute plane. Your cloud account holds the classic compute plane and your data storage. The control plane sends instructions to both compute planes, and both read and write your storage.">
+      <defs>
+        <path id="c1" d="M100 96 V136"/>
+        <path id="c2" d="M250 96 V240 C 250 280, 240 298, 220 298"/>
+        <path id="s1" d="M220 176 C 320 176, 320 300, 300 340"/>
+        <path id="s2" d="M220 310 C 250 310, 282 320, 282 340"/>
+      </defs>
+      <rect class="box-soft" x="6" y="6" width="348" height="204" rx="10"/>
+      <text class="t-m" x="16" y="24">DATABRICKS ACCOUNT</text>
+      <rect class="box-soft" x="6" y="222" width="348" height="190" rx="10"/>
+      <text class="t-m" x="16" y="240">YOUR CLOUD ACCOUNT</text>
+      <g class="wire"><use href="#c1"/><use href="#c2"/><use href="#s1"/><use href="#s2"/></g>
+      <g class="mover">
+        <circle r="5" class="dot"><animateMotion dur="1.6s" repeatCount="indefinite"><mpath href="#c1"/></animateMotion></circle>
+        <circle r="5" class="dot"><animateMotion dur="2.6s" begin="-1s" repeatCount="indefinite"><mpath href="#c2"/></animateMotion></circle>
+        <circle r="5" class="dot-ok"><animateMotion dur="2.4s" begin="-0.6s" repeatCount="indefinite"><mpath href="#s1"/></animateMotion></circle>
+        <circle r="5" class="dot-ok"><animateMotion dur="1.6s" begin="-0.3s" repeatCount="indefinite"><mpath href="#s2"/></animateMotion></circle>
+      </g>
+      <rect class="box-acc" x="20" y="36" width="320" height="60" rx="8"/>
+      <text class="t-b" x="180" y="58" text-anchor="middle">Control plane</text>
+      <text class="t-m" x="180" y="76" text-anchor="middle">web app · notebooks · job scheduler · compute manager</text>
+      <rect class="box" x="20" y="136" width="200" height="60" rx="8"/>
+      <text class="t-b" x="120" y="158" text-anchor="middle">Serverless compute plane</text>
+      <text class="t-m" x="120" y="176" text-anchor="middle">machines run by Databricks</text>
+      <rect class="box" x="20" y="268" width="200" height="60" rx="8"/>
+      <text class="t-b" x="120" y="290" text-anchor="middle">Classic compute plane</text>
+      <text class="t-m" x="120" y="308" text-anchor="middle">machines in your network</text>
+      <rect class="box" x="220" y="340" width="124" height="60" rx="8"/>
+      <text class="t-b" x="282" y="362" text-anchor="middle">Your storage</text>
+      <text class="t-m" x="282" y="380" text-anchor="middle">tables and files</text>
+    </svg>
+    <p class="cap">Blue dots are instructions from the control plane. Green dots are data being read and written. Notice that data flows to compute, never to the control plane.</p>
+  </div>
+  <h3>Account and workspaces</h3>
+  <p>One more level sits above all this. Your company has one Databricks <a href="../../glossary.html#account">account</a>. Inside it you create one or more workspaces, for example one for development and one for production. Each workspace lives in one cloud region. Users, groups and Unity Catalog are managed at the account level, so they can be shared by several workspaces.</p>
+  <h3>Workspace storage</h3>
+  <p>A classic workspace also has a small storage bucket of its own in your cloud account, called <a href="../../glossary.html#workspace-storage">workspace storage</a>. It keeps the workspace's own housekeeping files, such as job results and logs. It is separate from the storage that holds your tables and volumes. Do not delete it: the docs warn that the workspace cannot be recovered if you do.</p>
+</section>
+
+<section id="demo">
+  <div class="sec-num">Try it</div>
+  <h2>Where does it happen?</h2>
+  <p>Press an action and watch which box does the work. Start both kinds of compute and see whose account the machines appear in. Then follow a query from your browser to the data.</p>
+  <div class="stage">
+    <div class="ctrls">
+      <button id="dOpen" type="button">Open a notebook in the browser</button>
+      <button id="dClassic" type="button" class="primary">Start classic compute</button>
+      <button id="dServerless" type="button" class="primary">Start serverless compute</button>
+      <button id="dStop" type="button">Stop all compute</button>
+    </div>
+    <div class="ctrls">
+      <label class="tog">Run a query on: <select id="dOn"><option value="classic">classic compute</option><option value="serverless">serverless compute</option></select></label>
+      <button id="dQuery" type="button" class="primary">Run the query</button>
+      <button id="dReset" type="button">Reset</button>
+    </div>
+    <div class="panes">
+      <div class="pane"><h4>Databricks account: control plane</h4><div id="pCtl"></div></div>
+      <div class="pane"><h4>Databricks account: serverless compute plane</h4><div id="pSrv"></div></div>
+      <div class="pane"><h4>Your account: classic compute plane</h4><div id="pCls"></div></div>
+      <div class="pane"><h4>Your account: storage</h4><div class="item"><span>bakery.silver.orders</span><span id="pReads">0 reads</span></div></div>
+    </div>
+    <div class="log" id="dLog" role="log" aria-label="What happened"></div>
+  </div>
+</section>
+
+<section id="code">
+  <div class="sec-num">Code</div>
+  <h2>Asking the platform where you are</h2>
+  <p>Architecture is mostly about layout, not code. But a few built-in SQL functions tell you which parts of the platform your session is connected to. They are handy at the top of a notebook.</p>
+<pre><code><span class="c-c">-- Who am I, and which catalog and schema am I pointed at?</span>
+<span class="c-k">SELECT</span> current_user()      <span class="c-k">AS</span> me,
+       current_catalog()   <span class="c-k">AS</span> catalog_in_use,
+       current_schema()    <span class="c-k">AS</span> schema_in_use;
+
+<span class="c-c">-- Which Unity Catalog metastore is this workspace attached to?</span>
+<span class="c-k">SELECT</span> current_metastore();</code></pre>
+  <p>The same from Python, in any notebook:</p>
+<pre><code>row = spark.sql(<span class="c-s">"SELECT current_user() AS me, current_catalog() AS cat"</span>).first()
+print(row.me, row.cat)   <span class="c-c"># this code runs on the compute plane, not in your browser</span></code></pre>
+</section>
+
+<section id="whatif">
+  <div class="sec-num">What if I change this?</div>
+  <h2>Classic or serverless: what moves</h2>
+  <div class="tbl"><table class="whatif">
+    <tr><th>Change</th><th>Effect</th></tr>
+    <tr><td>Switch a notebook from classic to serverless compute</td><td>The machines doing the work move from your cloud account to the Databricks account. Your tables stay exactly where they were.</td></tr>
+    <tr><td>Stop every compute resource</td><td>The control plane still works. You can log in, edit notebooks and browse the catalog. You cannot run code or query data.</td></tr>
+    <tr><td>Add a second workspace in the same account</td><td>It gets its own notebooks, jobs and compute. It can share users, groups and Unity Catalog data with the first one.</td></tr>
+    <tr><td>Use classic compute</td><td>You see the virtual machines on your cloud provider's bill and in your own network, and you choose their size and settings.</td></tr>
+    <tr><td>Delete the workspace storage bucket</td><td>The workspace breaks and cannot be recovered. Your Unity Catalog tables are in different storage and are not in that bucket.</td></tr>
+  </table></div>
+</section>
+
+<section id="compare">
+  <div class="sec-num">Compare</div>
+  <h2>The three parts side by side</h2>
+  <div class="tbl"><table>
+    <tr><th></th><th>Control plane</th><th>Serverless compute plane</th><th>Classic compute plane</th></tr>
+    <tr><td>Runs in</td><td>Databricks account</td><td>Databricks account</td><td>Your cloud account</td></tr>
+    <tr><td>Managed by</td><td>Databricks</td><td>Databricks</td><td>You choose the settings. Databricks starts and stops the machines for you.</td></tr>
+    <tr><td>Job</td><td>Web app, scheduling, managing compute</td><td>Processing data</td><td>Processing data</td></tr>
+    <tr><td>Processes your data?</td><td>No</td><td>Yes</td><td>Yes</td></tr>
+    <tr><td>Start-up</td><td>Always on</td><td>Seconds</td><td>Minutes</td></tr>
+  </table></div>
+  <h3>What lives where</h3>
+  <div class="grid3">
+    <div class="card"><span class="tag">Control plane</span><p>The web application, notebook and query text, job definitions and schedules, and the service that launches compute.</p></div>
+    <div class="card"><span class="tag">Compute plane</span><p>Spark drivers and executors, and SQL warehouses. Anything that reads or writes rows.</p></div>
+    <div class="card"><span class="tag">Your storage</span><p>The Parquet files and logs of your Delta tables, and the files in your volumes.</p></div>
+  </div>
+</section>
+
+<section id="scenarios">
+  <div class="sec-num">Real life</div>
+  <h2>Questions the layout answers</h2>
+  <div class="tbl"><table>
+    <tr><th>Scenario</th><th>What happens</th><th>Fix</th></tr>
+    <tr><td>Security asks: "Do our customer records get processed outside our cloud account?"</td><td>With classic compute, no: processing is in your account. With serverless, processing is in the Databricks account, in your workspace's region.</td><td>Choose the compute plane that matches your company's rules</td></tr>
+    <tr><td>A team wants no servers to size, patch or wait for</td><td>Classic compute needs settings and takes minutes to start</td><td>Use serverless compute</td></tr>
+    <tr><td>A cluster fails to start with a "quota" or "network" error from the cloud provider</td><td>Classic machines are created in your account, so your account's limits apply</td><td>Raise the limit or fix the network in your cloud account (Module 06)</td></tr>
+    <tr><td>All compute is off for the weekend, and someone needs to read a notebook</td><td>They can. Notebooks are served by the control plane.</td><td>Nothing to fix. They only need compute to run a cell.</td></tr>
+  </table></div>
+</section>
+
+<section id="traps">
+  <div class="sec-num">Don't confuse these</div>
+  <h2>Layout words</h2>
+  <div class="grid2">
+    <div class="card trap"><span class="tag">Control plane vs compute plane</span><p>Control manages. Compute processes. If a question is about where data is crunched, the answer is the compute plane.</p></div>
+    <div class="card trap"><span class="tag">Classic vs serverless plane</span><p>Classic: your cloud account. Serverless: the Databricks account. This one-line difference is the most likely thing to be tested.</p></div>
+    <div class="card trap"><span class="tag">Compute plane vs data plane</span><p>Older material says "data plane". It means the same thing as compute plane, which is the current name.</p></div>
+    <div class="card trap"><span class="tag">Account vs workspace</span><p>One account holds many workspaces. Users, groups and Unity Catalog belong to the account. Notebooks, jobs and compute belong to a workspace.</p></div>
+  </div>
+</section>
+
+<section id="quiz">
+  <div class="sec-num">Check yourself</div>
+  <h2>Quiz</h2>
+  <div class="quiz">
+    <fieldset>
+      <legend>1. Where do the machines of the classic compute plane run?</legend>
+      <label><input type="radio"> In the Databricks account</label>
+      <label><input type="radio" data-correct> In your own cloud account</label>
+      <label><input type="radio"> Inside the control plane</label>
+      <p class="explain" hidden>Classic compute is created inside your company's cloud account and network. Serverless compute is the kind that runs in the Databricks account.</p>
+    </fieldset>
+    <fieldset>
+      <legend>2. Which of these is a job of the control plane?</legend>
+      <label><input type="radio"> Running Spark executors</label>
+      <label><input type="radio"> Storing the Parquet files of your tables</label>
+      <label><input type="radio" data-correct> Serving the web application and scheduling jobs</label>
+      <p class="explain" hidden>The control plane manages and coordinates. Executors run in a compute plane, and table files sit in your storage.</p>
+    </fieldset>
+    <fieldset>
+      <legend>3. In the demo, all compute was stopped. What could you still do?</legend>
+      <label><input type="radio" data-correct> Open a notebook and read it</label>
+      <label><input type="radio"> Run a query on a table</label>
+      <label><input type="radio"> Count the rows in a file</label>
+      <p class="explain" hidden>Opening a notebook only needs the control plane. Anything that touches data needs a compute plane.</p>
+    </fieldset>
+    <fieldset>
+      <legend>4. A notebook is moved from classic to serverless compute. What happens to the table it reads?</legend>
+      <label><input type="radio"> It is copied into the Databricks account</label>
+      <label><input type="radio" data-correct> Nothing. It stays in the same storage.</label>
+      <label><input type="radio"> It must be reloaded from the source</label>
+      <p class="explain" hidden>Storage is separate from compute. Changing where the processing happens does not move the data.</p>
+    </fieldset>
+  </div>
+</section>
+
+<section id="wrap">
+  <div class="sec-num">Wrap up</div>
+  <h2>Key takeaways</h2>
+  <ul>
+    <li>The control plane manages. The compute plane processes data.</li>
+    <li>The control plane is always in the Databricks account.</li>
+    <li>Classic compute runs in your cloud account. Serverless compute runs in the Databricks account.</li>
+    <li>Your data stays in your storage, whichever compute you use.</li>
+    <li>One account holds many workspaces. Each workspace is in one region.</li>
+  </ul>
+  <h3>Glossary terms used</h3>
+  <p><a href="../../glossary.html#control-plane">control plane</a> · <a href="../../glossary.html#compute-plane">compute plane</a> · <a href="../../glossary.html#classic-compute-plane">classic compute plane</a> · <a href="../../glossary.html#serverless-compute-plane">serverless compute plane</a> · <a href="../../glossary.html#account">account</a> · <a href="../../glossary.html#workspace">workspace</a> · <a href="../../glossary.html#workspace-storage">workspace storage</a></p>
+  <h3>Official docs</h3>
+  <ul>
+    <li><a href="https://docs.databricks.com/aws/en/getting-started/high-level-architecture">High-level architecture</a></li>
+    <li><a href="https://docs.databricks.com/aws/en/getting-started/concepts">Databricks components</a></li>
+    <li><a href="https://docs.databricks.com/aws/en/compute/serverless/">Serverless compute</a></li>
+  </ul>
+  <p class="cap">Last verified: 16 November 2026</p>
+</section>
+
+</main>
+
+<script>
+(function () {
+  var C = window.Course, $ = function (id) { return document.getElementById(id); }, L = $('dLog');
+  var classic, serverless, reads, ctl;
+  function items(list, empty) { return list.length ? list.map(function (t) { return '<div class="item"><span>' + t + '</span></div>'; }).join('') : '<p class="cap">' + empty + '</p>'; }
+  function draw() {
+    $('pCtl').innerHTML = items(ctl, '');
+    $('pSrv').innerHTML = items(serverless ? ['driver + executors (Databricks-owned)'] : [], 'no machines running');
+    $('pCls').innerHTML = items(classic ? ['driver VM', 'worker VM 1', 'worker VM 2'] : [], 'no machines running');
+    $('pReads').textContent = reads + ' read' + (reads === 1 ? '' : 's');
+  }
+  $('dOpen').onclick = function () { C.log(L, 'ok', 'Notebook opened. Served by the control plane only. No compute was needed.'); C.bump($('pCtl')); };
+  $('dClassic').onclick = function () {
+    if (classic) { C.log(L, 'skip', 'Classic compute is already running.'); return; }
+    classic = true; C.log(L, 'ok', 'Control plane asked your cloud provider for 3 machines. They started in YOUR account after a few minutes.'); draw(); C.bump($('pCls'));
+  };
+  $('dServerless').onclick = function () {
+    if (serverless) { C.log(L, 'skip', 'Serverless compute is already running.'); return; }
+    serverless = true; C.log(L, 'ok', 'Control plane assigned serverless compute in the DATABRICKS account. Ready in seconds.'); draw(); C.bump($('pSrv'));
+  };
+  $('dStop').onclick = function () { classic = false; serverless = false; C.log(L, 'skip', 'All compute stopped. The control plane and your storage are unaffected.'); draw(); };
+  $('dQuery').onclick = function () {
+    var on = $('dOn').value, up = on === 'classic' ? classic : serverless;
+    if (!up) { C.log(L, 'bad', 'Query failed: no ' + on + ' compute is running. The control plane cannot process data itself.'); return; }
+    reads++;
+    C.log(L, 'ok', 'Browser -> control plane -> ' + on + ' compute plane (' + (on === 'classic' ? 'your account' : 'Databricks account') + ') -> read your storage -> result back to the browser.');
+    draw(); C.bump($('pReads'));
+  };
+  function reset() { classic = false; serverless = false; reads = 0; ctl = ['web application', 'your notebooks', 'job schedules', 'compute manager']; L.innerHTML = ''; C.log(L, 'skip', 'You are logged in. No compute is running.'); draw(); }
+  $('dReset').onclick = reset;
+  reset();
+})();
+</script>
+</body>
+</html>

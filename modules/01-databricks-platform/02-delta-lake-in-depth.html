@@ -1,0 +1,330 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>01-02 Delta Lake in depth · DE Associate course</title>
+<link rel="stylesheet" href="../../assets/course.css">
+<script src="../../assets/course.js"></script>
+</head>
+<body data-lesson="01-02">
+
+<aside class="disclaimer" aria-label="Disclaimer"><strong>Learning resource only.</strong> This is an independent, unofficial study guide made for learning purposes. It is not affiliated with, endorsed by or sponsored by Databricks. Databricks features change often, so always check the details in the <a href="https://docs.databricks.com">official Databricks documentation</a> and the official exam guide on databricks.com before relying on anything here. Databricks and related names are trademarks of their respective owners.</aside>
+
+<main class="wrap">
+
+<header class="hero">
+  <div class="eyebrow">Module 01 · Databricks Intelligence Platform · Lesson 2 of 6</div>
+  <h1>Delta Lake in depth: transaction log, ACID, time travel</h1>
+  <p class="lede">Lesson 00-08 said a Delta table is data files plus a log. Now we open the log, see what is written in it, and find out what happens when two people write at the same moment.</p>
+  <dl class="where">
+    <div><dt>Module</dt><dd>01 Databricks Intelligence Platform (6% of the exam)</dd></div>
+    <div><dt>Exam objective</dt><dd>1.1 Know the main building blocks of the platform: how it is laid out, what Delta Lake does and what Unity Catalog does. This lesson covers Delta Lake.</dd></div>
+    <div><dt>Time to read</dt><dd>About 15 minutes</dd></div>
+    <div><dt>Before this</dt><dd><a href="../00-foundations/08-delta-lake-basics.html">00-08 Delta Lake basics</a></dd></div>
+  </dl>
+</header>
+
+<section id="idea">
+  <div class="sec-num">The idea</div>
+  <h2>Every change is one numbered entry, and entries cannot collide</h2>
+  <p>The <a href="../../glossary.html#transaction-log">transaction log</a> is a folder called <code>_delta_log</code> that sits next to the table's data files. Each change to the table adds one small file to it. That file is called a <a href="../../glossary.html#commit">commit</a>. Commits are numbered 0, 1, 2 and so on, and the number is the table's version.</p>
+  <p>A commit is a short list of actions. The two that matter most are:</p>
+  <ul>
+    <li><strong>add</strong>: "this data file is now part of the table".</li>
+    <li><strong>remove</strong>: "this data file is no longer part of the table".</li>
+  </ul>
+  <p>To find the current table, a reader starts from nothing and replays the commits in order. Whatever files have been added and not removed are the table.</p>
+  <p>The clever part is the rule for writing a commit: <strong>only one writer can create commit number N</strong>. If two writers both try to write commit 7, exactly one succeeds. The other must look at what changed and try again as commit 8. That single rule is what gives Delta its safety.</p>
+  <div class="analogy">
+    <span class="tag">Everyday analogy</span>
+    <p><strong>A numbered ticket roll at a deli counter.</strong> There is only one ticket 7. Two customers can reach for the roll together, but only one hand comes away with 7. The other gets 8. Nobody is served twice and nobody is skipped. The ticket roll is the log, and taking a ticket is committing.</p>
+  </div>
+</section>
+
+<section id="how">
+  <div class="sec-num">How it works</div>
+  <h2>Inside the _delta_log folder</h2>
+  <div class="stage">
+    <svg class="tall" viewBox="0 0 360 400" role="img" aria-label="The delta log folder holds numbered JSON commit files and an occasional checkpoint file. A reader loads the latest checkpoint and then the commits after it.">
+      <defs><path id="rp" d="M300 372 V230 C 300 200, 250 196, 232 196"/><path id="rq" d="M300 372 V290 C 300 262, 250 256, 232 256"/></defs>
+      <rect class="box" x="10" y="8" width="230" height="330" rx="8"/>
+      <text class="t-b" x="24" y="30">_delta_log/</text>
+      <g class="box-soft"><rect x="22" y="42" width="206" height="24" rx="4"/><rect x="22" y="72" width="206" height="24" rx="4"/><rect x="22" y="102" width="206" height="24" rx="4"/><rect x="22" y="244" width="206" height="24" rx="4"/><rect x="22" y="274" width="206" height="24" rx="4"/></g>
+      <text class="mono" x="30" y="59">000...000.json   create</text>
+      <text class="mono" x="30" y="89">000...001.json   add A</text>
+      <text class="mono" x="30" y="119">000...002.json   add B</text>
+      <text class="t-m" x="125" y="150" text-anchor="middle">... more commits ...</text>
+      <rect class="box-acc" x="22" y="166" width="206" height="60" rx="6"/>
+      <text class="t-b" x="125" y="188" text-anchor="middle">Checkpoint (Parquet)</text>
+      <text class="t-m" x="125" y="206" text-anchor="middle">the whole table state so far,</text>
+      <text class="t-m" x="125" y="220" text-anchor="middle">summed up in one file</text>
+      <text class="mono" x="30" y="261">later commit: remove A, add C</text>
+      <text class="mono" x="30" y="291">later commit: add D</text>
+      <text class="t-m" x="125" y="322" text-anchor="middle">newest at the bottom</text>
+      <g class="wire"><use href="#rp"/><use href="#rq"/></g>
+      <g class="mover">
+        <circle r="5" class="dot"><animateMotion dur="2.2s" repeatCount="indefinite"><mpath href="#rp"/></animateMotion></circle>
+        <circle r="5" class="dot-ok"><animateMotion dur="2.2s" begin="-1.1s" repeatCount="indefinite"><mpath href="#rq"/></animateMotion></circle>
+      </g>
+      <rect class="box-soft" x="250" y="350" width="100" height="40" rx="6"/><text x="300" y="375" text-anchor="middle">A reader</text>
+      <text class="t-m" x="10" y="362">A reader does not replay from zero.</text>
+      <text class="t-m" x="10" y="378">It loads the newest checkpoint,</text>
+      <text class="t-m" x="10" y="394">then only the commits after it.</text>
+    </svg>
+    <p class="cap">Commit file names are the version number padded with zeros to 20 digits, ending in <code>.json</code>.</p>
+  </div>
+  <p>Replaying thousands of commits would be slow. So every so often Delta writes a <a href="../../glossary.html#checkpoint">checkpoint</a>: one Parquet file that sums up the whole state of the table at that version. How often is controlled by the table property <code>delta.checkpointInterval</code>. The default differs between open-source Delta and Databricks runtime versions, so verify in the docs before quoting a number.</p>
+  <h3>Two writers at once</h3>
+  <p>Delta does not lock the table while someone writes. Instead it uses <a href="../../glossary.html#optimistic-concurrency">optimistic concurrency control</a>. "Optimistic" means it assumes writers will rarely clash, lets them all work, and only checks at the last moment:</p>
+  <ol>
+    <li><strong>Read.</strong> The writer notes the current version, say 6.</li>
+    <li><strong>Write.</strong> It writes its new data files. Nobody can see them yet.</li>
+    <li><strong>Check and commit.</strong> It tries to create commit 7. If commit 7 already exists, it reads what that other commit did. If the two changes do not touch the same data, it commits as 8. If they do, it fails with a conflict error and the work must be run again.</li>
+  </ol>
+  <h3>ACID, explained by the log</h3>
+  <div class="grid2">
+    <div class="card"><span class="tag">Atomicity</span><p>A commit file either exists or it does not. There is no half-written change.</p></div>
+    <div class="card"><span class="tag">Consistency</span><p>Every write is checked against the table's schema and rules before it may commit.</p></div>
+    <div class="card"><span class="tag">Isolation</span><p>A reader picks one version and sees only that. A commit that lands mid-query does not change its answer.</p></div>
+    <div class="card"><span class="tag">Durability</span><p>Commits and data files are objects in cloud storage, which survives any machine failing.</p></div>
+  </div>
+</section>
+
+<section id="demo">
+  <div class="sec-num">Try it</div>
+  <h2>Two writers race for the next commit</h2>
+  <p>Ana and Raj both start from the same version. Choose what each one does, then let them commit in either order. Try two appends. Then try two updates of the same rows.</p>
+  <div class="stage">
+    <div class="ctrls">
+      <label class="tog">Ana: <select id="dA"><option value="append">INSERT new orders</option><option value="north">UPDATE North prices</option><option value="south">UPDATE South prices</option></select></label>
+      <label class="tog">Raj: <select id="dB"><option value="append">INSERT new orders</option><option value="north">UPDATE North prices</option><option value="south">UPDATE South prices</option></select></label>
+    </div>
+    <div class="ctrls">
+      <button id="dBegin" type="button" class="primary">1 · Both read and write files</button>
+      <button id="dCA" type="button">2 · Ana commits</button>
+      <button id="dCB" type="button">2 · Raj commits</button>
+      <button id="dMany" type="button">Add 12 quick commits</button>
+      <button id="dReset" type="button">Reset</button>
+    </div>
+    <div class="panes">
+      <div class="pane"><h4>_delta_log (newest last)</h4><div id="pLog"></div></div>
+      <div class="pane"><h4>Table version</h4><div class="big" id="pVer"></div>
+        <h4>Files a reader opens in the log</h4><div class="big" id="pOpen"></div><p class="cap" id="pOpenWhy"></p></div>
+      <div class="pane"><h4>Writers</h4><div id="pW"></div></div>
+    </div>
+    <div class="log" id="dLog" role="log" aria-label="What happened"></div>
+    <p class="cap">This demo writes a checkpoint every 10 commits and treats one shop as one data file. Real conflict rules have more cases. See the isolation levels page in the official docs.</p>
+  </div>
+</section>
+
+<section id="code">
+  <div class="sec-num">Code</div>
+  <h2>Looking at history, and changing data safely</h2>
+<pre><code><span class="c-c">-- One row per commit: version, timestamp, user, operation and its details.</span>
+<span class="c-k">DESCRIBE HISTORY</span> bakery.silver.orders;
+
+<span class="c-c">-- Facts about the table as it is now: format, storage location, number of files, size.</span>
+<span class="c-k">DESCRIBE DETAIL</span> bakery.silver.orders;
+
+<span class="c-c">-- Time travel by version number or by time.</span>
+<span class="c-k">SELECT</span> * <span class="c-k">FROM</span> bakery.silver.orders <span class="c-k">VERSION AS OF</span> 12;
+<span class="c-k">SELECT</span> * <span class="c-k">FROM</span> bakery.silver.orders <span class="c-k">TIMESTAMP AS OF</span> <span class="c-s">'2026-11-15'</span>;
+
+<span class="c-c">-- What changed between two versions? Compare them like any two tables.</span>
+<span class="c-k">SELECT</span> * <span class="c-k">FROM</span> bakery.silver.orders <span class="c-k">VERSION AS OF</span> 12
+<span class="c-k">EXCEPT</span>
+<span class="c-k">SELECT</span> * <span class="c-k">FROM</span> bakery.silver.orders <span class="c-k">VERSION AS OF</span> 11;
+
+<span class="c-c">-- Put the table back to how it was. This is itself a new commit.</span>
+<span class="c-k">RESTORE TABLE</span> bakery.silver.orders <span class="c-k">TO VERSION AS OF</span> 11;</code></pre>
+  <p>One statement deserves special attention. <a href="../../glossary.html#merge">MERGE</a> updates rows that already exist and inserts rows that do not, in a single commit. This "update or insert" is often called an upsert.</p>
+<pre><code><span class="c-c">-- Apply today's corrections: change existing orders, add new ones. One atomic commit.</span>
+<span class="c-k">MERGE INTO</span> bakery.silver.orders <span class="c-k">AS</span> target
+<span class="c-k">USING</span> bakery.bronze.order_corrections <span class="c-k">AS</span> source
+<span class="c-k">ON</span> target.order_id = source.order_id
+<span class="c-k">WHEN MATCHED THEN UPDATE SET</span> target.price = source.price
+<span class="c-k">WHEN NOT MATCHED THEN INSERT</span> (order_id, shop, price)
+                       <span class="c-k">VALUES</span> (source.order_id, source.shop, source.price);</code></pre>
+  <p>And in Python, letting a new column into the table on purpose:</p>
+<pre><code><span class="c-c"># By default a DataFrame with an extra column is refused (schema enforcement).</span>
+<span class="c-c"># mergeSchema says: add the new column to the table as part of this write.</span>
+(orders_with_loyalty.write
+    .mode(<span class="c-s">"append"</span>)
+    .option(<span class="c-s">"mergeSchema"</span>, <span class="c-s">"true"</span>)
+    .saveAsTable(<span class="c-s">"bakery.silver.orders"</span>))</code></pre>
+</section>
+
+<section id="whatif">
+  <div class="sec-num">What if I change this?</div>
+  <h2>Schema, history and housekeeping</h2>
+  <div class="tbl"><table class="whatif">
+    <tr><th>Change</th><th>Effect</th></tr>
+    <tr><td>Append a DataFrame with an extra column, no options</td><td>Refused. <a href="../../glossary.html#schema-enforcement">Schema enforcement</a> protects the table from accidental changes.</td></tr>
+    <tr><td>The same append with <code>.option("mergeSchema", "true")</code></td><td>Accepted. The table gains the new column, and older rows show NULL in it. This is <a href="../../glossary.html#schema-evolution">schema evolution</a>. The option works on DataFrame writes, not on a plain SQL <code>INSERT INTO</code>.</td></tr>
+    <tr><td>Run <code>RESTORE</code> to an old version</td><td>The table's current state matches the old version again. History is not erased: the restore appears as a new commit on top.</td></tr>
+    <tr><td>Run <code>OPTIMIZE</code> on a table made of many small files</td><td>Small files are rewritten into fewer large ones, so reads are faster. The old small files stay on disk until <code>VACUUM</code> removes them.</td></tr>
+    <tr><td>Two jobs update the same rows at the same time</td><td>The first to commit wins. The second gets a conflict error and must be run again. Nothing is half-applied.</td></tr>
+    <tr><td>Two jobs only insert new rows at the same time</td><td>Both succeed. Inserts add new files and do not disturb each other.</td></tr>
+  </table></div>
+</section>
+
+<section id="compare">
+  <div class="sec-num">Compare</div>
+  <h2>Four commands people mix up</h2>
+  <div class="tbl"><table>
+    <tr><th></th><th>What it does</th><th>Changes the rows you see?</th><th>Deletes files from disk?</th></tr>
+    <tr><td><code>DELETE</code></td><td>Removes rows from the current version</td><td>Yes</td><td>No</td></tr>
+    <tr><td><code>OPTIMIZE</code></td><td>Combines small files into larger ones</td><td>No</td><td>No</td></tr>
+    <tr><td><code>VACUUM</code></td><td>Deletes unused files older than the retention period</td><td>No</td><td>Yes</td></tr>
+    <tr><td><code>RESTORE</code></td><td>Makes an earlier version current again</td><td>Yes</td><td>No</td></tr>
+  </table></div>
+  <h3>What a commit can contain</h3>
+  <div class="grid3">
+    <div class="card"><span class="tag">add / remove</span><p>Which data files join or leave the table. Each "add" also carries simple statistics about the file, such as the smallest and largest value in each column.</p></div>
+    <div class="card"><span class="tag">metaData</span><p>The table's schema and properties. A schema change is recorded here.</p></div>
+    <div class="card"><span class="tag">commitInfo</span><p>Who did it, when, and with which operation. <code>DESCRIBE HISTORY</code> shows this.</p></div>
+  </div>
+</section>
+
+<section id="scenarios">
+  <div class="sec-num">Real life</div>
+  <h2>The log at work</h2>
+  <div class="tbl"><table>
+    <tr><th>Scenario</th><th>What happens</th><th>Fix</th></tr>
+    <tr><td>Yesterday's total has changed and nobody knows why</td><td>Someone or something modified the table overnight</td><td><code>DESCRIBE HISTORY</code> shows the user, time and operation of every commit</td></tr>
+    <tr><td>A job fails with a concurrent modification error</td><td>Another job committed a change to the same data first</td><td>Rerun the failed job. If it happens often, schedule the two jobs so they do not overlap.</td></tr>
+    <tr><td>A source system adds a column and the nightly append starts failing</td><td>Schema enforcement is refusing the unexpected column</td><td>Decide deliberately: allow it with <code>mergeSchema</code>, or drop the column before writing</td></tr>
+    <tr><td>A table that is loaded every minute becomes slow to query</td><td>It is made of thousands of tiny files</td><td>Run <code>OPTIMIZE</code>, or let predictive optimization do it (Module 06)</td></tr>
+  </table></div>
+</section>
+
+<section id="traps">
+  <div class="sec-num">Don't confuse these</div>
+  <h2>Delta details that get tested</h2>
+  <div class="grid2">
+    <div class="card trap"><span class="tag">Checkpoint vs checkpoint</span><p>A Delta log checkpoint is a summary file inside <code>_delta_log</code>. A streaming checkpoint (lesson 00-04) is a stream's bookmark. Unrelated things with one name.</p></div>
+    <div class="card trap"><span class="tag">Schema enforcement vs evolution</span><p>Enforcement is the default: mismatched writes fail. Evolution is opt-in: you allow the table's schema to grow.</p></div>
+    <div class="card trap"><span class="tag">RESTORE vs time travel</span><p>Time travel reads an old version and changes nothing. <code>RESTORE</code> makes the old version the current one for everybody.</p></div>
+    <div class="card trap"><span class="tag">Optimistic vs locking</span><p>Delta does not lock a table while writing. Writers work in parallel and conflicts are caught at commit time.</p></div>
+  </div>
+</section>
+
+<section id="quiz">
+  <div class="sec-num">Check yourself</div>
+  <h2>Quiz</h2>
+  <div class="quiz">
+    <fieldset>
+      <legend>1. What does one commit file in <code>_delta_log</code> record?</legend>
+      <label><input type="radio"> A full copy of the table's rows</label>
+      <label><input type="radio" data-correct> The actions of one change, such as files added and removed</label>
+      <label><input type="radio"> The list of users allowed to read the table</label>
+      <p class="explain" hidden>Commits are small. They describe what changed, not the data itself. Permissions belong to Unity Catalog, not to the log.</p>
+    </fieldset>
+    <fieldset>
+      <legend>2. In the demo, Ana and Raj both updated North prices. What happened to the second one to commit?</legend>
+      <label><input type="radio"> It silently overwrote the first</label>
+      <label><input type="radio" data-correct> It failed with a conflict and had to be run again</label>
+      <label><input type="radio"> Both changes were merged row by row</label>
+      <p class="explain" hidden>Both rewrote the same data. The second writer's work was based on a version that no longer existed, so it was rejected instead of quietly losing the first writer's change.</p>
+    </fieldset>
+    <fieldset>
+      <legend>3. Why does Delta write checkpoint files in the log?</legend>
+      <label><input type="radio" data-correct> So readers need not replay every commit from version 0</label>
+      <label><input type="radio"> To back up the data files</label>
+      <label><input type="radio"> To remember where a stream stopped reading</label>
+      <p class="explain" hidden>A log checkpoint sums up the table state so far. It is not a backup and it is not the streaming kind of checkpoint.</p>
+    </fieldset>
+    <fieldset>
+      <legend>4. An append fails because the incoming data has one new column. Which option lets the write through and adds the column?</legend>
+      <label><input type="radio"> <code>overwrite</code> mode</label>
+      <label><input type="radio"> <code>VACUUM</code></label>
+      <label><input type="radio" data-correct> <code>mergeSchema</code></label>
+      <p class="explain" hidden><code>mergeSchema</code> turns on schema evolution for that write. Overwrite mode would replace the data, which is not what was asked.</p>
+    </fieldset>
+    <fieldset>
+      <legend>5. After <code>RESTORE TABLE ... TO VERSION AS OF 11</code> on a table at version 14, what is the table's version?</legend>
+      <label><input type="radio"> 11</label>
+      <label><input type="radio"> 14</label>
+      <label><input type="radio" data-correct> 15</label>
+      <p class="explain" hidden>A restore is recorded as a new commit. The content matches version 11, but the version number moves forward.</p>
+    </fieldset>
+  </div>
+</section>
+
+<section id="wrap">
+  <div class="sec-num">Wrap up</div>
+  <h2>Key takeaways</h2>
+  <ul>
+    <li>Each change is one numbered commit file in <code>_delta_log</code>, listing files added and removed.</li>
+    <li>Only one writer can create a given commit number. That rule gives atomic, isolated writes.</li>
+    <li>Writers do not lock the table. Conflicts are detected at commit time.</li>
+    <li>Schema enforcement is the default. <code>mergeSchema</code> opts in to schema evolution.</li>
+    <li><code>DESCRIBE HISTORY</code> shows every commit. <code>RESTORE</code> rolls back by adding a new one.</li>
+  </ul>
+  <h3>Glossary terms used</h3>
+  <p><a href="../../glossary.html#transaction-log">transaction log</a> · <a href="../../glossary.html#commit">commit</a> · <a href="../../glossary.html#checkpoint">checkpoint</a> · <a href="../../glossary.html#optimistic-concurrency">optimistic concurrency control</a> · <a href="../../glossary.html#acid">ACID</a> · <a href="../../glossary.html#schema-enforcement">schema enforcement</a> · <a href="../../glossary.html#schema-evolution">schema evolution</a> · <a href="../../glossary.html#merge">MERGE</a> · <a href="../../glossary.html#optimize">OPTIMIZE</a> · <a href="../../glossary.html#time-travel">time travel</a></p>
+  <h3>Official docs</h3>
+  <ul>
+    <li><a href="https://docs.databricks.com/aws/en/lakehouse/acid">ACID guarantees on Databricks</a></li>
+    <li><a href="https://docs.databricks.com/aws/en/optimizations/isolation/isolation-levels">Isolation levels and write conflicts</a></li>
+    <li><a href="https://docs.databricks.com/aws/en/tables/history">Work with table history</a></li>
+    <li><a href="https://docs.databricks.com/aws/en/tables/schema-enforcement">Schema enforcement</a></li>
+    <li><a href="https://docs.databricks.com/aws/en/tables/update-schema">Update a table schema</a></li>
+    <li><a href="https://docs.databricks.com/aws/en/delta/merge">Upsert with MERGE</a></li>
+  </ul>
+  <p class="cap">Last verified: 16 November 2026</p>
+</section>
+
+</main>
+
+<script>
+(function () {
+  var C = window.Course, $ = function (id) { return document.getElementById(id); }, L = $('dLog');
+  var EVERY = 10, WHAT = { append: 'INSERT (adds a new file)', north: 'UPDATE North (rewrites the North file)', south: 'UPDATE South (rewrites the South file)' };
+  var commits, pending;   /* commits: [{who, op}], index = version. pending: {A: {base, op}, B: {...}} */
+  function version() { return commits.length - 1; }
+  function draw() {
+    var v = version(), lastCp = Math.floor(v / EVERY) * EVERY, show = commits.map(function (c, i) { return { i: i, c: c }; }).slice(-7);
+    $('pLog').innerHTML = (commits.length > 7 ? '<p class="cap">... ' + (commits.length - 7) + ' earlier</p>' : '') + show.map(function (x) {
+      return '<div class="item' + (x.i === v ? ' hot' : '') + '"><span>' + x.i + ': ' + x.c.op + '</span><span>' + x.c.who + (x.i > 0 && x.i % EVERY === 0 ? ' +checkpoint' : '') + '</span></div>';
+    }).join('');
+    $('pVer').textContent = v;
+    var opened = lastCp > 0 ? 1 + (v - lastCp) : v + 1;
+    $('pOpen').textContent = opened;
+    $('pOpenWhy').textContent = lastCp > 0 ? 'checkpoint at ' + lastCp + ' plus ' + (v - lastCp) + ' commit(s) after it, not all ' + (v + 1) : 'no checkpoint yet: every commit from 0';
+    $('pW').innerHTML = ['A', 'B'].map(function (k) {
+      var p = pending[k], name = k === 'A' ? 'Ana' : 'Raj';
+      return '<div class="item"><span>' + name + '</span><span>' + (p ? 'files written, based on v' + p.base : 'idle') + '</span></div>';
+    }).join('');
+    $('dCA').disabled = !pending.A; $('dCB').disabled = !pending.B;
+  }
+  $('dBegin').onclick = function () {
+    pending.A = { base: version(), op: $('dA').value }; pending.B = { base: version(), op: $('dB').value };
+    C.log(L, 'skip', 'Both read version ' + version() + ' and wrote their new data files. Nothing is visible to readers yet.'); draw();
+  };
+  function commit(k) {
+    var p = pending[k], name = k === 'A' ? 'Ana' : 'Raj', want = p.base + 1;
+    /* Everything committed since this writer read the table. */
+    var since = commits.slice(p.base + 1);
+    var clash = since.filter(function (c) { return p.op !== 'append' && c.key === p.op; })[0];
+    pending[k] = null;
+    if (clash) { C.log(L, 'bad', name + ' tried commit ' + want + ': already taken by ' + clash.who + ', who rewrote the same file. CONFLICT. ' + name + "'s change is rejected and must be run again."); draw(); return; }
+    commits.push({ who: name, op: p.op === 'append' ? 'add file' : 'remove+add ' + p.op, key: p.op });
+    C.log(L, 'ok', since.length ? name + ' tried commit ' + want + ': already taken. The other change (' + WHAT[since[0].key || 'append'] + ') does not touch the same data, so ' + name + ' committed as version ' + version() + '.'
+      : name + ' created commit ' + want + '. ' + WHAT[p.op] + '.');
+    draw(); C.bump($('pVer'));
+  }
+  $('dCA').onclick = function () { commit('A'); };
+  $('dCB').onclick = function () { commit('B'); };
+  $('dMany').onclick = function () {
+    for (var i = 0; i < 12; i++) commits.push({ who: 'job', op: 'add file', key: 'append' });
+    C.log(L, 'skip', '12 more commits. Table is at version ' + version() + '. Look at how few log files a reader needs.'); draw();
+  };
+  function reset() { commits = [{ who: 'setup', op: 'create table', key: 'create' }]; pending = { A: null, B: null }; L.innerHTML = ''; C.log(L, 'skip', 'A new table at version 0.'); draw(); }
+  $('dReset').onclick = reset;
+  reset();
+})();
+</script>
+</body>
+</html>

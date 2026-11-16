@@ -1,0 +1,298 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>01-04 Compute types · DE Associate course</title>
+<link rel="stylesheet" href="../../assets/course.css">
+<script src="../../assets/course.js"></script>
+</head>
+<body data-lesson="01-04">
+
+<aside class="disclaimer" aria-label="Disclaimer"><strong>Learning resource only.</strong> This is an independent, unofficial study guide made for learning purposes. It is not affiliated with, endorsed by or sponsored by Databricks. Databricks features change often, so always check the details in the <a href="https://docs.databricks.com">official Databricks documentation</a> and the official exam guide on databricks.com before relying on anything here. Databricks and related names are trademarks of their respective owners.</aside>
+
+<main class="wrap">
+
+<header class="hero">
+  <div class="eyebrow">Module 01 · Databricks Intelligence Platform · Lesson 4 of 6</div>
+  <h1>Compute types: all-purpose, jobs, SQL warehouses, serverless</h1>
+  <p class="lede">Databricks offers several kinds of compute. They all run your code, but each is built for a different way of working. This lesson is the tour.</p>
+  <dl class="where">
+    <div><dt>Module</dt><dd>01 Databricks Intelligence Platform (6% of the exam)</dd></div>
+    <div><dt>Exam objective</dt><dd>1.2 Know each kind of compute, what it is good and bad at, how it is billed, and pick the right one for a given workload. This lesson covers the kinds and what each is like.</dd></div>
+    <div><dt>Time to read</dt><dd>About 14 minutes</dd></div>
+    <div><dt>Before this</dt><dd><a href="01-platform-architecture.html">01-01 Platform architecture</a></dd></div>
+  </dl>
+</header>
+
+<section id="idea">
+  <div class="sec-num">The idea</div>
+  <h2>Two questions sort every kind of compute</h2>
+  <p>Compute is the set of machines that runs your code. To place any compute type, ask two things.</p>
+  <p><strong>1. Who sets it up?</strong></p>
+  <ul>
+    <li><strong>Classic</strong> compute: you choose the machine size, the number of workers and the software version. The machines run in your cloud account and take minutes to start.</li>
+    <li><a href="../../glossary.html#serverless">Serverless</a> compute: Databricks chooses everything. The machines run in the Databricks account and are ready in seconds.</li>
+  </ul>
+  <p><strong>2. What is it for?</strong></p>
+  <ul>
+    <li><a href="../../glossary.html#all-purpose-compute">All-purpose compute</a> is for people working by hand in notebooks. It stays on between commands so you do not wait each time.</li>
+    <li><a href="../../glossary.html#jobs-compute">Jobs compute</a> is for scheduled work. It is created when a job run starts and removed when the run ends.</li>
+    <li>A <a href="../../glossary.html#sql-warehouse">SQL warehouse</a> runs SQL only. It serves the SQL editor, dashboards and reporting tools.</li>
+  </ul>
+  <p>Put the answers together and you get the full menu: serverless compute for notebooks, jobs and pipelines; classic all-purpose compute; classic jobs compute; and SQL warehouses, which come in serverless, pro and classic types.</p>
+  <div class="analogy">
+    <span class="tag">Everyday analogy</span>
+    <p><strong>Getting around a city.</strong> All-purpose compute is your own car: always ready outside, set up how you like it, and costing you money even while parked. Jobs compute is a hired van for one delivery: it turns up, does the trip and goes. A SQL warehouse is a bus on a fixed route: it only goes one way (SQL), but it carries many passengers at once. Serverless is a taxi: there in seconds, nothing to maintain, and you pay only while riding.</p>
+  </div>
+</section>
+
+<section id="how">
+  <div class="sec-num">How it works</div>
+  <h2>When is each one switched on?</h2>
+  <p>The same working day, seen by three kinds of compute. A person explores data from 9 to 11, and a job runs at 2 and at 4.</p>
+  <div class="stage">
+    <svg class="tall" viewBox="0 0 360 300" role="img" aria-label="Three timelines of a day. All-purpose compute is on for a long block that continues after the person stops. Jobs compute is on only for two short job runs. Serverless is on only while work is actually running.">
+      <defs><path id="sweep" d="M20 40 H340"/></defs>
+      <g class="wire"><path d="M20 78 H340 M20 158 H340 M20 238 H340"/></g>
+      <text class="t-b" x="20" y="34">All-purpose (classic)</text>
+      <rect class="box-acc" x="60" y="60" width="150" height="36" rx="4"/>
+      <text class="t-m" x="100" y="83" text-anchor="middle">person working</text><text class="t-m" x="178" y="83" text-anchor="middle">idle, still on</text>
+      <g class="wire"><path d="M142 60 V96"/></g>
+      <text class="t-b" x="20" y="126">Jobs compute (classic)</text>
+      <rect class="box-acc" x="196" y="140" width="34" height="36" rx="4"/><rect class="box-acc" x="268" y="140" width="34" height="36" rx="4"/>
+      <text class="t-m" x="213" y="194" text-anchor="middle">run 1</text><text class="t-m" x="285" y="194" text-anchor="middle">run 2</text>
+      <text class="t-m" x="110" y="163" text-anchor="middle">does not exist between runs</text>
+      <text class="t-b" x="20" y="216">Serverless</text>
+      <rect class="box-acc" x="60" y="220" width="18" height="36" rx="3"/><rect class="box-acc" x="92" y="220" width="12" height="36" rx="3"/><rect class="box-acc" x="120" y="220" width="16" height="36" rx="3"/>
+      <rect class="box-acc" x="204" y="220" width="24" height="36" rx="3"/><rect class="box-acc" x="276" y="220" width="24" height="36" rx="3"/>
+      <text class="t-m" x="20" y="282">9 am</text><text class="t-m" x="132" y="282">11 am</text><text class="t-m" x="200" y="282">2 pm</text><text class="t-m" x="272" y="282">4 pm</text>
+      <g class="mover"><rect class="dot" x="-1" y="6" width="2" height="226" opacity="0.6"><animateMotion dur="8s" repeatCount="indefinite"><mpath href="#sweep"/></animateMotion></rect></g>
+    </svg>
+    <p class="cap">Filled blocks are time the compute is on. The moving line is the clock. All-purpose compute keeps running after the person stops, until its idle timer switches it off.</p>
+  </div>
+  <h3>Settings you meet on classic compute</h3>
+  <div class="grid2">
+    <div class="card"><span class="tag">Databricks Runtime</span><p>The <a href="../../glossary.html#databricks-runtime">Databricks Runtime</a> is the bundle of software on the machines: a version of Spark plus libraries. You pick a version. Those marked LTS (long-term support) are maintained for longer.</p></div>
+    <div class="card"><span class="tag">Access mode</span><p>The <a href="../../glossary.html#access-mode">access mode</a> decides who can use the compute. <strong>Standard</strong> (formerly Shared) lets several users share it safely. <strong>Dedicated</strong> (formerly Single user) is assigned to one user or one group.</p></div>
+    <div class="card"><span class="tag">Autoscaling</span><p>You give a smallest and largest number of workers. Databricks adds workers when the load rises and removes them when it falls.</p></div>
+    <div class="card"><span class="tag">Auto termination</span><p>The compute switches itself off after a set time with no activity. You can set it between 10 and 10,000 minutes, or turn it off.</p></div>
+    <div class="card"><span class="tag">Photon</span><p><a href="../../glossary.html#photon">Photon</a> is a faster engine for running SQL and DataFrame code. It is a tick-box on classic compute and is on by default in current runtime versions.</p></div>
+    <div class="card"><span class="tag">Pools</span><p>A <a href="../../glossary.html#pool">pool</a> keeps a few machines waiting, idle and ready, so classic compute that draws from it starts faster.</p></div>
+  </div>
+</section>
+
+<section id="demo">
+  <div class="sec-num">Try it</div>
+  <h2>Can this compute run that work?</h2>
+  <p>Pick a kind of compute and look at what it offers. Then pick a piece of work and try to run it. Work through the list and notice which combinations are refused, and why.</p>
+  <div class="stage">
+    <div class="ctrls">
+      <label class="tog">Compute: <select id="dC">
+        <option value="srv">Serverless (notebooks and jobs)</option>
+        <option value="std">All-purpose, Standard access mode</option>
+        <option value="ded">All-purpose, Dedicated access mode</option>
+        <option value="job">Jobs compute (classic)</option>
+        <option value="sql">SQL warehouse</option>
+      </select></label>
+      <label class="tog">Work: <select id="dW">
+        <option value="py">Python notebook, explored by hand</option>
+        <option value="dash">SQL query behind a dashboard</option>
+        <option value="sched">Python job scheduled for 2 am</option>
+        <option value="r">R notebook</option>
+        <option value="rdd">Old code that uses the RDD API</option>
+      </select></label>
+      <button id="dRun" type="button" class="primary">Try to run it</button>
+      <button id="dReset" type="button">Clear log</button>
+    </div>
+    <div class="panes">
+      <div class="pane"><h4>This compute at a glance</h4><div id="pFacts"></div></div>
+      <div class="pane"><h4>Result</h4><div class="big" id="pRes">-</div><p class="cap" id="pWhy"></p></div>
+    </div>
+    <div class="log" id="dLog" role="log" aria-label="What happened"></div>
+    <p class="cap">RDD is Spark's oldest, low-level programming interface. New code uses DataFrames, but old code that still uses RDDs limits where it can run.</p>
+  </div>
+</section>
+
+<section id="code">
+  <div class="sec-num">Code</div>
+  <h2>What classic compute settings look like</h2>
+  <p>You normally create compute by filling in a form. Behind the form is a short description like the one below. You will meet this shape again in Module 05, where compute is defined in files.</p>
+<pre><code><span class="c-c"># A classic jobs compute definition for the nightly bakery load.</span>
+<span class="c-c"># Illustrative values: machine type names differ on each cloud.</span>
+<span class="c-k">new_cluster</span>:
+  <span class="c-k">spark_version</span>: <span class="c-s">"16.4.x-scala2.12"</span>     <span class="c-c"># which Databricks Runtime to install</span>
+  <span class="c-k">node_type_id</span>: <span class="c-s">"m5.xlarge"</span>              <span class="c-c"># size of each machine (an AWS example)</span>
+  <span class="c-k">autoscale</span>:
+    <span class="c-k">min_workers</span>: 2                      <span class="c-c"># never fewer than 2 workers</span>
+    <span class="c-k">max_workers</span>: 6                      <span class="c-c"># never more than 6</span>
+  <span class="c-k">data_security_mode</span>: <span class="c-s">"USER_ISOLATION"</span>  <span class="c-c"># the setting behind Standard access mode</span>
+  <span class="c-k">runtime_engine</span>: <span class="c-s">"PHOTON"</span>              <span class="c-c"># use the Photon engine</span></code></pre>
+  <p class="note">Check the exact field names and allowed values in the compute configuration reference before using them. For serverless compute there is nothing like this to write, which is the point of it.</p>
+  <p>From inside a notebook you can see what you are running on:</p>
+<pre><code><span class="c-c"># The Spark version of the compute this notebook is attached to.</span>
+print(spark.version)</code></pre>
+</section>
+
+<section id="whatif">
+  <div class="sec-num">What if I change this?</div>
+  <h2>Turning the dials</h2>
+  <div class="tbl"><table class="whatif">
+    <tr><th>Change</th><th>Effect</th></tr>
+    <tr><td>Standard access mode to Dedicated</td><td>Only one user or one group can use the compute. In return, things Standard mode does not allow become available, such as R and the RDD API.</td></tr>
+    <tr><td>Fixed size to autoscaling</td><td>The number of workers follows the load between your minimum and maximum. Quiet periods cost less. Sudden bursts wait a little while workers are added.</td></tr>
+    <tr><td>Turn off auto termination on all-purpose compute</td><td>It runs until someone stops it by hand. Forgetting is expensive.</td></tr>
+    <tr><td>Attach classic compute to a pool</td><td>Start-up is faster because machines are already waiting. The waiting machines still cost cloud provider charges.</td></tr>
+    <tr><td>Classic SQL warehouse to serverless SQL warehouse</td><td>Start-up drops from a few minutes to a few seconds, and it scales up and down more quickly.</td></tr>
+    <tr><td>Pick a non-LTS runtime version</td><td>You get newer features sooner, and must upgrade sooner because support ends earlier.</td></tr>
+  </table></div>
+</section>
+
+<section id="compare">
+  <div class="sec-num">Compare</div>
+  <h2>The menu in one table</h2>
+  <div class="tbl"><table>
+    <tr><th></th><th>Serverless (notebooks, jobs, pipelines)</th><th>All-purpose (classic)</th><th>Jobs compute (classic)</th><th>SQL warehouse</th></tr>
+    <tr><td>Set up by</td><td>Databricks</td><td>You</td><td>You, in the job's settings</td><td>You pick a size and a type</td></tr>
+    <tr><td>Runs in</td><td>Databricks account</td><td>Your cloud account</td><td>Your cloud account</td><td>Serverless type: Databricks account. Pro and classic types: your account.</td></tr>
+    <tr><td>Start-up</td><td>Seconds</td><td>Minutes</td><td>Minutes</td><td>Serverless: seconds. Pro and classic: a few minutes.</td></tr>
+    <tr><td>Lifetime</td><td>While work is running</td><td>Until stopped or idle too long</td><td>One job run</td><td>Until idle too long</td></tr>
+    <tr><td>Languages</td><td>Python and SQL in notebooks. No R.</td><td>Python, SQL, Scala. R with Dedicated access mode.</td><td>As all-purpose</td><td>SQL only</td></tr>
+    <tr><td>Made for</td><td>Most new work</td><td>Exploring by hand when you need settings serverless lacks</td><td>Scheduled work that needs custom settings</td><td>Dashboards, reports, SQL analysis</td></tr>
+  </table></div>
+  <h3>Three types of SQL warehouse</h3>
+  <div class="grid3">
+    <div class="card"><span class="tag">Serverless</span><p>Starts in seconds, scales quickly, has every performance feature. The recommended type and the default in the UI where available.</p></div>
+    <div class="card"><span class="tag">Pro</span><p>Runs in your cloud account and takes a few minutes to start. Used where serverless is not available or special networking is needed.</p></div>
+    <div class="card"><span class="tag">Classic</span><p>Also in your account. Entry-level performance with the fewest features.</p></div>
+  </div>
+</section>
+
+<section id="scenarios">
+  <div class="sec-num">Real life</div>
+  <h2>Picking the wrong vehicle</h2>
+  <div class="tbl"><table>
+    <tr><th>Scenario</th><th>What happens</th><th>Fix</th></tr>
+    <tr><td>A dashboard is pointed at an all-purpose cluster</td><td>It cannot be. Dashboards run their queries on SQL warehouses.</td><td>Create or choose a SQL warehouse</td></tr>
+    <tr><td>A statistician's R notebook fails on serverless compute</td><td>Serverless notebooks do not support R</td><td>Use classic all-purpose compute with Dedicated access mode</td></tr>
+    <tr><td>Analysts wait four minutes every morning for the first query</td><td>A pro or classic SQL warehouse is starting from cold</td><td>Switch to a serverless SQL warehouse</td></tr>
+    <tr><td>Five people share one cluster and one person's code must not see another's data</td><td>That needs isolation between users</td><td>Use Standard access mode, which is built for sharing</td></tr>
+    <tr><td>Old library code that uses RDDs stops working after a move to serverless</td><td>Serverless supports the newer DataFrame-based interfaces only</td><td>Rewrite with DataFrames, or run it on classic compute with Dedicated access mode</td></tr>
+  </table></div>
+</section>
+
+<section id="traps">
+  <div class="sec-num">Don't confuse these</div>
+  <h2>Compute names that blur together</h2>
+  <div class="grid2">
+    <div class="card trap"><span class="tag">All-purpose vs jobs compute</span><p>All-purpose is interactive and long-lived. Jobs compute is automated and lives for one run. Both are classic.</p></div>
+    <div class="card trap"><span class="tag">Standard vs Dedicated</span><p>Standard (formerly Shared) is for many users. Dedicated (formerly Single user) is for one user or group and allows more. Exam questions may use either the old or the new names.</p></div>
+    <div class="card trap"><span class="tag">Serverless vs serverless SQL warehouse</span><p>"Serverless compute" for notebooks and jobs runs Python and SQL. A "serverless SQL warehouse" is a SQL warehouse type and runs SQL only.</p></div>
+    <div class="card trap"><span class="tag">Classic compute vs classic SQL warehouse</span><p>"Classic compute" means any compute in your own account. "Classic" is also the name of the most basic SQL warehouse type.</p></div>
+  </div>
+</section>
+
+<section id="quiz">
+  <div class="sec-num">Check yourself</div>
+  <h2>Quiz</h2>
+  <div class="quiz">
+    <fieldset>
+      <legend>1. Which compute is created when a job run starts and removed when it ends?</legend>
+      <label><input type="radio"> All-purpose compute</label>
+      <label><input type="radio" data-correct> Jobs compute</label>
+      <label><input type="radio"> A SQL warehouse</label>
+      <p class="explain" hidden>Jobs compute exists for the length of one run. All-purpose compute and SQL warehouses stay up until they are stopped or have been idle long enough.</p>
+    </fieldset>
+    <fieldset>
+      <legend>2. What can a SQL warehouse run?</legend>
+      <label><input type="radio" data-correct> SQL only</label>
+      <label><input type="radio"> SQL and Python</label>
+      <label><input type="radio"> Any language a notebook supports</label>
+      <p class="explain" hidden>SQL warehouses are specialised for SQL. Python, Scala and R need other compute.</p>
+    </fieldset>
+    <fieldset>
+      <legend>3. What is the current name for the access mode formerly called "Single user"?</legend>
+      <label><input type="radio"> Standard</label>
+      <label><input type="radio" data-correct> Dedicated</label>
+      <label><input type="radio"> Isolated</label>
+      <p class="explain" hidden>Single user became Dedicated, and it can now be assigned to a group as well as one user. Shared became Standard.</p>
+    </fieldset>
+    <fieldset>
+      <legend>4. In the demo, which work could serverless compute for notebooks not run?</legend>
+      <label><input type="radio"> A Python notebook explored by hand</label>
+      <label><input type="radio"> A Python job scheduled for 2 am</label>
+      <label><input type="radio" data-correct> An R notebook</label>
+      <p class="explain" hidden>Serverless handles Python and SQL, interactive or scheduled. R is not supported there.</p>
+    </fieldset>
+    <fieldset>
+      <legend>5. Roughly how long does a serverless SQL warehouse take to start, compared with a pro one?</legend>
+      <label><input type="radio"> Both take a few minutes</label>
+      <label><input type="radio" data-correct> Seconds, against a few minutes</label>
+      <label><input type="radio"> Minutes, against seconds</label>
+      <p class="explain" hidden>Fast start-up is the headline benefit of serverless. Pro and classic warehouses must first start machines in your account.</p>
+    </fieldset>
+  </div>
+</section>
+
+<section id="wrap">
+  <div class="sec-num">Wrap up</div>
+  <h2>Key takeaways</h2>
+  <ul>
+    <li>Classic compute: you configure it, it runs in your account, it starts in minutes.</li>
+    <li>Serverless compute: Databricks runs it, it starts in seconds, it has fewer settings and some limits.</li>
+    <li>All-purpose is for people. Jobs compute is for scheduled runs. SQL warehouses are for SQL.</li>
+    <li>Standard access mode is for sharing. Dedicated is for one user or group and allows more.</li>
+    <li>SQL warehouses come as serverless, pro and classic.</li>
+  </ul>
+  <h3>Glossary terms used</h3>
+  <p><a href="../../glossary.html#compute">compute</a> · <a href="../../glossary.html#serverless">serverless</a> · <a href="../../glossary.html#all-purpose-compute">all-purpose compute</a> · <a href="../../glossary.html#jobs-compute">jobs compute</a> · <a href="../../glossary.html#sql-warehouse">SQL warehouse</a> · <a href="../../glossary.html#databricks-runtime">Databricks Runtime</a> · <a href="../../glossary.html#access-mode">access mode</a> · <a href="../../glossary.html#photon">Photon</a> · <a href="../../glossary.html#pool">pool</a> · <a href="../../glossary.html#autoscaling">autoscaling</a> · <a href="../../glossary.html#auto-termination">auto termination</a></p>
+  <h3>Official docs</h3>
+  <ul>
+    <li><a href="https://docs.databricks.com/aws/en/compute/">Compute</a></li>
+    <li><a href="https://docs.databricks.com/aws/en/compute/configure">Compute configuration reference</a></li>
+    <li><a href="https://docs.databricks.com/aws/en/compute/standard-overview">Standard compute overview</a></li>
+    <li><a href="https://docs.databricks.com/aws/en/compute/sql-warehouse/warehouse-types">SQL warehouse types</a></li>
+    <li><a href="https://docs.databricks.com/aws/en/compute/serverless/limitations">Serverless compute limitations</a></li>
+    <li><a href="https://docs.databricks.com/aws/en/compute/photon">Photon</a></li>
+  </ul>
+  <p class="cap">Last verified: 16 November 2026</p>
+</section>
+
+</main>
+
+<script>
+(function () {
+  var C = window.Course, $ = function (id) { return document.getElementById(id); }, L = $('dLog');
+  var FACTS = {
+    srv: [['Set up by', 'Databricks'], ['Runs in', 'Databricks account'], ['Starts in', 'seconds'], ['Languages', 'Python, SQL'], ['Lives', 'while work runs']],
+    std: [['Set up by', 'you'], ['Runs in', 'your account'], ['Starts in', 'minutes'], ['Languages', 'Python, SQL, Scala'], ['Users', 'many, isolated']],
+    ded: [['Set up by', 'you'], ['Runs in', 'your account'], ['Starts in', 'minutes'], ['Languages', 'Python, SQL, Scala, R'], ['Users', 'one user or group']],
+    job: [['Set up by', 'you, per job'], ['Runs in', 'your account'], ['Starts in', 'minutes'], ['Lives', 'one job run'], ['Interactive use', 'no']],
+    sql: [['Set up by', 'you pick size and type'], ['Runs in', 'depends on type'], ['Languages', 'SQL only'], ['Made for', 'dashboards, reports'], ['Lives', 'until idle too long']]
+  };
+  /* Verdict for every compute x work pair: [verdict, reason]. verdict: yes | no | poor */
+  var RULES = {
+    srv: { py: ['yes', 'Python notebooks are what serverless is made for. Ready in seconds.'], dash: ['no', 'Dashboards run their queries on a SQL warehouse.'], sched: ['yes', 'Serverless is the recommended choice for most scheduled work.'], r: ['no', 'R is not supported on serverless compute.'], rdd: ['no', 'Serverless does not support the RDD API.'] },
+    std: { py: ['yes', 'A normal use of all-purpose compute.'], dash: ['no', 'Dashboards run their queries on a SQL warehouse.'], sched: ['poor', 'It runs, but all-purpose compute is not meant for scheduled work. Use jobs compute or serverless.'], r: ['no', 'R needs Dedicated access mode.'], rdd: ['no', 'The RDD API needs Dedicated access mode.'] },
+    ded: { py: ['yes', 'A normal use of all-purpose compute.'], dash: ['no', 'Dashboards run their queries on a SQL warehouse.'], sched: ['poor', 'It runs, but all-purpose compute is not meant for scheduled work. Use jobs compute or serverless.'], r: ['yes', 'Dedicated access mode supports R.'], rdd: ['yes', 'Dedicated access mode supports the RDD API.'] },
+    job: { py: ['no', 'Jobs compute exists only during a job run. You cannot attach a notebook and explore.'], dash: ['no', 'Dashboards run their queries on a SQL warehouse.'], sched: ['yes', 'This is exactly what jobs compute is for.'], r: ['no', 'Not by hand: jobs compute is not interactive. As a scheduled job with Dedicated access mode it could run.'], rdd: ['no', 'Not by hand: jobs compute is not interactive. As a scheduled job with Dedicated access mode it could run.'] },
+    sql: { py: ['no', 'A SQL warehouse runs SQL only.'], dash: ['yes', 'SQL warehouses are built for dashboards and reports.'], sched: ['no', 'A SQL warehouse runs SQL only, not Python.'], r: ['no', 'A SQL warehouse runs SQL only.'], rdd: ['no', 'A SQL warehouse runs SQL only.'] }
+  };
+  var WORD = { yes: 'Runs', no: 'Refused', poor: 'Runs, but a poor fit' };
+  function facts() {
+    $('pFacts').innerHTML = FACTS[$('dC').value].map(function (f) { return '<div class="item"><span>' + f[0] + '</span><span>' + f[1] + '</span></div>'; }).join('');
+    $('pRes').textContent = '-'; $('pWhy').textContent = '';
+  }
+  $('dC').onchange = facts; $('dW').onchange = function () { $('pRes').textContent = '-'; $('pWhy').textContent = ''; };
+  $('dRun').onclick = function () {
+    var r = RULES[$('dC').value][$('dW').value];
+    $('pRes').textContent = WORD[r[0]]; $('pWhy').textContent = r[1];
+    C.log(L, r[0] === 'yes' ? 'ok' : r[0] === 'no' ? 'bad' : 'skip', $('dW').selectedOptions[0].text + ' on ' + $('dC').selectedOptions[0].text + ': ' + WORD[r[0]].toUpperCase() + '. ' + r[1]);
+    C.bump($('pRes'));
+  };
+  $('dReset').onclick = function () { L.innerHTML = ''; };
+  facts();
+})();
+</script>
+</body>
+</html>

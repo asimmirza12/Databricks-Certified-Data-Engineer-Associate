@@ -19,12 +19,12 @@
     ["10", "medallion-architecture", "Medallion architecture: bronze, silver, gold", 1]
   ]},
   {n:"01", slug:"databricks-platform", title:"Databricks Intelligence Platform", weight:6, lessons:[
-    ["01", "platform-architecture", "Platform architecture: control plane and compute plane", 0],
-    ["02", "delta-lake-in-depth", "Delta Lake in depth: transaction log, ACID, time travel", 0],
-    ["03", "unity-catalog-object-model", "Unity Catalog object model: metastore, catalog, schema, objects", 0],
-    ["04", "compute-types", "Compute types: all-purpose, jobs, SQL warehouses, serverless", 0],
-    ["05", "compute-costs-and-limits", "Compute costs and limits: DBUs and what each option cannot do", 0],
-    ["06", "choosing-compute", "Choosing compute for a workload", 0]
+    ["01", "platform-architecture", "Platform architecture: control plane and compute plane", 1],
+    ["02", "delta-lake-in-depth", "Delta Lake in depth: transaction log, ACID, time travel", 1],
+    ["03", "unity-catalog-object-model", "Unity Catalog object model: metastore, catalog, schema, objects", 1],
+    ["04", "compute-types", "Compute types: all-purpose, jobs, SQL warehouses, serverless", 1],
+    ["05", "compute-costs-and-limits", "Compute costs and limits: DBUs and what each option cannot do", 1],
+    ["06", "choosing-compute", "Choosing compute for a workload", 1]
   ]},
   {n:"02", slug:"data-ingestion", title:"Data Ingestion and Loading", weight:21, lessons:[
     ["01", "ingestion-patterns", "Ingestion patterns: batch, streaming, incremental", 0],

@@ -1,0 +1,312 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>01-06 Choosing compute for a workload · DE Associate course</title>
+<link rel="stylesheet" href="../../assets/course.css">
+<script src="../../assets/course.js"></script>
+</head>
+<body data-lesson="01-06">
+
+<aside class="disclaimer" aria-label="Disclaimer"><strong>Learning resource only.</strong> This is an independent, unofficial study guide made for learning purposes. It is not affiliated with, endorsed by or sponsored by Databricks. Databricks features change often, so always check the details in the <a href="https://docs.databricks.com">official Databricks documentation</a> and the official exam guide on databricks.com before relying on anything here. Databricks and related names are trademarks of their respective owners.</aside>
+
+<main class="wrap">
+
+<header class="hero">
+  <div class="eyebrow">Module 01 · Databricks Intelligence Platform · Lesson 6 of 6</div>
+  <h1>Choosing compute for a workload</h1>
+  <p class="lede">You know the options, their prices and their limits. This lesson turns that into a short routine you can run in your head for any exam scenario.</p>
+  <dl class="where">
+    <div><dt>Module</dt><dd>01 Databricks Intelligence Platform (6% of the exam)</dd></div>
+    <div><dt>Exam objective</dt><dd>1.2 Know each kind of compute, what it is good and bad at, how it is billed, and pick the right one for a given workload. This lesson covers the picking.</dd></div>
+    <div><dt>Time to read</dt><dd>About 11 minutes</dd></div>
+    <div><dt>Before this</dt><dd><a href="04-compute-types.html">01-04 Compute types</a> · <a href="05-compute-costs-and-limits.html">01-05 Compute costs and limits</a></dd></div>
+  </dl>
+</header>
+
+<section id="idea">
+  <div class="sec-num">The idea</div>
+  <h2>Three questions, in order</h2>
+  <p>A <a href="../../glossary.html#workload">workload</a> is simply a piece of work that needs compute: a dashboard, a nightly job, an afternoon of exploring data. To choose compute for one, ask three questions.</p>
+  <ol>
+    <li><strong>Is it SQL for dashboards, reports or analysis?</strong> Then use a SQL warehouse, and prefer the serverless type.</li>
+    <li><strong>If not: does a person run it by hand, or does a schedule run it?</strong> By hand means interactive. By schedule means a job.</li>
+    <li><strong>Does it need something serverless cannot do?</strong> For example R, the RDD API, or special machine and Spark settings. If not, use serverless. If so, use classic compute: all-purpose for interactive work, jobs compute for scheduled work.</li>
+  </ol>
+  <p>Notice the default. Databricks recommends serverless first, and classic compute only when there is a reason. And notice what never appears as an answer: all-purpose compute for scheduled work.</p>
+  <div class="analogy">
+    <span class="tag">Everyday analogy</span>
+    <p><strong>Choosing a tool from a toolbox.</strong> You do not start by admiring every tool. You ask what the job is. Hanging a picture? Hammer. If the wall is concrete, the hammer will not do, so you fetch the drill. The drill is not "better". It is what you use when the simple tool hits a limit. Serverless is the hammer. Classic compute is the drill.</p>
+  </div>
+</section>
+
+<section id="how">
+  <div class="sec-num">How it works</div>
+  <h2>The decision path</h2>
+  <div class="stage">
+    <svg class="tall" viewBox="0 0 360 440" role="img" aria-label="A decision tree. SQL for reports goes to a serverless SQL warehouse. Otherwise, interactive work goes to serverless, or to classic all-purpose compute if serverless cannot do it. Scheduled work goes to serverless jobs, or to classic jobs compute if serverless cannot do it.">
+      <defs>
+        <path id="q1" d="M180 50 V78"/>
+        <path id="q2" d="M110 104 C 70 104, 62 120, 62 146"/><path id="q3" d="M250 104 C 290 104, 262 120, 262 146"/>
+        <path id="q4" d="M262 198 C 262 216, 180 214, 180 232"/><path id="q5" d="M262 198 V232"/>
+        <path id="q6" d="M150 284 C 110 300, 70 310, 62 330"/><path id="q7" d="M210 284 C 220 300, 190 310, 180 330"/>
+        <path id="q8" d="M262 284 C 262 300, 298 310, 298 330"/>
+      </defs>
+      <g class="wire"><use href="#q1"/><use href="#q2"/><use href="#q3"/><use href="#q5"/><use href="#q6"/><use href="#q7"/><use href="#q8"/></g>
+      <g class="mover">
+        <circle r="5" class="dot"><animateMotion dur="1.4s" repeatCount="indefinite"><mpath href="#q1"/></animateMotion></circle>
+        <circle r="5" class="dot-ok"><animateMotion dur="2s" begin="-0.4s" repeatCount="indefinite"><mpath href="#q2"/></animateMotion></circle>
+        <circle r="5" class="dot"><animateMotion dur="2s" begin="-1.2s" repeatCount="indefinite"><mpath href="#q3"/></animateMotion></circle>
+        <circle r="5" class="dot"><animateMotion dur="1.4s" begin="-0.7s" repeatCount="indefinite"><mpath href="#q5"/></animateMotion></circle>
+        <circle r="5" class="dot-ok"><animateMotion dur="2s" begin="-0.9s" repeatCount="indefinite"><mpath href="#q7"/></animateMotion></circle>
+      </g>
+      <rect class="box-soft" x="90" y="10" width="180" height="40" rx="8"/><text x="180" y="35" text-anchor="middle">A workload arrives</text>
+      <rect class="box" x="110" y="78" width="140" height="52" rx="8"/><text class="t-b" x="180" y="100" text-anchor="middle">1. SQL for</text><text class="t-b" x="180" y="117" text-anchor="middle">reports or BI?</text>
+      <text class="t-m" x="84" y="98" text-anchor="middle">yes</text><text class="t-m" x="280" y="98" text-anchor="middle">no</text>
+      <rect class="box-acc" x="6" y="146" width="112" height="52" rx="8"/><text class="t-b" x="62" y="168" text-anchor="middle">SQL warehouse</text><text class="t-m" x="62" y="186" text-anchor="middle">serverless type</text>
+      <rect class="box" x="186" y="146" width="152" height="52" rx="8"/><text class="t-b" x="262" y="168" text-anchor="middle">2. By hand, or</text><text class="t-b" x="262" y="185" text-anchor="middle">on a schedule?</text>
+      <rect class="box" x="130" y="232" width="208" height="52" rx="8"/><text class="t-b" x="234" y="254" text-anchor="middle">3. Needs something</text><text class="t-b" x="234" y="271" text-anchor="middle">serverless cannot do?</text>
+      <text class="t-m" x="150" y="308" text-anchor="middle">no</text><text class="t-m" x="300" y="308" text-anchor="middle">yes</text>
+      <rect class="box-acc" x="6" y="330" width="232" height="52" rx="8"/><text class="t-b" x="122" y="352" text-anchor="middle">Serverless</text><text class="t-m" x="122" y="370" text-anchor="middle">notebook or job. The default.</text>
+      <rect class="box" x="246" y="330" width="108" height="52" rx="8"/><text class="t-b" x="300" y="352" text-anchor="middle">Classic</text><text class="t-m" x="300" y="370" text-anchor="middle">see below</text>
+      <text class="t-m" x="180" y="408" text-anchor="middle">Classic, by hand: all-purpose compute.</text>
+      <text class="t-m" x="180" y="426" text-anchor="middle">Classic, on a schedule: jobs compute.</text>
+    </svg>
+    <p class="cap">Most workloads end at one of the two shaded serverless boxes. The classic box is for the exceptions.</p>
+  </div>
+  <h3>Reasons to leave serverless</h3>
+  <div class="grid2">
+    <div class="card"><span class="tag">A language or interface it lacks</span><p>R, Scala in notebooks, or code written against the RDD API.</p></div>
+    <div class="card"><span class="tag">Settings you must control</span><p>A particular machine type such as one with a GPU, a specific runtime version, or Spark settings that serverless does not let you change.</p></div>
+    <div class="card"><span class="tag">A rule about where data is processed</span><p>Company policy may require processing inside your own cloud account and network. That means the classic compute plane.</p></div>
+    <div class="card"><span class="tag">It is not available</span><p>Serverless is not offered in every region or enabled in every workspace.</p></div>
+  </div>
+</section>
+
+<section id="demo">
+  <div class="sec-num">Try it</div>
+  <h2>The compute chooser</h2>
+  <p>Describe a workload with the three dropdowns. The recommendation is worked out from the same three questions. Try to predict the answer before you press the button.</p>
+  <div class="stage">
+    <div class="ctrls">
+      <label class="tog">The work is: <select id="dKind">
+        <option value="sql">SQL for a dashboard or report</option>
+        <option value="hand">Code run by hand in a notebook</option>
+        <option value="sched">Code run on a schedule</option>
+      </select></label>
+      <label class="tog">It needs: <select id="dNeed">
+        <option value="none">nothing special</option>
+        <option value="r">the R language</option>
+        <option value="rdd">the RDD API</option>
+        <option value="gpu">a GPU or custom Spark settings</option>
+        <option value="own">processing inside our own cloud account</option>
+      </select></label>
+      <label class="tog"><input type="checkbox" id="dAvail" checked> Serverless is available in this workspace</label>
+      <button id="dGo" type="button" class="primary">Recommend</button>
+      <button id="dReset" type="button">Clear log</button>
+    </div>
+    <div class="panes">
+      <div class="pane"><h4>The three questions</h4><div id="pSteps"></div></div>
+      <div class="pane"><h4>Recommendation</h4><div class="big" id="pPick">-</div><p class="cap" id="pWhy"></p></div>
+    </div>
+    <div class="log" id="dLog" role="log" aria-label="What happened"></div>
+  </div>
+</section>
+
+<section id="code">
+  <div class="sec-num">Code</div>
+  <h2>How the choice shows up in a job definition</h2>
+  <p>In a job, each task says which compute it runs on. Here is one job with two tasks that made different choices. Module 04 and Module 05 explain job files properly. For now, look only at the compute lines.</p>
+<pre><code><span class="c-k">name</span>: bakery_nightly
+
+<span class="c-c"># Classic jobs compute, defined once and created fresh for each run.</span>
+<span class="c-k">job_clusters</span>:
+  - <span class="c-k">job_cluster_key</span>: r_cluster
+    <span class="c-k">new_cluster</span>:
+      <span class="c-k">spark_version</span>: <span class="c-s">"16.4.x-scala2.12"</span>
+      <span class="c-k">node_type_id</span>: <span class="c-s">"m5.xlarge"</span>
+      <span class="c-k">num_workers</span>: 2
+      <span class="c-k">data_security_mode</span>: <span class="c-s">"SINGLE_USER"</span>   <span class="c-c"># the setting behind Dedicated access mode</span>
+
+<span class="c-k">tasks</span>:
+  <span class="c-c"># No compute named: where serverless is enabled, this notebook task runs on serverless.</span>
+  - <span class="c-k">task_key</span>: load_orders
+    <span class="c-k">notebook_task</span>:
+      <span class="c-k">notebook_path</span>: /Workspace/bakery/load_orders
+
+  <span class="c-c"># This task runs an R notebook, which serverless cannot do, so it names the classic cluster.</span>
+  - <span class="c-k">task_key</span>: forecast_in_r
+    <span class="c-k">depends_on</span>:
+      - <span class="c-k">task_key</span>: load_orders
+    <span class="c-k">job_cluster_key</span>: r_cluster
+    <span class="c-k">notebook_task</span>:
+      <span class="c-k">notebook_path</span>: /Workspace/bakery/forecast</code></pre>
+  <p class="note">Field names and allowed values change between releases. Check them in the jobs compute documentation before copying. The point to remember is the pattern: serverless by default, classic jobs compute for the task that needs it, and no all-purpose compute anywhere.</p>
+  <p>For SQL work, the choice is made by picking a warehouse. A dashboard or a SQL task simply names the SQL warehouse it should use.</p>
+</section>
+
+<section id="whatif">
+  <div class="sec-num">What if I change this?</div>
+  <h2>How one detail changes the answer</h2>
+  <div class="tbl"><table class="whatif">
+    <tr><th>Change</th><th>Effect</th></tr>
+    <tr><td>A Python notebook job becomes an R notebook job</td><td>Serverless is ruled out. The answer moves to classic jobs compute with Dedicated access mode.</td></tr>
+    <tr><td>A hand-run notebook is put on a schedule</td><td>The answer moves from interactive compute to job compute: serverless jobs, or classic jobs compute. Never keep it on all-purpose.</td></tr>
+    <tr><td>A Python job is rewritten as pure SQL feeding a dashboard</td><td>A SQL warehouse becomes the natural home.</td></tr>
+    <tr><td>Policy now says "process only in our cloud account"</td><td>Every serverless answer becomes a classic one. For SQL, that means a pro SQL warehouse.</td></tr>
+    <tr><td>The job only runs for 90 seconds every few minutes</td><td>Start-up time dominates on classic compute. Serverless becomes the clear choice if nothing rules it out.</td></tr>
+    <tr><td>Several analysts must share one interactive cluster</td><td>Classic all-purpose compute with Standard access mode, which isolates users from one another.</td></tr>
+  </table></div>
+</section>
+
+<section id="compare">
+  <div class="sec-num">Compare</div>
+  <h2>Workload to compute, at a glance</h2>
+  <div class="tbl"><table>
+    <tr><th>Workload</th><th>First choice</th><th>Use this when the first choice is ruled out</th></tr>
+    <tr><td>Dashboards, reports, SQL analysis</td><td>Serverless SQL warehouse</td><td>Pro SQL warehouse</td></tr>
+    <tr><td>Exploring data by hand in Python or SQL</td><td>Serverless compute</td><td>Classic all-purpose compute</td></tr>
+    <tr><td>Exploring in R, or with RDD code</td><td>Classic all-purpose, Dedicated access mode</td><td>None. Serverless does not support these.</td></tr>
+    <tr><td>Scheduled Python or SQL job</td><td>Serverless compute for jobs</td><td>Classic jobs compute</td></tr>
+    <tr><td>Scheduled job needing custom machines or Spark settings</td><td>Classic jobs compute</td><td>None</td></tr>
+    <tr><td>Any scheduled job</td><td colspan="2">Not all-purpose compute. It costs more per DBU and is not built for automated work.</td></tr>
+  </table></div>
+  <h3>What you are balancing</h3>
+  <div class="grid3">
+    <div class="card"><span class="tag">Simplicity</span><p>Serverless needs no sizing, no patching and no waiting. Fewer things to get wrong.</p></div>
+    <div class="card"><span class="tag">Control</span><p>Classic compute lets you choose machines, versions and settings. More power, more to manage.</p></div>
+    <div class="card"><span class="tag">Cost</span><p>Match the lifetime of the compute to the lifetime of the work. Idle compute is the most common waste.</p></div>
+  </div>
+</section>
+
+<section id="scenarios">
+  <div class="sec-num">Real life</div>
+  <h2>Exam-style scenarios</h2>
+  <div class="tbl"><table>
+    <tr><th>Scenario</th><th>What happens</th><th>Fix</th></tr>
+    <tr><td>Thirty analysts open dashboards at 9 am and expect instant results</td><td>Many short SQL queries arrive at once</td><td>Serverless SQL warehouse: fast start and quick scaling for many users</td></tr>
+    <tr><td>A Python pipeline must run every night at 2 am with no special needs</td><td>Scheduled, non-SQL, nothing unusual</td><td>Serverless compute for jobs</td></tr>
+    <tr><td>A nightly job needs a specific GPU machine type</td><td>Serverless does not let you pick machines</td><td>Classic jobs compute, configured with that machine type</td></tr>
+    <tr><td>A data scientist explores data in R for an afternoon</td><td>Interactive, and R is not on serverless</td><td>Classic all-purpose compute, Dedicated access mode, with auto termination set</td></tr>
+    <tr><td>A team wants the lowest cost for a job and proposes reusing their always-on development cluster</td><td>The cluster is all-purpose: highest price per DBU, and the job competes with people working</td><td>Jobs compute or serverless for the job. Keep the development cluster for development.</td></tr>
+    <tr><td>A regulated company cannot process data outside its own cloud network</td><td>The serverless compute plane is in the Databricks account</td><td>Classic compute throughout, and pro SQL warehouses for SQL</td></tr>
+  </table></div>
+</section>
+
+<section id="traps">
+  <div class="sec-num">Don't confuse these</div>
+  <h2>Wrong answers that look right</h2>
+  <div class="grid2">
+    <div class="card trap"><span class="tag">"It already exists, so use it"</span><p>An all-purpose cluster that happens to be running is tempting for a scheduled job. It is the wrong answer on cost and on design.</p></div>
+    <div class="card trap"><span class="tag">SQL warehouse for everything SQL-ish</span><p>A SQL warehouse runs SQL only. A notebook that mixes SQL cells with Python cells needs serverless or classic compute.</p></div>
+    <div class="card trap"><span class="tag">Serverless is always cheapest</span><p>Usually simplest, often cheapest for short or bursty work. Not automatically cheapest for long, steady, heavy jobs. Compare total cost.</p></div>
+    <div class="card trap"><span class="tag">Classic is the safe default</span><p>It was once. Current guidance is the reverse: start with serverless and move to classic only for a stated reason.</p></div>
+  </div>
+</section>
+
+<section id="quiz">
+  <div class="sec-num">Check yourself</div>
+  <h2>Quiz</h2>
+  <div class="quiz">
+    <fieldset>
+      <legend>1. A team needs compute for business dashboards used by many people through the day. What fits best?</legend>
+      <label><input type="radio"> All-purpose compute</label>
+      <label><input type="radio"> Jobs compute</label>
+      <label><input type="radio" data-correct> A serverless SQL warehouse</label>
+      <p class="explain" hidden>Dashboards are SQL workloads, and SQL warehouses are built for them. The serverless type starts fast and scales quickly as users arrive.</p>
+    </fieldset>
+    <fieldset>
+      <legend>2. A Python notebook must run every night with no special requirements. Which is the recommended choice?</legend>
+      <label><input type="radio" data-correct> Serverless compute for jobs</label>
+      <label><input type="radio"> The team's all-purpose cluster</label>
+      <label><input type="radio"> A SQL warehouse</label>
+      <p class="explain" hidden>Scheduled, not SQL-only, nothing that serverless lacks. All-purpose compute is never the right home for scheduled work, and a SQL warehouse cannot run Python.</p>
+    </fieldset>
+    <fieldset>
+      <legend>3. The same nightly job is rewritten in R. What changes?</legend>
+      <label><input type="radio"> Nothing</label>
+      <label><input type="radio" data-correct> It must move to classic jobs compute</label>
+      <label><input type="radio"> It must move to a SQL warehouse</label>
+      <p class="explain" hidden>Serverless does not support R. For scheduled work the classic option is jobs compute, with Dedicated access mode for R.</p>
+    </fieldset>
+    <fieldset>
+      <legend>4. Why should a scheduled job not run on all-purpose compute?</legend>
+      <label><input type="radio"> All-purpose compute cannot run jobs at all</label>
+      <label><input type="radio" data-correct> It has a higher price per DBU and is designed for interactive use</label>
+      <label><input type="radio"> Jobs on it cannot read Unity Catalog tables</label>
+      <p class="explain" hidden>It would work, which is what makes it a trap. It simply costs more and is not optimised for automated workloads.</p>
+    </fieldset>
+    <fieldset>
+      <legend>5. In the demo, what was recommended for SQL dashboards when processing had to stay inside the company's own cloud account?</legend>
+      <label><input type="radio"> A serverless SQL warehouse</label>
+      <label><input type="radio" data-correct> A pro SQL warehouse</label>
+      <label><input type="radio"> Classic all-purpose compute</label>
+      <p class="explain" hidden>Pro and classic SQL warehouses run in your cloud account. The serverless type runs in the Databricks account, so the policy rules it out.</p>
+    </fieldset>
+  </div>
+</section>
+
+<section id="wrap">
+  <div class="sec-num">Wrap up</div>
+  <h2>Key takeaways</h2>
+  <ul>
+    <li>SQL for reports and dashboards: a SQL warehouse, serverless type first.</li>
+    <li>Everything else: serverless first, for both interactive and scheduled work.</li>
+    <li>Go classic only for a reason: R, RDDs, special machines or settings, policy, or availability.</li>
+    <li>Classic by hand is all-purpose compute. Classic on a schedule is jobs compute.</li>
+    <li>Never run scheduled work on all-purpose compute.</li>
+  </ul>
+  <p class="note">That completes Module 01. Next is Module 02, the largest part of the exam so far: getting data in.</p>
+  <h3>Glossary terms used</h3>
+  <p><a href="../../glossary.html#workload">workload</a> · <a href="../../glossary.html#serverless">serverless</a> · <a href="../../glossary.html#sql-warehouse">SQL warehouse</a> · <a href="../../glossary.html#all-purpose-compute">all-purpose compute</a> · <a href="../../glossary.html#jobs-compute">jobs compute</a> · <a href="../../glossary.html#access-mode">access mode</a></p>
+  <h3>Official docs</h3>
+  <ul>
+    <li><a href="https://docs.databricks.com/aws/en/compute/choose-compute">Compute selection recommendations</a></li>
+    <li><a href="https://docs.databricks.com/aws/en/jobs/compute">Configure compute for jobs</a></li>
+    <li><a href="https://docs.databricks.com/aws/en/jobs/run-serverless-jobs">Run jobs with serverless compute</a></li>
+    <li><a href="https://docs.databricks.com/aws/en/compute/sql-warehouse/warehouse-types">SQL warehouse types</a></li>
+    <li><a href="https://docs.databricks.com/aws/en/compute/serverless/limitations">Serverless compute limitations</a></li>
+  </ul>
+  <p class="cap">Last verified: 16 November 2026</p>
+</section>
+
+</main>
+
+<script>
+(function () {
+  var C = window.Course, $ = function (id) { return document.getElementById(id); }, L = $('dLog');
+  var NEED = { none: 'nothing special', r: 'R', rdd: 'the RDD API', gpu: 'a GPU or custom Spark settings', own: 'processing in your own cloud account' };
+
+  /* The three questions from the lesson, as code. Returns the steps taken and the pick. */
+  function choose(kind, need, avail) {
+    var steps = [], blocked = !avail ? 'serverless is not available here' : need !== 'none' ? 'it needs ' + NEED[need] + ', which serverless cannot give' : null;
+    if (kind === 'sql') {
+      steps.push(['1. SQL for reports or BI?', 'yes']);
+      if (need === 'r' || need === 'rdd' || need === 'gpu') return { steps: steps, pick: 'Not a SQL warehouse', why: 'A SQL warehouse runs SQL only. Work that needs ' + NEED[need] + ' is not a pure SQL workload: describe it as notebook or scheduled code.' , ok: false };
+      var noSrv = !avail || need === 'own';
+      steps.push(['Serverless type possible?', noSrv ? 'no' : 'yes']);
+      return noSrv ? { steps: steps, pick: 'Pro SQL warehouse', why: 'SQL belongs on a SQL warehouse. The serverless type is ruled out because ' + (!avail ? 'it is not available here' : 'processing must stay in your account') + ', and pro runs in your cloud account.', ok: true }
+        : { steps: steps, pick: 'Serverless SQL warehouse', why: 'SQL belongs on a SQL warehouse, and the serverless type starts in seconds and scales quickly.', ok: true };
+    }
+    steps.push(['1. SQL for reports or BI?', 'no']);
+    steps.push(['2. By hand or on a schedule?', kind === 'hand' ? 'by hand' : 'schedule']);
+    steps.push(['3. Needs something serverless cannot do?', blocked ? 'yes' : 'no']);
+    if (!blocked) return { steps: steps, pick: kind === 'hand' ? 'Serverless compute' : 'Serverless compute for jobs', why: 'Nothing rules serverless out, so take the default: no setup and a fast start.', ok: true };
+    var mode = need === 'r' || need === 'rdd' ? ', Dedicated access mode' : '';
+    return { steps: steps, pick: (kind === 'hand' ? 'Classic all-purpose compute' : 'Classic jobs compute') + mode,
+      why: 'Classic is needed because ' + blocked + '. ' + (kind === 'hand' ? 'A person runs it by hand, so all-purpose. Set auto termination.' : 'A schedule runs it, so jobs compute, never all-purpose.'), ok: true };
+  }
+  $('dGo').onclick = function () {
+    var r = choose($('dKind').value, $('dNeed').value, $('dAvail').checked);
+    $('pSteps').innerHTML = r.steps.map(function (s) { return '<div class="item"><span>' + s[0] + '</span><span>' + s[1] + '</span></div>'; }).join('');
+    $('pPick').textContent = r.pick; $('pWhy').textContent = r.why;
+    C.log(L, r.ok ? 'ok' : 'bad', $('dKind').selectedOptions[0].text + ', needs ' + NEED[$('dNeed').value] + ($('dAvail').checked ? '' : ', no serverless') + ' -> ' + r.pick);
+    C.bump($('pPick'));
+  };
+  $('dReset').onclick = function () { L.innerHTML = ''; };
+  C.log(L, 'skip', 'Describe a workload and press Recommend.');
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,276 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>01-05 Compute costs and limits · DE Associate course</title>
+<link rel="stylesheet" href="../../assets/course.css">
+<script src="../../assets/course.js"></script>
+</head>
+<body data-lesson="01-05">
+
+<aside class="disclaimer" aria-label="Disclaimer"><strong>Learning resource only.</strong> This is an independent, unofficial study guide made for learning purposes. It is not affiliated with, endorsed by or sponsored by Databricks. Databricks features change often, so always check the details in the <a href="https://docs.databricks.com">official Databricks documentation</a> and the official exam guide on databricks.com before relying on anything here. Databricks and related names are trademarks of their respective owners.</aside>
+
+<main class="wrap">
+
+<header class="hero">
+  <div class="eyebrow">Module 01 · Databricks Intelligence Platform · Lesson 5 of 6</div>
+  <h1>Compute costs and limits: DBUs and what each option cannot do</h1>
+  <p class="lede">Every kind of compute has a price and a list of things it will not do. Know both, and choosing becomes simple arithmetic.</p>
+  <dl class="where">
+    <div><dt>Module</dt><dd>01 Databricks Intelligence Platform (6% of the exam)</dd></div>
+    <div><dt>Exam objective</dt><dd>1.2 Know each kind of compute, what it is good and bad at, how it is billed, and pick the right one for a given workload. This lesson covers billing and limits.</dd></div>
+    <div><dt>Time to read</dt><dd>About 13 minutes</dd></div>
+    <div><dt>Before this</dt><dd><a href="04-compute-types.html">01-04 Compute types</a></dd></div>
+  </dl>
+</header>
+
+<section id="idea">
+  <div class="sec-num">The idea</div>
+  <h2>You pay for time switched on, measured in DBUs</h2>
+  <p>Databricks does not charge by the gigabyte of data or by the query. It charges for compute that is running. The unit of measurement is the <a href="../../glossary.html#dbu">DBU</a>, short for Databricks Unit. A DBU is a standard measure of processing power used for one hour. A bigger machine uses more DBUs per hour than a smaller one.</p>
+  <p>Your charge from Databricks is:</p>
+  <p class="note"><strong>DBUs used × the price of one DBU.</strong></p>
+  <p>The price of one DBU is not a single number. It depends on <strong>which kind of compute</strong> produced it. Each kind has its own price label, called a <a href="../../glossary.html#sku">SKU</a>. A DBU from all-purpose compute costs noticeably more than a DBU from jobs compute. That gap is the reason scheduled work should not run on all-purpose compute.</p>
+  <p>There is a second charge to remember, and it depends on where the machines live (lesson 01-01):</p>
+  <ul>
+    <li><strong>Classic compute</strong> uses machines in your own cloud account. So you get <strong>two bills</strong>: DBUs from Databricks, and the machines themselves from your cloud provider.</li>
+    <li><strong>Serverless compute</strong> uses machines in the Databricks account. You get <strong>one bill</strong>: the serverless DBU price already includes the machines.</li>
+  </ul>
+  <div class="analogy">
+    <span class="tag">Everyday analogy</span>
+    <p><strong>Electricity.</strong> You are billed for units used, not for owning appliances. A kettle burns more units per hour than a lamp, just as a large cluster burns more DBUs per hour than a small one. Leave the lights on in an empty house and you still pay: that is idle compute. And some tariffs are dearer than others: the "convenience" tariff for all-purpose compute costs more per unit than the "off-peak" tariff for jobs compute.</p>
+  </div>
+</section>
+
+<section id="how">
+  <div class="sec-num">How it works</div>
+  <h2>One bill or two</h2>
+  <div class="stage">
+    <svg class="tall" viewBox="0 0 360 330" role="img" aria-label="Classic compute produces two bills: DBUs to Databricks and machine costs to the cloud provider. Serverless compute produces one bill to Databricks that includes the machines.">
+      <defs>
+        <path id="b1" d="M90 70 C 90 110, 60 110, 60 150"/><path id="b2" d="M90 70 C 90 110, 140 110, 140 150"/><path id="b3" d="M270 70 V150"/>
+        <path id="b4" d="M60 204 C 60 240, 120 250, 150 276"/><path id="b5" d="M140 204 C 140 230, 160 250, 170 276"/><path id="b6" d="M270 204 C 270 240, 220 250, 200 276"/>
+      </defs>
+      <g class="wire"><use href="#b1"/><use href="#b2"/><use href="#b3"/><use href="#b4"/><use href="#b5"/><use href="#b6"/></g>
+      <g class="mover">
+        <circle r="5" class="dot"><animateMotion dur="2s" repeatCount="indefinite"><mpath href="#b1"/></animateMotion></circle>
+        <circle r="5" class="dot-ok"><animateMotion dur="2s" begin="-0.7s" repeatCount="indefinite"><mpath href="#b2"/></animateMotion></circle>
+        <circle r="5" class="dot"><animateMotion dur="2s" begin="-1.3s" repeatCount="indefinite"><mpath href="#b3"/></animateMotion></circle>
+      </g>
+      <rect class="box" x="20" y="16" width="140" height="54" rx="8"/><text class="t-b" x="90" y="38" text-anchor="middle">Classic compute</text><text class="t-m" x="90" y="56" text-anchor="middle">machines in your account</text>
+      <rect class="box" x="200" y="16" width="140" height="54" rx="8"/><text class="t-b" x="270" y="38" text-anchor="middle">Serverless compute</text><text class="t-m" x="270" y="56" text-anchor="middle">machines at Databricks</text>
+      <rect class="box-acc" x="10" y="150" width="100" height="54" rx="8"/><text class="t-b" x="60" y="172" text-anchor="middle">Databricks</text><text class="t-m" x="60" y="190" text-anchor="middle">DBUs × price</text>
+      <rect class="box-soft" x="118" y="150" width="100" height="54" rx="8"/><text class="t-b" x="168" y="172" text-anchor="middle">Cloud provider</text><text class="t-m" x="168" y="190" text-anchor="middle">machine hours</text>
+      <rect class="box-acc" x="226" y="150" width="124" height="54" rx="8"/><text class="t-b" x="288" y="172" text-anchor="middle">Databricks</text><text class="t-m" x="288" y="190" text-anchor="middle">machines included</text>
+      <rect class="box" x="100" y="276" width="160" height="44" rx="8"/><text class="t-b" x="180" y="303" text-anchor="middle">Your total cost</text>
+    </svg>
+    <p class="cap">Comparing only the DBU price of classic and serverless is misleading. Add the cloud provider's machine charge to the classic side first.</p>
+  </div>
+  <h3>Where idle time hides</h3>
+  <p>With classic compute you pay from the moment the machines start until they stop, including the minutes spent starting and any time they sit idle. With serverless you are billed only while compute is assigned to your work, not for the time taken to get machines ready. This is why a pricier serverless DBU can still give a smaller total bill for short or bursty work.</p>
+  <h3>Seeing what was spent</h3>
+  <p>Usage is recorded in <a href="../../glossary.html#system-tables">system tables</a>. <code>system.billing.usage</code> holds one row per slice of usage, with the SKU and the quantity of DBUs. <code>system.billing.list_prices</code> holds the list price of each SKU. Join the two to turn DBUs into money. You can also attach <strong>tags</strong> (labels such as <code>team=finance</code>) to compute, so the usage rows show who the cost belongs to.</p>
+</section>
+
+<section id="demo">
+  <div class="sec-num">Try it</div>
+  <h2>A day's bill, four ways</h2>
+  <p>Set how much real work happens in a day and how long compute is left idle. Compare the four options. The prices are invented to show the shape of the sums. They are not real prices.</p>
+  <div class="stage">
+    <div class="ctrls">
+      <label class="tog">Hours of real work: <input type="range" id="dWork" min="1" max="12" value="2"> <strong id="dWorkN"></strong></label>
+      <label class="tog">Hours left on but idle: <input type="range" id="dIdle" min="0" max="12" value="4"> <strong id="dIdleN"></strong></label>
+      <label class="tog">Times started in the day: <input type="range" id="dStarts" min="1" max="24" value="4"> <strong id="dStartsN"></strong></label>
+    </div>
+    <div class="tbl"><table id="pBill"></table></div>
+    <div class="log" id="dLog" role="log" aria-label="What happened"></div>
+    <p class="cap">Invented prices per DBU: jobs 0.15, all-purpose 0.55, serverless 0.70 with machines included. Classic machines: 0.40 per hour from the cloud provider. Size: 4 DBUs per hour. Classic start-up: 5 minutes each time, billed. Real prices vary by cloud, region and plan: see the official pricing page.</p>
+  </div>
+</section>
+
+<section id="code">
+  <div class="sec-num">Code</div>
+  <h2>Reading your own usage</h2>
+  <p>These queries need access to the <code>system</code> catalog, which an administrator grants.</p>
+<pre><code><span class="c-c">-- DBUs used per day and per SKU over the last week.</span>
+<span class="c-k">SELECT</span> usage_date,
+       sku_name,
+       <span class="c-k">SUM</span>(usage_quantity) <span class="c-k">AS</span> dbus
+<span class="c-k">FROM</span> system.billing.usage
+<span class="c-k">WHERE</span> usage_date &gt;= date_sub(current_date(), 7)
+<span class="c-k">GROUP BY</span> usage_date, sku_name
+<span class="c-k">ORDER BY</span> usage_date, dbus <span class="c-k">DESC</span>;</code></pre>
+<pre><code><span class="c-c">-- Turn DBUs into an estimated cost at list price, split by a team tag.</span>
+<span class="c-k">SELECT</span> u.custom_tags[<span class="c-s">'team'</span>]                        <span class="c-k">AS</span> team,
+       <span class="c-k">SUM</span>(u.usage_quantity * p.pricing.default)    <span class="c-k">AS</span> list_cost
+<span class="c-k">FROM</span> system.billing.usage <span class="c-k">AS</span> u
+<span class="c-k">JOIN</span> system.billing.list_prices <span class="c-k">AS</span> p
+  <span class="c-k">ON</span>  u.sku_name = p.sku_name
+  <span class="c-k">AND</span> u.usage_start_time &gt;= p.price_start_time
+  <span class="c-k">AND</span> (p.price_end_time <span class="c-k">IS NULL OR</span> u.usage_start_time &lt; p.price_end_time)
+<span class="c-k">WHERE</span> u.usage_date &gt;= date_sub(current_date(), 30)
+<span class="c-k">GROUP BY</span> u.custom_tags[<span class="c-s">'team'</span>];</code></pre>
+  <p class="note">List price is the published price. What your company actually pays may differ under its contract. For classic compute this figure also leaves out the cloud provider's machine charges, which appear on the cloud provider's bill. Check column names against the billing system table reference before relying on them.</p>
+</section>
+
+<section id="whatif">
+  <div class="sec-num">What if I change this?</div>
+  <h2>What moves the bill</h2>
+  <div class="tbl"><table class="whatif">
+    <tr><th>Change</th><th>Effect</th></tr>
+    <tr><td>Move a nightly job from all-purpose to jobs compute</td><td>The same DBUs are charged at a much lower price per DBU. Nothing else changes.</td></tr>
+    <tr><td>Shorten auto termination from 120 minutes to 20</td><td>Up to 100 fewer idle minutes are billed after each working session.</td></tr>
+    <tr><td>Double the size of a cluster</td><td>Twice the DBUs and machine cost per hour. If the job finishes in half the time, the total is about the same. If it does not, you paid for nothing.</td></tr>
+    <tr><td>Move short, frequent jobs to serverless</td><td>No start-up minutes and no idle time are billed. Often cheaper overall, even at a higher DBU price.</td></tr>
+    <tr><td>Use spot machines for classic workers</td><td>Spot machines are spare capacity that cloud providers sell cheaply and can take back at short notice. The cloud bill drops. A run may be slowed if machines are reclaimed.</td></tr>
+    <tr><td>Add tags to compute</td><td>No change to cost. But each usage row now says which team or project it belongs to.</td></tr>
+  </table></div>
+</section>
+
+<section id="compare">
+  <div class="sec-num">Compare</div>
+  <h2>How each option is billed</h2>
+  <div class="tbl"><table>
+    <tr><th></th><th>All-purpose (classic)</th><th>Jobs compute (classic)</th><th>Serverless</th><th>SQL warehouse</th></tr>
+    <tr><td>Bills you receive</td><td>Databricks DBUs, plus cloud machines</td><td>Databricks DBUs, plus cloud machines</td><td>Databricks only, machines included</td><td>Serverless type: Databricks only. Pro and classic: both.</td></tr>
+    <tr><td>Price per DBU</td><td>Highest of the classic options</td><td>Much lower than all-purpose</td><td>Higher, but covers the machines</td><td>Depends on the type</td></tr>
+    <tr><td>Pay while idle?</td><td>Yes, until auto termination</td><td>No. It ends with the run.</td><td>No</td><td>Yes, until auto stop</td></tr>
+    <tr><td>Pay for start-up?</td><td>Yes</td><td>Yes</td><td>No</td><td>Serverless type: no</td></tr>
+  </table></div>
+  <h3>What each option cannot do</h3>
+  <div class="grid2">
+    <div class="card"><span class="tag">Serverless (notebooks and jobs)</span><p>No R. No Scala in notebooks. No RDD API. Only a short list of Spark settings can be changed. Streaming must use the <code>availableNow</code> trigger. Libraries are installed per notebook, not per compute. A single run can last at most 7 days.</p></div>
+    <div class="card"><span class="tag">SQL warehouse</span><p>SQL only. No Python, Scala or R. You choose a size, not individual machines or Spark settings.</p></div>
+    <div class="card"><span class="tag">All-purpose (classic)</span><p>Takes minutes to start. Costs the most per DBU. Bills idle time. With Standard access mode: no R and no RDD API.</p></div>
+    <div class="card"><span class="tag">Jobs compute (classic)</span><p>Takes minutes to start, on every run. Cannot be used interactively. Gone when the run ends, so nothing can be inspected on it afterwards.</p></div>
+  </div>
+  <p class="note">Limits change as the product develops, serverless most of all. Treat this list as a snapshot and check the serverless limitations page before an exam or a design decision.</p>
+</section>
+
+<section id="scenarios">
+  <div class="sec-num">Real life</div>
+  <h2>Bills that surprise people</h2>
+  <div class="tbl"><table>
+    <tr><th>Scenario</th><th>What happens</th><th>Fix</th></tr>
+    <tr><td>A team schedules 30 jobs on the all-purpose cluster they develop on</td><td>Every job's DBUs are charged at the dearest price</td><td>Give each job jobs compute or serverless</td></tr>
+    <tr><td>A large cluster with auto termination switched off runs over a holiday week</td><td>About 168 hours of idle DBUs and machines are billed</td><td>Always set auto termination, and enforce it with a compute policy</td></tr>
+    <tr><td>Finance asks which team caused last month's increase</td><td>The usage rows carry no team information</td><td>Tag compute by team from now on, then group <code>system.billing.usage</code> by the tag</td></tr>
+    <tr><td>A two-minute job runs every ten minutes on classic jobs compute</td><td>Each run pays for about five minutes of start-up to do two minutes of work</td><td>Use serverless, which starts in seconds and bills only the work</td></tr>
+    <tr><td>Someone compares DBU prices and concludes serverless is dearer</td><td>They left the cloud machine cost off the classic side</td><td>Compare total cost for the whole workload, both bills included</td></tr>
+  </table></div>
+</section>
+
+<section id="traps">
+  <div class="sec-num">Don't confuse these</div>
+  <h2>Cost traps</h2>
+  <div class="grid2">
+    <div class="card trap"><span class="tag">DBU vs money</span><p>A DBU is a unit of usage, not a currency. The same number of DBUs costs different amounts on different SKUs.</p></div>
+    <div class="card trap"><span class="tag">Databricks bill vs cloud bill</span><p>Classic compute appears on two bills. Serverless appears on one. Exam questions about "total cost" expect you to remember the second bill.</p></div>
+    <div class="card trap"><span class="tag">Auto termination vs autoscaling</span><p>Auto termination switches compute off when idle. Autoscaling changes the number of workers while it runs. Both save money in different ways.</p></div>
+    <div class="card trap"><span class="tag">Cheaper DBU vs cheaper job</span><p>A lower price per DBU helps only if the DBU count stays similar. Idle time and start-up time can outweigh it.</p></div>
+  </div>
+</section>
+
+<section id="quiz">
+  <div class="sec-num">Check yourself</div>
+  <h2>Quiz</h2>
+  <div class="quiz">
+    <fieldset>
+      <legend>1. What is a DBU?</legend>
+      <label><input type="radio"> One gigabyte of stored data</label>
+      <label><input type="radio" data-correct> A unit of processing power used for one hour</label>
+      <label><input type="radio"> One dollar of credit</label>
+      <p class="explain" hidden>DBUs measure compute usage. Money comes from multiplying DBUs by the price of the SKU.</p>
+    </fieldset>
+    <fieldset>
+      <legend>2. A scheduled job runs on all-purpose compute. What is the simplest way to cut its cost?</legend>
+      <label><input type="radio"> Run it more often</label>
+      <label><input type="radio" data-correct> Run it on jobs compute</label>
+      <label><input type="radio"> Turn off auto termination</label>
+      <p class="explain" hidden>Jobs compute has a much lower price per DBU than all-purpose compute, for the same work.</p>
+    </fieldset>
+    <fieldset>
+      <legend>3. Which compute produces a single bill that already includes the machines?</legend>
+      <label><input type="radio"> Classic all-purpose compute</label>
+      <label><input type="radio"> Classic jobs compute</label>
+      <label><input type="radio" data-correct> Serverless compute</label>
+      <p class="explain" hidden>Serverless machines belong to Databricks, so their cost is inside the serverless DBU price. Classic machines are billed by your cloud provider.</p>
+    </fieldset>
+    <fieldset>
+      <legend>4. In the demo, what happened to the all-purpose bill as "hours left on but idle" went up?</legend>
+      <label><input type="radio" data-correct> It rose, while the serverless and jobs bills did not</label>
+      <label><input type="radio"> Nothing. Idle time is free.</label>
+      <label><input type="radio"> Every option rose equally</label>
+      <p class="explain" hidden>Only compute that stays on between pieces of work bills idle time. Jobs compute ends with the run, and serverless bills only assigned work.</p>
+    </fieldset>
+    <fieldset>
+      <legend>5. Where do you look to see DBU usage per SKU?</legend>
+      <label><input type="radio"> <code>DESCRIBE HISTORY</code></label>
+      <label><input type="radio"> <code>information_schema.tables</code></label>
+      <label><input type="radio" data-correct> <code>system.billing.usage</code></label>
+      <p class="explain" hidden>The billing system tables record usage. The other two describe tables, not spending.</p>
+    </fieldset>
+  </div>
+</section>
+
+<section id="wrap">
+  <div class="sec-num">Wrap up</div>
+  <h2>Key takeaways</h2>
+  <ul>
+    <li>Cost = DBUs used × the price per DBU of that compute's SKU.</li>
+    <li>All-purpose compute has the highest classic price per DBU. Jobs compute is much cheaper.</li>
+    <li>Classic compute means two bills. Serverless means one, with machines included.</li>
+    <li>Idle time and start-up time are billed on classic compute, not on serverless.</li>
+    <li>Serverless and SQL warehouses trade flexibility for simplicity. Know their limits.</li>
+  </ul>
+  <h3>Glossary terms used</h3>
+  <p><a href="../../glossary.html#dbu">DBU</a> · <a href="../../glossary.html#sku">SKU</a> · <a href="../../glossary.html#system-tables">system tables</a> · <a href="../../glossary.html#auto-termination">auto termination</a> · <a href="../../glossary.html#autoscaling">autoscaling</a> · <a href="../../glossary.html#serverless">serverless</a> · <a href="../../glossary.html#all-purpose-compute">all-purpose compute</a> · <a href="../../glossary.html#jobs-compute">jobs compute</a></p>
+  <h3>Official docs</h3>
+  <ul>
+    <li><a href="https://www.databricks.com/product/pricing">Databricks pricing</a></li>
+    <li><a href="https://docs.databricks.com/aws/en/admin/system-tables/billing">Billable usage system table reference</a></li>
+    <li><a href="https://docs.databricks.com/aws/en/admin/system-tables/serverless-billing">Monitor the cost of serverless compute</a></li>
+    <li><a href="https://docs.databricks.com/aws/en/compute/serverless/limitations">Serverless compute limitations</a></li>
+    <li><a href="https://docs.databricks.com/aws/en/lakehouse-architecture/cost-optimization/best-practices">Best practices for cost optimization</a></li>
+  </ul>
+  <p class="cap">Last verified: 16 November 2026</p>
+</section>
+
+</main>
+
+<script>
+(function () {
+  var C = window.Course, $ = function (id) { return document.getElementById(id); }, L = $('dLog');
+  /* Invented prices, shown under the demo. */
+  var DBU_H = 4, VM_H = 0.40, STARTUP_H = 5 / 60, P = { ap: 0.55, job: 0.15, srv: 0.70 };
+  function money(n) { return n.toFixed(2); }
+  function calc() {
+    var work = +$('dWork').value, idle = +$('dIdle').value, starts = +$('dStarts').value;
+    $('dWorkN').textContent = work; $('dIdleN').textContent = idle; $('dStartsN').textContent = starts;
+    var boot = starts * STARTUP_H;
+    var rows = [
+      { name: 'All-purpose (classic)', hours: work + idle + boot, dbu: P.ap, vm: VM_H, note: 'work + idle + start-up' },
+      { name: 'Jobs compute (classic)', hours: work + boot, dbu: P.job, vm: VM_H, note: 'work + start-up, no idle' },
+      { name: 'Serverless', hours: work, dbu: P.srv, vm: 0, note: 'work only' }
+    ];
+    rows.forEach(function (r) { r.dbus = r.hours * DBU_H; r.db = r.dbus * r.dbu; r.cloud = r.hours * r.vm; r.total = r.db + r.cloud; });
+    var best = rows.reduce(function (a, b) { return b.total < a.total ? b : a; });
+    $('pBill').innerHTML = '<tr><th>Option</th><th>Hours billed</th><th>DBUs</th><th>Databricks bill</th><th>Cloud bill</th><th>Total</th></tr>' +
+      rows.map(function (r) {
+        return '<tr><td>' + r.name + (r === best ? ' <span class="chip ok">cheapest</span>' : '') + '<br><span class="cap">' + r.note + '</span></td><td>' + r.hours.toFixed(1) + '</td><td>' + r.dbus.toFixed(1) +
+          '</td><td>' + money(r.db) + '</td><td>' + (r.vm ? money(r.cloud) : 'included') + '</td><td><strong>' + money(r.total) + '</strong></td></tr>';
+      }).join('');
+    return { rows: rows, best: best, work: work, idle: idle, starts: starts };
+  }
+  function say() {
+    var r = calc();
+    C.log(L, 'skip', r.work + ' h work, ' + r.idle + ' h idle, ' + r.starts + ' start(s): cheapest is ' + r.best.name + ' at ' + money(r.best.total) +
+      '. All-purpose costs ' + money(r.rows[0].total) + ', of which ' + money(r.idle * (DBU_H * P.ap + VM_H)) + ' is idle time.');
+  }
+  ['dWork', 'dIdle', 'dStarts'].forEach(function (id) { $(id).oninput = calc; $(id).onchange = say; });
+  say();
+})();
+</script>
+</body>
+</html>

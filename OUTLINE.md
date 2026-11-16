@@ -39,12 +39,12 @@ Objectives:
 
 | Status | Lesson | File | Objective | Prerequisites |
 |---|---|---|---|---|
-| [ ] | 01-01 Platform architecture: control plane and compute plane | `01-platform-architecture.html` | 1.1 | 00-07 |
-| [ ] | 01-02 Delta Lake in depth: transaction log, ACID, time travel | `02-delta-lake-in-depth.html` | 1.1 | 00-08 |
-| [ ] | 01-03 Unity Catalog object model: metastore, catalog, schema, objects | `03-unity-catalog-object-model.html` | 1.1 | 00-09 |
-| [ ] | 01-04 Compute types: all-purpose, jobs, SQL warehouses, serverless | `04-compute-types.html` | 1.2 | 01-01 |
-| [ ] | 01-05 Compute costs and limits: DBUs and what each option cannot do | `05-compute-costs-and-limits.html` | 1.2 | 01-04 |
-| [ ] | 01-06 Choosing compute for a workload | `06-choosing-compute.html` | 1.2 | 01-04, 01-05 |
+| [x] | 01-01 Platform architecture: control plane and compute plane | `01-platform-architecture.html` | 1.1 | 00-07 |
+| [x] | 01-02 Delta Lake in depth: transaction log, ACID, time travel | `02-delta-lake-in-depth.html` | 1.1 | 00-08 |
+| [x] | 01-03 Unity Catalog object model: metastore, catalog, schema, objects | `03-unity-catalog-object-model.html` | 1.1 | 00-09 |
+| [x] | 01-04 Compute types: all-purpose, jobs, SQL warehouses, serverless | `04-compute-types.html` | 1.2 | 01-01 |
+| [x] | 01-05 Compute costs and limits: DBUs and what each option cannot do | `05-compute-costs-and-limits.html` | 1.2 | 01-04 |
+| [x] | 01-06 Choosing compute for a workload | `06-choosing-compute.html` | 1.2 | 01-04, 01-05 |
 
 ## Module 02: Data Ingestion and Loading (21% of the exam)
 

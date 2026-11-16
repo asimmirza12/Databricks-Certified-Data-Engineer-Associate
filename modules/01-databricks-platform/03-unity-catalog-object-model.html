@@ -1,0 +1,337 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>01-03 Unity Catalog object model · DE Associate course</title>
+<link rel="stylesheet" href="../../assets/course.css">
+<script src="../../assets/course.js"></script>
+</head>
+<body data-lesson="01-03">
+
+<aside class="disclaimer" aria-label="Disclaimer"><strong>Learning resource only.</strong> This is an independent, unofficial study guide made for learning purposes. It is not affiliated with, endorsed by or sponsored by Databricks. Databricks features change often, so always check the details in the <a href="https://docs.databricks.com">official Databricks documentation</a> and the official exam guide on databricks.com before relying on anything here. Databricks and related names are trademarks of their respective owners.</aside>
+
+<main class="wrap">
+
+<header class="hero">
+  <div class="eyebrow">Module 01 · Databricks Intelligence Platform · Lesson 3 of 6</div>
+  <h1>Unity Catalog object model: metastore, catalog, schema, objects</h1>
+  <p class="lede">Lesson 00-09 gave you the three-part name. This lesson fills in the rest of the map: everything Unity Catalog keeps track of, where the files really go, and what it records about their use.</p>
+  <dl class="where">
+    <div><dt>Module</dt><dd>01 Databricks Intelligence Platform (6% of the exam)</dd></div>
+    <div><dt>Exam objective</dt><dd>1.1 Know the main building blocks of the platform: how it is laid out, what Delta Lake does and what Unity Catalog does. This lesson covers Unity Catalog.</dd></div>
+    <div><dt>Time to read</dt><dd>About 14 minutes</dd></div>
+    <div><dt>Before this</dt><dd><a href="../00-foundations/09-unity-catalog-basics.html">00-09 Unity Catalog basics</a></dd></div>
+  </dl>
+</header>
+
+<section id="idea">
+  <div class="sec-num">The idea</div>
+  <h2>Everything that can be protected has a place in one tree</h2>
+  <p>In Unity Catalog, anything you can give permissions on is called a <a href="../../glossary.html#securable">securable object</a>, or securable for short. A table is a securable. So is a schema, a catalog and a volume.</p>
+  <p>All securables hang from one tree. At the top is the <a href="../../glossary.html#metastore">metastore</a>. You already know one branch: catalog, then schema, then tables, views, volumes and functions.</p>
+  <p>There is a second set of branches that beginners often miss. These objects sit directly under the metastore, beside the catalogs, and they describe how Databricks reaches the outside world:</p>
+  <ul>
+    <li>A <a href="../../glossary.html#storage-credential">storage credential</a> holds the cloud login that lets Databricks into a storage bucket.</li>
+    <li>An <a href="../../glossary.html#external-location">external location</a> pairs one storage path with a storage credential. It says "this folder in the cloud may be used, with that login".</li>
+    <li>A connection holds the details for reaching another database system.</li>
+    <li>A share is a bundle of data offered to another organisation.</li>
+  </ul>
+  <p>Unity Catalog does three jobs with this tree: it controls access, it records who did what (the audit trail), and it tracks where data came from (<a href="../../glossary.html#lineage">lineage</a>).</p>
+  <div class="analogy">
+    <span class="tag">Everyday analogy</span>
+    <p><strong>A hospital's records office.</strong> Patient files are arranged by department, then ward, then patient: that is catalog, schema, table. But the office also keeps the keys to the archive rooms (storage credentials), a list of which rooms it may use (external locations), a visitors' book of everyone who opened a file (audit), and notes showing which report was built from which test results (lineage). The files matter most, but the office could not work without the rest.</p>
+  </div>
+</section>
+
+<section id="how">
+  <div class="sec-num">How it works</div>
+  <h2>The full tree</h2>
+  <div class="stage">
+    <svg class="tall" viewBox="0 0 360 420" role="img" aria-label="The metastore is at the top. Below it on the left are catalog, schema, and then table, view, volume and function. Below it on the right are storage credential, external location, connection and share.">
+      <defs>
+        <path id="u1" d="M180 48 C 180 70, 100 62, 100 84"/><path id="u2" d="M180 48 C 180 70, 270 62, 270 84"/>
+        <path id="u3" d="M100 132 V164"/><path id="u4" d="M100 212 V244"/>
+        <path id="u5" d="M270 268 C 240 300, 200 330, 170 350"/>
+      </defs>
+      <g class="wire"><use href="#u1"/><use href="#u2"/><use href="#u3"/><use href="#u4"/><use href="#u5"/></g>
+      <g class="mover">
+        <circle r="5" class="dot"><animateMotion dur="1.6s" repeatCount="indefinite"><mpath href="#u1"/></animateMotion></circle>
+        <circle r="5" class="dot"><animateMotion dur="1.6s" begin="-0.5s" repeatCount="indefinite"><mpath href="#u3"/></animateMotion></circle>
+        <circle r="5" class="dot"><animateMotion dur="1.6s" begin="-1s" repeatCount="indefinite"><mpath href="#u4"/></animateMotion></circle>
+        <circle r="5" class="dot-ok"><animateMotion dur="2.4s" repeatCount="indefinite"><mpath href="#u5"/></animateMotion></circle>
+      </g>
+      <rect class="box-acc" x="90" y="8" width="180" height="40" rx="8"/><text class="t-b" x="180" y="33" text-anchor="middle">Metastore</text>
+      <rect class="box" x="20" y="84" width="160" height="48" rx="8"/><text class="t-b" x="100" y="105" text-anchor="middle">Catalog</text><text class="t-m" x="100" y="122" text-anchor="middle">bakery</text>
+      <rect class="box" x="20" y="164" width="160" height="48" rx="8"/><text class="t-b" x="100" y="185" text-anchor="middle">Schema</text><text class="t-m" x="100" y="202" text-anchor="middle">silver</text>
+      <rect class="box" x="20" y="244" width="160" height="104" rx="8"/>
+      <text class="t-b" x="100" y="264" text-anchor="middle">Data objects</text>
+      <text class="t-m" x="100" y="284" text-anchor="middle">tables · views</text>
+      <text class="t-m" x="100" y="302" text-anchor="middle">volumes · functions</text>
+      <text class="t-m" x="100" y="320" text-anchor="middle">models</text>
+      <text class="t-m" x="100" y="338" text-anchor="middle">3rd part of the name</text>
+      <rect class="box-soft" x="196" y="84" width="154" height="184" rx="8"/>
+      <text class="t-b" x="273" y="106" text-anchor="middle">Access to the</text><text class="t-b" x="273" y="122" text-anchor="middle">outside world</text>
+      <text class="t-m" x="273" y="148" text-anchor="middle">storage credentials</text>
+      <text class="t-m" x="273" y="170" text-anchor="middle">external locations</text>
+      <text class="t-m" x="273" y="192" text-anchor="middle">connections</text>
+      <text class="t-m" x="273" y="214" text-anchor="middle">shares</text>
+      <text class="t-m" x="273" y="246" text-anchor="middle">directly under the metastore</text>
+      <rect class="box" x="20" y="366" width="330" height="44" rx="8"/>
+      <text class="t-b" x="185" y="385" text-anchor="middle">Cloud object storage</text><text class="t-m" x="185" y="401" text-anchor="middle">where the files of tables and volumes really are</text>
+    </svg>
+    <p class="cap">The green dot shows the purpose of the right-hand branch: it is how Unity Catalog is allowed to reach the storage that holds the data on the left.</p>
+  </div>
+  <h3>Managed or external: who looks after the files?</h3>
+  <p>Every table is one of two kinds. Module 07 covers them fully. You need the outline now.</p>
+  <ul>
+    <li>A <a href="../../glossary.html#managed-table">managed table</a> lets Unity Catalog decide where the files go and look after them. Drop the table and the files are removed too. This is the default and the recommended kind.</li>
+    <li>An <a href="../../glossary.html#external-table">external table</a> points at files in a path that you chose. Drop the table and Unity Catalog forgets it, but the files stay.</li>
+  </ul>
+  <h3>Where do the files of a managed table go?</h3>
+  <p>Unity Catalog needs a place to put them, called a <a href="../../glossary.html#managed-storage-location">managed storage location</a>. One can be set at three levels. When a table is created, Unity Catalog looks from the bottom up and uses the first one it finds:</p>
+  <ol>
+    <li>the schema's location, if the schema has one,</li>
+    <li>otherwise the catalog's location,</li>
+    <li>otherwise the metastore's location.</li>
+  </ol>
+  <p>The more specific level wins. Databricks recommends setting it at catalog level, so each catalog's data is kept apart. A metastore-level location is optional, and newer workspaces may be created without one.</p>
+</section>
+
+<section id="demo">
+  <div class="sec-num">Try it</div>
+  <h2>Two rules to work out by hand</h2>
+  <h3>1. Where will the files land?</h3>
+  <p>Tick which levels have a managed storage location. Create a managed table and see which path wins.</p>
+  <div class="stage">
+    <div class="ctrls">
+      <label class="tog"><input type="checkbox" id="mMeta"> Metastore has a location</label>
+      <label class="tog"><input type="checkbox" id="mCat" checked> Catalog <code>bakery</code> has a location</label>
+      <label class="tog"><input type="checkbox" id="mSch"> Schema <code>bakery.silver</code> has a location</label>
+      <button id="mGo" type="button" class="primary">CREATE TABLE bakery.silver.orders</button>
+    </div>
+    <div class="panes">
+      <div class="pane"><h4>Locations checked, bottom up</h4><div id="pLook"></div></div>
+      <div class="pane"><h4>Files are written under</h4><p class="filetext" id="pPath">-</p></div>
+    </div>
+  </div>
+  <h3>2. Which table does this name mean?</h3>
+  <p>Set the current catalog and schema, as <code>USE CATALOG</code> and <code>USE SCHEMA</code> would. Then see how a short name is completed.</p>
+  <div class="stage">
+    <div class="ctrls">
+      <label class="tog">Current catalog: <select id="nCat"><option>bakery</option><option>dev</option></select></label>
+      <label class="tog">Current schema: <select id="nSch"><option>silver</option><option>bronze</option><option>gold</option></select></label>
+      <label class="tog">Name in the query: <select id="nName"><option>orders</option><option>gold.orders</option><option>bakery.silver.orders</option><option>bakery.information_schema.tables</option></select></label>
+      <button id="nGo" type="button" class="primary">Resolve</button>
+    </div>
+    <div class="panes">
+      <div class="pane"><h4>Full name Unity Catalog uses</h4><p class="filetext" id="pFull">-</p></div>
+    </div>
+    <div class="log" id="dLog" role="log" aria-label="What happened"></div>
+  </div>
+</section>
+
+<section id="code">
+  <div class="sec-num">Code</div>
+  <h2>Exploring the tree with SQL</h2>
+<pre><code><span class="c-c">-- Walk down the tree.</span>
+<span class="c-k">SHOW CATALOGS</span>;
+<span class="c-k">SHOW SCHEMAS IN</span> bakery;
+<span class="c-k">SHOW TABLES IN</span> bakery.silver;
+<span class="c-k">SHOW VOLUMES IN</span> bakery.landing;
+
+<span class="c-c">-- Everything about one table: columns, owner, type (MANAGED or EXTERNAL), storage location.</span>
+<span class="c-k">DESCRIBE TABLE EXTENDED</span> bakery.silver.orders;
+
+<span class="c-c">-- A new catalog that keeps its managed data in its own storage path.</span>
+<span class="c-c">-- The path must lie inside an external location that already exists.</span>
+<span class="c-k">CREATE CATALOG IF NOT EXISTS</span> bakery
+  <span class="c-k">MANAGED LOCATION</span> <span class="c-s">'s3://bakery-lakehouse/managed/'</span>;
+
+<span class="c-k">CREATE SCHEMA IF NOT EXISTS</span> bakery.silver
+  <span class="c-k">COMMENT</span> <span class="c-s">'Cleaned, deduplicated data'</span>;</code></pre>
+  <p>Every catalog also contains a ready-made schema called <code>information_schema</code>. It holds tables that describe the catalog itself, so you can query the structure with plain SQL.</p>
+<pre><code><span class="c-c">-- List every table in the bakery catalog, with its kind.</span>
+<span class="c-k">SELECT</span> table_schema, table_name, table_type
+<span class="c-k">FROM</span> bakery.information_schema.tables
+<span class="c-k">WHERE</span> table_schema &lt;&gt; <span class="c-s">'information_schema'</span>
+<span class="c-k">ORDER BY</span> table_schema, table_name;</code></pre>
+  <p>There is also a built-in catalog named <code>system</code>, present in every metastore. Its tables record how the platform is used. An administrator must give you access before you can read them.</p>
+<pre><code><span class="c-c">-- Who touched data recently? (audit trail)</span>
+<span class="c-k">SELECT</span> event_time, user_identity.email, action_name
+<span class="c-k">FROM</span> system.access.audit
+<span class="c-k">WHERE</span> event_date = current_date()
+<span class="c-k">LIMIT</span> 20;
+
+<span class="c-c">-- Which tables were built from bakery.silver.orders? (lineage)</span>
+<span class="c-k">SELECT DISTINCT</span> target_table_full_name
+<span class="c-k">FROM</span> system.access.table_lineage
+<span class="c-k">WHERE</span> source_table_full_name = <span class="c-s">'bakery.silver.orders'</span>;</code></pre>
+</section>
+
+<section id="whatif">
+  <div class="sec-num">What if I change this?</div>
+  <h2>Choices in the object model</h2>
+  <div class="tbl"><table class="whatif">
+    <tr><th>Change</th><th>Effect</th></tr>
+    <tr><td>Give a schema its own managed location</td><td>New managed tables in that schema go there, not to the catalog's location. Tables that already exist do not move.</td></tr>
+    <tr><td>Set no managed location at any level</td><td>A managed table has nowhere to go, so it cannot be created. Someone must set a location first.</td></tr>
+    <tr><td>Drop a managed table</td><td>The table's files are removed as well, after a retention period (Module 07 has the details).</td></tr>
+    <tr><td>Drop an external table</td><td>Only the entry in Unity Catalog goes. The files stay in your storage path.</td></tr>
+    <tr><td>Attach a second workspace to the same metastore</td><td>It sees the same catalogs, subject to permissions. Data is shared without copying.</td></tr>
+    <tr><td>Leave out the catalog in a name</td><td>The current catalog is used. In unattended jobs, write all three parts so the meaning cannot shift.</td></tr>
+  </table></div>
+</section>
+
+<section id="compare">
+  <div class="sec-num">Compare</div>
+  <h2>The levels and what each is for</h2>
+  <div class="tbl"><table>
+    <tr><th>Level</th><th>How many</th><th>Typical use</th><th>In the name?</th></tr>
+    <tr><td>Metastore</td><td>Normally one per cloud region. A workspace is attached to exactly one.</td><td>The top container for everything in that region</td><td>No</td></tr>
+    <tr><td>Catalog</td><td>Several</td><td>A business area or an environment: <code>bakery</code>, <code>dev</code>, <code>prod</code></td><td>1st part</td></tr>
+    <tr><td>Schema</td><td>Many per catalog</td><td>A group of related objects: <code>bronze</code>, <code>silver</code>, <code>gold</code></td><td>2nd part</td></tr>
+    <tr><td>Table, view, volume, function, model</td><td>Many per schema</td><td>The things you query and use</td><td>3rd part</td></tr>
+  </table></div>
+  <h3>Three things Unity Catalog gives you beyond names</h3>
+  <div class="grid3">
+    <div class="card"><span class="tag">Access control</span><p>One set of permissions, defined once, applied in every workspace attached to the metastore.</p></div>
+    <div class="card"><span class="tag">Audit</span><p>A record of who accessed or changed what and when, readable in <a href="../../glossary.html#system-tables">system tables</a>.</p></div>
+    <div class="card"><span class="tag">Lineage</span><p>An automatic record of which tables and columns were used to build which others.</p></div>
+  </div>
+  <h3>Three special names you will run into</h3>
+  <div class="grid3">
+    <div class="card"><span class="tag">information_schema</span><p>A schema inside every catalog that describes that catalog's own tables, columns and privileges.</p></div>
+    <div class="card"><span class="tag">system</span><p>A catalog in every metastore holding usage records: audit, lineage, billing and more.</p></div>
+    <div class="card"><span class="tag">hive_metastore</span><p>A catalog that shows tables from the older, pre-Unity Catalog system. It is legacy. New work belongs in Unity Catalog.</p></div>
+  </div>
+</section>
+
+<section id="scenarios">
+  <div class="sec-num">Real life</div>
+  <h2>The model in practice</h2>
+  <div class="tbl"><table>
+    <tr><th>Scenario</th><th>What happens</th><th>Fix</th></tr>
+    <tr><td>Finance data must be stored in a separate bucket from everything else</td><td>By default all managed tables share one location</td><td>Give the finance catalog its own managed storage location</td></tr>
+    <tr><td>Before changing a silver table, you need to know what depends on it</td><td>Guessing risks breaking a dashboard</td><td>Check lineage, in the catalog browser or in <code>system.access.table_lineage</code></td></tr>
+    <tr><td>An auditor asks who read the salaries table last month</td><td>Nobody remembers</td><td>Query <code>system.access.audit</code></td></tr>
+    <tr><td>Dev and prod workspaces need the same reference tables</td><td>Copying them causes drift</td><td>Attach both workspaces to one metastore and grant access to the same catalog</td></tr>
+    <tr><td>A table appears under <code>hive_metastore</code> and ignores Unity Catalog grants</td><td>It lives in the legacy system, outside Unity Catalog's control</td><td>Migrate it to a Unity Catalog catalog</td></tr>
+  </table></div>
+</section>
+
+<section id="traps">
+  <div class="sec-num">Don't confuse these</div>
+  <h2>Object model traps</h2>
+  <div class="grid2">
+    <div class="card trap"><span class="tag">Storage credential vs external location</span><p>The credential is the key. The external location is the statement "this key opens that path". You need both to reach storage outside the managed area.</p></div>
+    <div class="card trap"><span class="tag">Managed vs external</span><p>Managed: Unity Catalog owns the files, and dropping the table removes them. External: you own the files, and dropping the table leaves them.</p></div>
+    <div class="card trap"><span class="tag">Metastore vs workspace</span><p>A metastore serves a region and can be shared by many workspaces. A workspace is attached to only one metastore.</p></div>
+    <div class="card trap"><span class="tag">information_schema vs system</span><p><code>information_schema</code> describes the structure of one catalog. <code>system</code> records activity across the whole account.</p></div>
+  </div>
+</section>
+
+<section id="quiz">
+  <div class="sec-num">Check yourself</div>
+  <h2>Quiz</h2>
+  <div class="quiz">
+    <fieldset>
+      <legend>1. A catalog and one of its schemas both have a managed storage location. Where do the files of a new managed table in that schema go?</legend>
+      <label><input type="radio" data-correct> The schema's location</label>
+      <label><input type="radio"> The catalog's location</label>
+      <label><input type="radio"> The metastore's location</label>
+      <p class="explain" hidden>Unity Catalog looks from the bottom up and takes the first location it finds. The most specific level wins.</p>
+    </fieldset>
+    <fieldset>
+      <legend>2. Which objects sit directly under the metastore, not inside a catalog?</legend>
+      <label><input type="radio"> Tables and views</label>
+      <label><input type="radio"> Volumes and functions</label>
+      <label><input type="radio" data-correct> Storage credentials and external locations</label>
+      <p class="explain" hidden>Objects that govern access to outside storage and systems hang from the metastore. Data objects always live in a schema inside a catalog.</p>
+    </fieldset>
+    <fieldset>
+      <legend>3. You drop an external table. What happens to its data files?</legend>
+      <label><input type="radio"> They are deleted at once</label>
+      <label><input type="radio" data-correct> They stay where they are</label>
+      <label><input type="radio"> They are moved to the managed storage location</label>
+      <p class="explain" hidden>For an external table Unity Catalog only keeps a pointer. Dropping the table removes the pointer, not the files.</p>
+    </fieldset>
+    <fieldset>
+      <legend>4. Where would you look to find which tables are built from <code>bakery.silver.orders</code>?</legend>
+      <label><input type="radio"> <code>DESCRIBE HISTORY</code></label>
+      <label><input type="radio" data-correct> Lineage</label>
+      <label><input type="radio"> The storage credential</label>
+      <p class="explain" hidden>Lineage records the flow of data from table to table. <code>DESCRIBE HISTORY</code> shows changes to one table only.</p>
+    </fieldset>
+    <fieldset>
+      <legend>5. How many metastores can one workspace be attached to?</legend>
+      <label><input type="radio" data-correct> Exactly one</label>
+      <label><input type="radio"> One per catalog</label>
+      <label><input type="radio"> As many as you like</label>
+      <p class="explain" hidden>Each workspace is assigned to a single metastore. It works the other way round for sharing: one metastore can serve many workspaces.</p>
+    </fieldset>
+  </div>
+</section>
+
+<section id="wrap">
+  <div class="sec-num">Wrap up</div>
+  <h2>Key takeaways</h2>
+  <ul>
+    <li>Everything you can grant on is a securable object in one tree under the metastore.</li>
+    <li>Data objects live at catalog, schema, object. Credentials, external locations, connections and shares sit under the metastore.</li>
+    <li>Managed tables are looked after by Unity Catalog. External tables point at files you look after.</li>
+    <li>Managed storage location is resolved schema first, then catalog, then metastore.</li>
+    <li>Unity Catalog also provides audit records and automatic lineage.</li>
+  </ul>
+  <h3>Glossary terms used</h3>
+  <p><a href="../../glossary.html#securable">securable object</a> · <a href="../../glossary.html#metastore">metastore</a> · <a href="../../glossary.html#storage-credential">storage credential</a> · <a href="../../glossary.html#external-location">external location</a> · <a href="../../glossary.html#managed-table">managed table</a> · <a href="../../glossary.html#external-table">external table</a> · <a href="../../glossary.html#managed-storage-location">managed storage location</a> · <a href="../../glossary.html#lineage">lineage</a> · <a href="../../glossary.html#system-tables">system tables</a> · <a href="../../glossary.html#information-schema">information schema</a></p>
+  <h3>Official docs</h3>
+  <ul>
+    <li><a href="https://docs.databricks.com/aws/en/data-governance/unity-catalog/">What is Unity Catalog?</a></li>
+    <li><a href="https://docs.databricks.com/aws/en/data-governance/unity-catalog/securable-objects">Securable objects reference</a></li>
+    <li><a href="https://docs.databricks.com/aws/en/connect/unity-catalog/cloud-storage/managed-storage">Specify a managed storage location</a></li>
+    <li><a href="https://docs.databricks.com/aws/en/data-governance/unity-catalog/data-lineage">Lineage in Unity Catalog</a></li>
+    <li><a href="https://docs.databricks.com/aws/en/admin/system-tables/">System tables reference</a></li>
+    <li><a href="https://docs.databricks.com/aws/en/sql/language-manual/sql-ref-information-schema">Information schema</a></li>
+  </ul>
+  <p class="cap">Last verified: 16 November 2026</p>
+</section>
+
+</main>
+
+<script>
+(function () {
+  var C = window.Course, $ = function (id) { return document.getElementById(id); }, L = $('dLog');
+
+  /* 1. Managed storage precedence: schema, then catalog, then metastore. */
+  var LEVELS = [['mSch', 'schema bakery.silver', 's3://bakery-lakehouse/silver-zone/'], ['mCat', 'catalog bakery', 's3://bakery-lakehouse/managed/'], ['mMeta', 'metastore', 's3://company-metastore-root/']];
+  $('mGo').onclick = function () {
+    var found = null;
+    $('pLook').innerHTML = LEVELS.map(function (lv) {
+      var has = $(lv[0]).checked, state = found ? 'not checked' : has ? 'USED' : 'none, look higher';
+      if (!found && has) found = lv;
+      return '<div class="item' + (state === 'USED' ? ' hot' : state === 'not checked' ? ' off' : '') + '"><span>' + lv[1] + '</span><span>' + state + '</span></div>';
+    }).join('');
+    $('pPath').textContent = found ? found[2] + '<generated folder for the table>/' : 'ERROR: no managed storage location at any level. The table cannot be created.';
+    C.bump($('pPath'));
+  };
+  ['mMeta', 'mCat', 'mSch'].forEach(function (id) { $(id).onchange = function () { $('pLook').innerHTML = ''; $('pPath').textContent = '-'; }; });
+
+  /* 2. Name resolution: fill in missing parts from the current catalog and schema. */
+  $('nGo').onclick = function () {
+    var parts = $('nName').value.split('.'), cat = $('nCat').value, sch = $('nSch').value, full;
+    if (parts.length === 1) full = [cat, sch, parts[0]];
+    else if (parts.length === 2) full = [cat, parts[0], parts[1]];
+    else full = parts;
+    $('pFull').textContent = full.join('.');
+    C.log(L, parts.length === 3 ? 'ok' : 'skip', '"' + parts.join('.') + '" has ' + parts.length + ' part(s): ' +
+      (parts.length === 3 ? 'nothing to fill in. It means the same table whatever the current catalog and schema are.'
+        : parts.length === 2 ? 'the current catalog "' + cat + '" was added in front.'
+        : 'the current catalog "' + cat + '" and schema "' + sch + '" were added in front.'));
+    C.bump($('pFull'));
+  };
+  C.log(L, 'skip', 'Pick a name and press Resolve. Change the current catalog and try the same name again.');
+})();
+</script>
+</body>
+</html>
