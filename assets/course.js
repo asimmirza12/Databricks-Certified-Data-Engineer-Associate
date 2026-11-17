@@ -110,7 +110,8 @@
     ["08", "column-masks", "Column masks", 1],
     ["09", "row-filters", "Row filters", 1],
     ["10", "abac-tags-and-policies", "ABAC: governed tags and policies", 1],
-    ["11", "abac-in-practice", "ABAC in practice: central row filters and column masks", 1]
+    ["11", "abac-in-practice", "ABAC in practice: central row filters and column masks", 1],
+    ["12", "lineage", "Lineage: table and column level", 1]
   ]}
 ]/*END*/;
 

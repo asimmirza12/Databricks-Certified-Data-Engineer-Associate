@@ -68,6 +68,7 @@
     <div id="coalesce"><dt>coalesce</dt><dd>A function that returns the first of its arguments that is not NULL. <span class="cap">First used in 03-02.</span></dd></div>
     <div id="collect"><dt>collect()</dt><dd>A Spark action that copies every row of a DataFrame into the driver's memory. Risky on large data. <span class="cap">First used in 06-12.</span></dd></div>
     <div id="column"><dt>Column</dt><dd>One named fact that every row in a table has, such as price. All values in a column share a data type. <span class="cap">First used in 00-02.</span></dd></div>
+    <div id="column-lineage"><dt>Column lineage</dt><dd>Lineage at the level of single columns: which source columns a column was calculated from, and which columns read it. <span class="cap">First used in 07-12.</span></dd></div>
     <div id="column-mask"><dt>Column mask</dt><dd>A SQL function attached to a table column that decides which value each reader sees, for example a hidden version for most people. <span class="cap">First used in 07-08.</span></dd></div>
     <div id="columnar"><dt>Columnar</dt><dd>A way of storing data column by column, so a query can read only the columns it needs. <span class="cap">First used in 00-03.</span></dd></div>
     <div id="commit"><dt>Commit (Delta)</dt><dd>One numbered entry in a Delta table's transaction log, recording the actions of a single change. Each commit creates a new table version. <span class="cap">First used in 01-02.</span></dd></div>
@@ -141,6 +142,7 @@
     <div id="high-water-mark"><dt>High-water mark</dt><dd>The largest value of an ever-growing column, such as an ID or a last-updated time, that you have already loaded. The next load asks only for rows above it. <span class="cap">First used in 02-01.</span></dd></div>
     <div id="idempotent"><dt>Idempotent</dt><dd>Giving the same end result however many times it is run. An idempotent load can be retried safely. <span class="cap">First used in 02-04.</span></dd></div>
     <div id="if-else-task"><dt>If/else condition task</dt><dd>A job task that compares two operands and sends the run down a true or false path. <span class="cap">First used in 04-06.</span></dd></div>
+    <div id="impact-analysis"><dt>Impact analysis</dt><dd>Checking what depends on a table or column, using downstream lineage, before you change or drop it. <span class="cap">First used in 07-12.</span></dd></div>
     <div id="incremental"><dt>Incremental</dt><dd>Processing only the data that is new since the last run, instead of everything again. <span class="cap">First used in 00-04.</span></dd></div>
     <div id="information-schema"><dt>Information schema</dt><dd>A ready-made schema called <code>information_schema</code> inside every catalog. Its tables describe that catalog's own tables, columns and privileges. <span class="cap">First used in 01-03.</span></dd></div>
     <div id="ingestion"><dt>Ingestion</dt><dd>Bringing data in from a source and making a copy of it, without changing it. <span class="cap">First used in 00-01.</span></dd></div>

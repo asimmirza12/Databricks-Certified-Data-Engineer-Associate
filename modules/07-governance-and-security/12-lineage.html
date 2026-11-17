@@ -1,0 +1,286 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>07-12 Lineage: table and column level · DE Associate course</title>
+<link rel="stylesheet" href="../../assets/course.css">
+<script src="../../assets/course.js"></script>
+</head>
+<body data-lesson="07-12">
+
+<aside class="disclaimer" aria-label="Disclaimer"><strong>Learning resource only.</strong> This is an independent, unofficial study guide made for learning purposes. It is not affiliated with, endorsed by or sponsored by Databricks. Databricks features change often, so always check the details in the <a href="https://docs.databricks.com">official Databricks documentation</a> and the official exam guide on databricks.com before relying on anything here. Databricks and related names are trademarks of their respective owners.</aside>
+
+<main class="wrap">
+
+<header class="hero">
+  <div class="eyebrow">Module 07 · Governance and Security · Lesson 12 of 12</div>
+  <h1>Lineage: table and column level</h1>
+  <p class="lede">Before you change or drop a table, you want to know what depends on it. When a dashboard shows a wrong number, you want to know where it came from. Unity Catalog records those connections for you, all the way down to single columns.</p>
+  <dl class="where">
+    <div><dt>Module</dt><dd>07 Governance and Security (15% of the exam)</dd></div>
+    <div><dt>Exam objective</dt><dd>Unity Catalog governance: use lineage to see where data comes from and what depends on it, at table and column level. (Not a separate objective in our outline; listed under governance in exam guides.)</dd></div>
+    <div><dt>Time to read</dt><dd>About 12 minutes</dd></div>
+    <div><dt>Before this</dt><dd><a href="../01-databricks-platform/03-unity-catalog-object-model.html">01-03 Unity Catalog object model</a> · <a href="05-securable-hierarchy.html">07-05 The security hierarchy</a></dd></div>
+  </dl>
+</header>
+
+<section id="idea">
+  <div class="sec-num">The idea</div>
+  <h2>A family tree for your data, kept automatically</h2>
+  <p><a href="../../glossary.html#lineage">Lineage</a> is the record of how data flows: which tables and files feed a table, which notebooks, jobs and pipelines change it, and which tables and dashboards read it. Unity Catalog captures it automatically for queries run on Databricks, with no setup in your code. It works across every workspace attached to the same metastore.</p>
+  <p>It is kept at two levels:</p>
+  <ul>
+    <li><strong>Table level</strong>: <code>silver.orders</code> was built from <code>bronze.orders_raw</code>.</li>
+    <li><strong><a href="../../glossary.html#column-lineage">Column level</a></strong>: <code>gold.daily_sales.revenue</code> was calculated from <code>silver.orders.qty</code> and <code>silver.orders.price</code>.</li>
+  </ul>
+  <p>Where to see it:</p>
+  <ul>
+    <li><strong>Catalog Explorer</strong>: open a table, go to the <strong>Lineage</strong> tab, then <strong>See Lineage Graph</strong>. Expand nodes to go further upstream or downstream. Click a column to highlight the columns it came from and feeds.</li>
+    <li><strong>System tables</strong>: <code>system.access.table_lineage</code> and <code>system.access.column_lineage</code>, which you can query with SQL. They keep about 395 days of events.</li>
+  </ul>
+  <p>Lineage respects permissions. You need at least BROWSE on a table's catalog to explore its lineage. A related table you have no access to appears as a <strong>masked</strong> node: you can see that something is there, but not what it is.</p>
+  <p>Typical uses are <a href="../../glossary.html#impact-analysis">impact analysis</a> (what breaks if I change this?), finding the root cause of a bad number (where did it come from?), and showing auditors where sensitive data travels.</p>
+  <div class="analogy">
+    <span class="tag">Everyday analogy</span>
+    <p><strong>Ingredient tracing at the bakery.</strong> Every tray records which batch of dough it came from, and every batch records which sacks of flour went in. If one flour sack is recalled, you can list every cake that used it (impact analysis). If a cake tastes wrong, you can trace back to the exact sack (root cause). Column lineage is going one step finer: this cake's sweetness came from that bag of sugar.</p>
+  </div>
+</section>
+
+<section id="how">
+  <div class="sec-num">How it works</div>
+  <h2>Upstream and downstream from one table</h2>
+  <div class="stage">
+    <svg viewBox="0 0 360 230" role="img" aria-label="A lineage graph: bronze orders_raw feeds silver orders, which feeds gold daily_sales, which feeds a Shop KPIs dashboard. The revenue column in daily_sales is linked to the qty and price columns in orders.">
+      <defs><path id="ln1" d="M95 60 H130 M215 60 H245"/><path id="lna" d="M95 60 H130"/><path id="lnb" d="M215 60 H245"/><path id="lnc" d="M300 75 V140"/></defs>
+      <g class="wire"><use href="#lna"/><use href="#lnb"/><use href="#lnc"/><path d="M175 125 C 210 125, 230 165, 255 165" stroke-dasharray="4 3"/><path d="M175 145 C 210 145, 230 170, 255 170" stroke-dasharray="4 3"/></g>
+      <rect class="box-soft" x="10" y="45" width="85" height="30" rx="6"/><text class="mono" x="52" y="65" text-anchor="middle">orders_raw</text>
+      <rect class="box" x="130" y="45" width="85" height="30" rx="6"/><text class="mono" x="172" y="65" text-anchor="middle">orders</text>
+      <rect class="box-acc" x="245" y="45" width="105" height="30" rx="6"/><text class="mono" x="297" y="65" text-anchor="middle">daily_sales</text>
+      <rect class="box-soft" x="245" y="140" width="105" height="20" rx="5"/><text class="t-m" x="297" y="154" text-anchor="middle">Shop KPIs dashboard</text>
+      <text class="t-b" x="52" y="30" text-anchor="middle">upstream</text><text class="t-b" x="297" y="30" text-anchor="middle">downstream</text>
+      <rect class="box" x="110" y="115" width="65" height="20" rx="4"/><text class="mono" x="142" y="129" text-anchor="middle">qty</text>
+      <rect class="box" x="110" y="138" width="65" height="20" rx="4"/><text class="mono" x="142" y="152" text-anchor="middle">price</text>
+      <rect class="box-acc" x="255" y="175" width="80" height="20" rx="4"/><text class="mono" x="295" y="189" text-anchor="middle">revenue</text>
+      <text class="t-m" x="180" y="215" text-anchor="middle">column lineage: revenue comes from qty and price</text>
+      <g class="mover">
+        <circle r="5" class="dot"><animateMotion dur="2s" repeatCount="indefinite"><mpath href="#lna"/></animateMotion></circle>
+        <circle r="5" class="dot"><animateMotion dur="2s" begin="-1s" repeatCount="indefinite"><mpath href="#lnb"/></animateMotion></circle>
+        <circle r="5" class="dot-ok"><animateMotion dur="2s" begin="-0.5s" repeatCount="indefinite"><mpath href="#lnc"/></animateMotion></circle>
+      </g>
+    </svg>
+    <p class="cap">Nobody drew this graph by hand. It comes from the queries that built each table.</p>
+  </div>
+</section>
+
+<section id="demo">
+  <div class="sec-num">Try it</div>
+  <h2>Explore the bakery's lineage</h2>
+  <p>Pick a table or a column and ask what is upstream or downstream. Then view the same graph as an analyst with access to one gold table only, and try renaming a table.</p>
+  <div class="stage">
+    <div class="ctrls">
+      <label>Start from <select id="lnNode">
+        <option value="bronze.orders_raw">bronze.orders_raw</option>
+        <option value="silver.orders" selected>silver.orders</option>
+        <option value="silver.shops">silver.shops</option>
+        <option value="gold.daily_sales">gold.daily_sales</option>
+        <option value="gold.daily_sales.revenue">column gold.daily_sales.revenue</option>
+        <option value="gold.daily_sales.shop_name">column gold.daily_sales.shop_name</option>
+      </select></label>
+      <label>Viewer <select id="lnWho"><option value="admin">kim (BROWSE on catalog bakery)</option><option value="analyst">pat (SELECT on gold.daily_sales only)</option></select></label>
+      <button id="lnUp" type="button">Show upstream</button>
+      <button id="lnDown" type="button" class="primary">Show downstream (impact)</button>
+      <button id="lnRen" type="button">Rename silver.orders</button>
+      <button id="lnReset" type="button">Reset</button>
+    </div>
+    <div class="panes">
+      <div class="pane"><h4>Lineage result</h4><div id="lnOut"></div></div>
+      <div class="pane"><h4>Why</h4><div id="lnWhy"></div></div>
+    </div>
+    <div class="log" id="lnLog" role="log" aria-label="What happened"></div>
+  </div>
+</section>
+
+<section id="code">
+  <div class="sec-num">Code</div>
+  <h2>Query lineage with SQL</h2>
+<pre><code><span class="c-c">-- Impact analysis: what reads from silver.orders?</span>
+SELECT DISTINCT target_table_full_name, entity_type, entity_id
+FROM system.access.table_lineage
+WHERE source_table_full_name = 'bakery.silver.orders'
+  AND target_table_full_name IS NOT NULL;     <span class="c-c">-- reads without a write have no target</span>
+
+<span class="c-c">-- Root cause: which columns feed gold revenue?</span>
+SELECT DISTINCT source_table_full_name, source_column_name
+FROM system.access.column_lineage
+WHERE target_table_full_name = 'bakery.gold.daily_sales'
+  AND target_column_name = 'revenue';
+
+<span class="c-c">-- Who touched a sensitive table in the last 30 days, and with what?</span>
+SELECT event_time, created_by, entity_type, target_table_full_name
+FROM system.access.table_lineage
+WHERE source_table_full_name = 'bakery.silver.customers'
+  AND event_date &gt;= current_date() - INTERVAL 30 DAYS
+ORDER BY event_time DESC;</code></pre>
+  <p class="note">The lineage system tables must be enabled by an admin. <code>entity_type</code> tells you what ran the query, such as NOTEBOOK, JOB, PIPELINE or DBSQL_QUERY. Check the system table reference for every column.</p>
+</section>
+
+<section id="whatif">
+  <div class="sec-num">What if I change this?</div>
+  <h2>Situations and their effects</h2>
+  <div class="tbl"><table class="whatif">
+    <tr><th>Change</th><th>Effect</th></tr>
+    <tr><td>You lack access to a downstream table</td><td>It shows as a masked node; you cannot expand it.</td></tr>
+    <tr><td>Grant BROWSE on a schema</td><td>The grantee can explore lineage for every table in that schema, without reading data.</td></tr>
+    <tr><td>Rename a table or column</td><td>Lineage is not carried over to the new name.</td></tr>
+    <tr><td>Build a table through a temporary table</td><td>The temporary table is not shown; the permanent tables on each side are linked directly.</td></tr>
+    <tr><td>Write data with RDDs, or from a tool outside Databricks</td><td>Not captured.</td></tr>
+    <tr><td>Insert literal values with no source table</td><td>No column lineage, because nothing upstream fed those values.</td></tr>
+    <tr><td>Query events older than about 395 days in the system tables</td><td>Gone: the system tables keep a rolling window.</td></tr>
+  </table></div>
+</section>
+
+<section id="compare">
+  <div class="sec-num">Compare</div>
+  <h2>Ways to look at lineage</h2>
+  <div class="tbl"><table>
+    <tr><th></th><th>Catalog Explorer Lineage tab</th><th>Lineage system tables</th></tr>
+    <tr><td>Best for</td><td>Exploring one table by clicking</td><td>Reports, audits and checks across many tables</td></tr>
+    <tr><td>Column level</td><td>Click a column in the graph</td><td><code>system.access.column_lineage</code></td></tr>
+    <tr><td>Shows jobs, notebooks, dashboards</td><td>Yes, as nodes and filters</td><td>As <code>entity_type</code> and <code>entity_id</code></td></tr>
+    <tr><td>History</td><td>Time-range picker (default one year)</td><td>About 395 days, rolling</td></tr>
+    <tr><td>Permissions</td><td>Masked nodes where you lack access</td><td>Access to the system tables themselves</td></tr>
+  </table></div>
+</section>
+
+<section id="scenarios">
+  <div class="sec-num">Real life</div>
+  <h2>Lineage in practice</h2>
+  <div class="tbl"><table>
+    <tr><th>Scenario</th><th>What happens</th><th>Fix</th></tr>
+    <tr><td>You plan to drop a column from silver.orders</td><td>Unknown readers would break</td><td>Check its downstream column lineage first; tell the owners</td></tr>
+    <tr><td>The KPI dashboard shows revenue twice as high as finance</td><td>Somewhere upstream a join doubled rows</td><td>Trace revenue upstream column by column</td></tr>
+    <tr><td>An auditor asks where customer emails end up</td><td>Hard to answer from memory</td><td>Downstream lineage from the email column, or a system table query</td></tr>
+    <tr><td>Lineage stopped after a table was renamed</td><td>Renames break the history</td><td>Avoid renames on key tables, or note the old name</td></tr>
+  </table></div>
+</section>
+
+<section id="traps">
+  <div class="sec-num">Don't confuse these</div>
+  <h2>Lineage traps</h2>
+  <div class="grid2">
+    <div class="card trap"><span class="tag">Automatic</span><p>No code changes are needed; Unity Catalog records lineage for queries run on Databricks.</p></div>
+    <div class="card trap"><span class="tag">Masked, not hidden</span><p>You see that a node exists even without access, but not its name or details.</p></div>
+    <div class="card trap"><span class="tag">BROWSE is enough</span><p>To explore lineage you need BROWSE, not SELECT. Lineage shows structure, not data.</p></div>
+    <div class="card trap"><span class="tag">Renames break it</span><p>Lineage does not follow a renamed table or column.</p></div>
+  </div>
+</section>
+
+<section id="quiz">
+  <div class="sec-num">Check yourself</div>
+  <h2>Quiz</h2>
+  <div class="quiz">
+    <fieldset>
+      <legend>1. You want to know which dashboards will break if you drop a column. What do you use?</legend>
+      <label><input type="radio"> The Spark UI</label>
+      <label><input type="radio" data-correct> Downstream column lineage in Unity Catalog</label>
+      <label><input type="radio"> SHOW GRANTS</label>
+      <p class="explain" hidden>Impact analysis looks downstream from the column.</p>
+    </fieldset>
+    <fieldset>
+      <legend>2. Which system table records which source column fed which target column?</legend>
+      <label><input type="radio"> system.access.table_lineage</label>
+      <label><input type="radio" data-correct> system.access.column_lineage</label>
+      <label><input type="radio"> system.information_schema.columns</label>
+      <p class="explain" hidden>column_lineage has source_column_name and target_column_name.</p>
+    </fieldset>
+    <fieldset>
+      <legend>3. What is the minimum privilege to explore a table's lineage?</legend>
+      <label><input type="radio"> MODIFY on the table</label>
+      <label><input type="radio" data-correct> BROWSE on its catalog</label>
+      <label><input type="radio"> Ownership of the metastore</label>
+      <p class="explain" hidden>BROWSE shows metadata, including lineage, without data access.</p>
+    </fieldset>
+    <fieldset>
+      <legend>4. In the demo, what did pat (SELECT on gold.daily_sales only) see upstream of daily_sales?</legend>
+      <label><input type="radio"> The full names of every upstream table</label>
+      <label><input type="radio" data-correct> Masked nodes that could not be expanded</label>
+      <label><input type="radio"> An error</label>
+      <p class="explain" hidden>Lineage follows permissions: tables pat cannot access appear masked.</p>
+    </fieldset>
+  </div>
+</section>
+
+<section id="wrap">
+  <div class="sec-num">Wrap up</div>
+  <h2>Key takeaways</h2>
+  <ul>
+    <li>Unity Catalog records lineage automatically, at table and column level, across workspaces on a metastore.</li>
+    <li>See it in Catalog Explorer's Lineage tab, or query system.access.table_lineage and column_lineage.</li>
+    <li>BROWSE is enough to explore it; objects you cannot access show as masked nodes.</li>
+    <li>Use it for impact analysis, root cause and audits; renames, RDDs and outside writes are not tracked.</li>
+  </ul>
+  <h3>Glossary terms used</h3>
+  <p><a href="../../glossary.html#lineage">lineage</a> · <a href="../../glossary.html#column-lineage">column lineage</a> · <a href="../../glossary.html#impact-analysis">impact analysis</a> · <a href="../../glossary.html#system-tables">system tables</a></p>
+  <h3>Official docs</h3>
+  <ul>
+    <li><a href="https://docs.databricks.com/aws/en/data-governance/unity-catalog/data-lineage">Data lineage in Unity Catalog</a></li>
+    <li><a href="https://docs.databricks.com/aws/en/admin/system-tables/lineage">Lineage system tables reference</a></li>
+  </ul>
+  <p class="cap">Last verified: 17 November 2026</p>
+</section>
+
+</main>
+
+<script>
+(function () {
+  var C = window.Course, $ = function (id) { return document.getElementById(id); }, L = $('lnLog');
+  // edges: [from, to, via]
+  var E = [['bronze.orders_raw', 'silver.orders', 'pipeline orders_etl'], ['silver.orders', 'gold.daily_sales', 'job nightly_gold'], ['silver.shops', 'gold.daily_sales', 'job nightly_gold'], ['gold.daily_sales', 'dashboard Shop KPIs', 'dashboard'], ['silver.orders', 'gold.order_audit', 'notebook audit']];
+  var COL = { 'gold.daily_sales.revenue': ['silver.orders.qty', 'silver.orders.price'], 'gold.daily_sales.shop_name': ['silver.shops.name'] };
+  var S;
+  function reset() { S = { renamed: false }; }
+  function name(n) { return S.renamed && n === 'silver.orders' ? 'silver.orders_v2' : n; }
+  function can(n) { return $('lnWho').value === 'admin' || n === 'gold.daily_sales' || n.indexOf('dashboard') === 0 || n.indexOf('gold.daily_sales.') === 0; }
+  function show(n) { return can(n) ? name(n) : '(masked node)'; }
+  function walk(start, dir) {
+    var out = [], seen = {}, q = [start];
+    while (q.length) {
+      var cur = q.shift();
+      E.forEach(function (e) {
+        var a = dir === 'down' ? e[0] : e[1], b = dir === 'down' ? e[1] : e[0];
+        if (S.renamed && (e[0] === 'silver.orders' || e[1] === 'silver.orders')) return; // history not carried to the new name
+        if (a === cur && !seen[b]) { seen[b] = 1; out.push([b, e[2]]); if (can(b)) q.push(b); }
+      });
+    }
+    return out;
+  }
+  function render(list, why) {
+    $('lnOut').innerHTML = list.length ? list.map(function (x) { return '<div class="item' + (x[0].indexOf('masked') > -1 ? ' off' : '') + '"><span>' + x[0] + '</span><span>' + x[1] + '</span></div>'; }).join('') : '<div class="item off">nothing found</div>';
+    $('lnWhy').innerHTML = why.map(function (w) { return '<div class="item">' + w + '</div>'; }).join('');
+    C.bump($('lnOut'));
+  }
+  function go(dir) {
+    var n = $('lnNode').value, isCol = !!COL[n];
+    if (!can(n)) { render([], ['pat cannot see ' + n + ' at all']); C.log(L, 'bad', 'pat has no access to ' + n + ', so its lineage cannot be explored. BROWSE on the catalog would be enough.'); return; }
+    if (isCol) {
+      if (dir === 'down') { render([['dashboard Shop KPIs (reads it)', 'dashboard']], ['column lineage, downstream']); C.log(L, 'ok', n + ' is read by the Shop KPIs dashboard.'); return; }
+      var srcs = COL[n].map(function (c) { var t = c.split('.').slice(0, 2).join('.'); return [can(t) ? (S.renamed && t === 'silver.orders' ? '(history lost after rename)' : c) : '(masked column)', 'column lineage']; });
+      render(srcs, ['column lineage, upstream']); C.log(L, srcs.some(function (s) { return s[0].charAt(0) === '('; }) ? 'skip' : 'ok', 'Upstream of ' + n + ': ' + srcs.map(function (s) { return s[0]; }).join(', ') + '.'); return;
+    }
+    var res = walk(n, dir).map(function (x) { return [show(x[0]), 'via ' + x[1]]; });
+    var why = [dir === 'down' ? 'impact analysis: what reads this' : 'root cause: what feeds this'];
+    if (res.some(function (x) { return x[0].indexOf('masked') > -1; })) why.push('masked: viewer lacks BROWSE or SELECT there');
+    if (S.renamed) why.push('silver.orders was renamed: its lineage did not carry over');
+    render(res, why);
+    C.log(L, res.length ? 'ok' : 'skip', (dir === 'down' ? 'Downstream of ' : 'Upstream of ') + name(n) + ': ' + (res.map(function (x) { return x[0]; }).join(', ') || 'nothing recorded') + '.');
+  }
+  $('lnUp').onclick = function () { go('up'); };
+  $('lnDown').onclick = function () { go('down'); };
+  $('lnRen').onclick = function () { S.renamed = true; C.log(L, 'bad', 'ALTER TABLE bakery.silver.orders RENAME TO bakery.silver.orders_v2. Lineage recorded under the old name is not carried over.'); go('down'); };
+  $('lnReset').onclick = function () { reset(); $('lnOut').innerHTML = '<div class="item off">pick a start and a direction</div>'; $('lnWhy').innerHTML = ''; L.innerHTML = ''; };
+  $('lnReset').onclick();
+})();
+</script>
+</body>
+</html>

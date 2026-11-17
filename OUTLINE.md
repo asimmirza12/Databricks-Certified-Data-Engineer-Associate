@@ -1,6 +1,6 @@
 # Course outline
 
-Status: `[ ]` not built, `[x]` built and live. 90 lessons in 8 modules.
+Status: `[ ]` not built, `[x]` built and live. 91 lessons in 8 modules.
 
 When a lesson is built: tick it here **and** flip its last number from `0` to `1` in the `COURSE` list at the top of `assets/course.js`.
 
@@ -210,3 +210,4 @@ Objectives:
 | [x] | 07-09 Row filters | `09-row-filters.html` | 7.3 | 07-08 |
 | [x] | 07-10 ABAC: governed tags and policies | `10-abac-tags-and-policies.html` | 7.4 | 07-08, 07-09 |
 | [x] | 07-11 ABAC in practice: central row filters and column masks | `11-abac-in-practice.html` | 7.4 | 07-10 |
+| [x] | 07-12 Lineage: table and column level | `12-lineage.html` | 7.1 (lineage) | 01-03, 07-05 |
