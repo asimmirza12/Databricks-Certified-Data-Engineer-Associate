@@ -57,7 +57,8 @@
     ["13", "tuning-memory-broadcast", "Tuning: memory and the auto-broadcast threshold, then measure again", 1],
     ["14", "gold-objects", "Gold objects: tables, views, materialized views, streaming tables", 1],
     ["15", "building-gold-objects", "Building gold objects for BI and analytics", 1],
-    ["16", "data-quality", "Data quality: constraints and expectations", 1]
+    ["16", "data-quality", "Data quality: constraints and expectations", 1],
+    ["17", "declarative-pipelines", "Lakeflow Spark Declarative Pipelines", 1]
   ]},
   {n:"04", slug:"lakeflow-jobs", title:"Working with Lakeflow Jobs", weight:16, lessons:[
     ["01", "jobs-tasks-runs", "Lakeflow Jobs: jobs, tasks and runs", 1],

@@ -97,6 +97,7 @@
     <div id="databricks-runtime"><dt>Databricks Runtime</dt><dd>The bundle of software installed on classic compute: a version of Apache Spark plus libraries. LTS versions are supported for longer. <span class="cap">First used in 01-04.</span></dd></div>
     <div id="dataframe"><dt>DataFrame</dt><dd>A table of rows and columns that you work with in Spark code. The data is held by the cluster, not by your own computer. <span class="cap">First used in 00-05.</span></dd></div>
     <div id="dbu"><dt>DBU (Databricks Unit)</dt><dd>A standard unit of processing power used for one hour. Databricks charges by DBUs used multiplied by a price per DBU. <span class="cap">First used in 01-05.</span></dd></div>
+    <div id="declarative-pipelines"><dt>Lakeflow Spark Declarative Pipelines</dt><dd>Databricks' tool for building pipelines by declaring datasets (streaming tables, materialized views, temporary views); it works out the order and runs them. Formerly Lakeflow Declarative Pipelines, and before that Delta Live Tables (DLT). <span class="cap">First used in 03-17.</span></dd></div>
     <div id="deduplication"><dt>Deduplication</dt><dd>Removing repeated rows so that each thing is kept once. Whether rows are copies depends on the columns you compare. <span class="cap">First used in 03-10.</span></dd></div>
     <div id="deep-clone"><dt>Deep clone</dt><dd>A full, independent copy of a Delta table's data and metadata, made with CREATE TABLE ... DEEP CLONE. Adding a LOCATION makes the copy an external table. <span class="cap">First used in 07-03.</span></dd></div>
     <div id="delta-lake"><dt>Delta Lake</dt><dd>An open-source table format: Parquet data files plus a transaction log. The default format for tables on Databricks. <span class="cap">First used in 00-08.</span></dd></div>
@@ -128,6 +129,7 @@
     <div id="file-notification"><dt>File notification</dt><dd>A way for Auto Loader to find new files from messages sent by cloud storage, without listing the folder. <span class="cap">First used in 02-06.</span></dd></div>
     <div id="filter"><dt>Filter</dt><dd>A transformation that keeps only the rows for which a condition is true. <span class="cap">First used in 03-08.</span></dd></div>
     <div id="for-each-task"><dt>For each task</dt><dd>A job task that runs one nested task once for each item in a list. Each run is an iteration. <span class="cap">First used in 04-07.</span></dd></div>
+    <div id="full-refresh"><dt>Full refresh</dt><dd>A pipeline update that clears streaming tables and reprocesses all data still in the source, instead of only new data. <span class="cap">First used in 03-17.</span></dd></div>
     <div id="git"><dt>Git</dt><dd>A version control system that records every change to a set of files, with who made it and why. <span class="cap">First used in 05-01.</span></dd></div>
     <div id="git-folder"><dt>Git folder</dt><dd>A repository cloned into a Databricks workspace folder. Formerly called a Databricks Repo. <span class="cap">First used in 05-02.</span></dd></div>
     <div id="gold"><dt>Gold</dt><dd>The layer that holds data shaped for one particular use, usually summaries for reports and dashboards. <span class="cap">First used in 00-10.</span></dd></div>
@@ -202,6 +204,7 @@
     <div id="photon"><dt>Photon</dt><dd>A faster engine for running SQL and DataFrame code on Databricks. <span class="cap">First used in 01-04.</span></dd></div>
     <div id="pipeline"><dt>Pipeline (data pipeline)</dt><dd>A chain of steps that moves data from its source to the people who use it, and runs repeatedly without manual work. On Databricks the word can also mean the product Lakeflow Spark Declarative Pipelines. <span class="cap">First used in 00-01.</span></dd></div>
     <div id="pipeline-task"><dt>Pipeline task</dt><dd>A job task that runs a Lakeflow Spark Declarative Pipeline. <span class="cap">First used in 04-02.</span></dd></div>
+    <div id="pipeline-update"><dt>Pipeline update</dt><dd>One run of a declarative pipeline: it checks the code, builds the graph and refreshes the datasets. <span class="cap">First used in 03-17.</span></dd></div>
     <div id="pool"><dt>Pool</dt><dd>A set of idle, ready machines kept waiting so that classic compute drawing from it starts faster. <span class="cap">First used in 01-04.</span></dd></div>
     <div id="predictive-optimization"><dt>Predictive optimization</dt><dd>A Databricks feature that runs OPTIMIZE, VACUUM and ANALYZE automatically on Unity Catalog managed tables when it expects a benefit. <span class="cap">First used in 06-09.</span></dd></div>
     <div id="prefix"><dt>Prefix</dt><dd>The beginning of an object key, used like a folder path to select a group of objects. <span class="cap">First used in 00-06.</span></dd></div>

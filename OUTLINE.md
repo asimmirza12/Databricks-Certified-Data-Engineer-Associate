@@ -1,6 +1,6 @@
 # Course outline
 
-Status: `[ ]` not built, `[x]` built and live. 89 lessons in 8 modules.
+Status: `[ ]` not built, `[x]` built and live. 90 lessons in 8 modules.
 
 When a lesson is built: tick it here **and** flip its last number from `0` to `1` in the `COURSE` list at the top of `assets/course.js`.
 
@@ -108,6 +108,7 @@ Objectives:
 | [x] | 03-14 Gold objects: tables, views, materialized views, streaming tables | `14-gold-objects.html` | 3.6 | 00-10, 03-11 |
 | [x] | 03-15 Building gold objects for BI and analytics | `15-building-gold-objects.html` | 3.6 | 03-14 |
 | [x] | 03-16 Data quality: constraints and expectations | `16-data-quality.html` | 3.7 | 03-03, 03-14 |
+| [x] | 03-17 Lakeflow Spark Declarative Pipelines | `17-declarative-pipelines.html` | 3.6, 3.7 | 03-14, 03-16, 02-05 |
 
 ## Module 04: Working with Lakeflow Jobs (16% of the exam)
 

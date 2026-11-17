@@ -1,0 +1,301 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>03-17 Lakeflow Spark Declarative Pipelines · DE Associate course</title>
+<link rel="stylesheet" href="../../assets/course.css">
+<script src="../../assets/course.js"></script>
+</head>
+<body data-lesson="03-17">
+
+<aside class="disclaimer" aria-label="Disclaimer"><strong>Learning resource only.</strong> This is an independent, unofficial study guide made for learning purposes. It is not affiliated with, endorsed by or sponsored by Databricks. Databricks features change often, so always check the details in the <a href="https://docs.databricks.com">official Databricks documentation</a> and the official exam guide on databricks.com before relying on anything here. Databricks and related names are trademarks of their respective owners.</aside>
+
+<main class="wrap">
+
+<header class="hero">
+  <div class="eyebrow">Module 03 · Data Transformation and Modeling · Lesson 17 of 17</div>
+  <h1>Lakeflow Spark Declarative Pipelines</h1>
+  <p class="lede">So far you wrote each step and decided when it runs. A declarative pipeline turns that round: you describe the tables you want, and Databricks works out the order, runs them, retries failures and only processes what is new.</p>
+  <dl class="where">
+    <div><dt>Module</dt><dd>03 Data Transformation and Modeling (22% of the exam)</dd></div>
+    <div><dt>Exam objective</dt><dd>3.6 and 3.7 Build streaming tables, materialized views and quality rules inside a pipeline, and know how a pipeline runs and refreshes.</dd></div>
+    <div><dt>Time to read</dt><dd>About 15 minutes</dd></div>
+    <div><dt>Before this</dt><dd><a href="14-gold-objects.html">03-14 Gold objects</a> · <a href="16-data-quality.html">03-16 Data quality</a> · <a href="../02-data-ingestion/05-auto-loader-basics.html">02-05 Auto Loader basics</a></dd></div>
+  </dl>
+</header>
+
+<section id="idea">
+  <div class="sec-num">The idea</div>
+  <h2>Say what you want, not how to run it</h2>
+  <p><a href="../../glossary.html#declarative-pipelines">Lakeflow Spark Declarative Pipelines</a> (formerly Lakeflow Declarative Pipelines, and before that Delta Live Tables, or DLT) is Databricks' tool for building data <a href="../../glossary.html#pipeline">pipelines</a> by declaring datasets. Each dataset is a query that says what a table should contain. You never say "run bronze, then silver, then gold". The pipeline reads which dataset uses which, draws the graph itself and runs it in the right order, in parallel where it can.</p>
+  <p>A pipeline holds three kinds of dataset:</p>
+  <ul>
+    <li><a href="../../glossary.html#streaming-table">Streaming table</a>: reads its source as a stream and processes each new record once. Best for ingestion and append-only data.</li>
+    <li><a href="../../glossary.html#materialized-view">Materialized view</a>: recomputed so it always matches its source, incrementally when that is cheaper. Best for joins and aggregations, such as gold summaries.</li>
+    <li>Temporary view: an in-between step that is not stored and can only be used inside the same pipeline.</li>
+  </ul>
+  <p>Both stored kinds are published as Unity Catalog managed tables, by default into the pipeline's default catalog and schema. Each dataset is defined in exactly one place: a second pipeline cannot define or write to the same table.</p>
+  <p>Running a pipeline is called a <a href="../../glossary.html#pipeline-update">pipeline update</a>. It checks the code, builds the graph and refreshes every dataset. Updates can run:</p>
+  <ul>
+    <li><strong>Triggered</strong> (the default): process what is there, then stop. Usually started from a job on a schedule or trigger.</li>
+    <li><strong>Continuous</strong>: keep running and process data as it arrives.</li>
+  </ul>
+  <p>A normal refresh only processes new data. A <a href="../../glossary.html#full-refresh">full refresh</a> empties streaming tables and reprocesses everything still in the source, which is slow and can lose rows if old source files were deleted.</p>
+  <p>You write the code in SQL or Python files (one pipeline can mix both) in the Lakeflow Pipelines Editor. In Python the module is <code>from pyspark import pipelines as dp</code>; the older <code>import dlt</code> still works but is the legacy name. New pipelines run on serverless compute by default.</p>
+  <div class="analogy">
+    <span class="tag">Everyday analogy</span>
+    <p><strong>A bakery's order board instead of a to-do list.</strong> With a to-do list, you tell each baker what to do and in what order. With an order board, you just pin up what must be on the shelves: "croissants, made from today's dough, made from today's flour". The head baker works out that flour comes first, starts what can run in parallel, and only bakes fresh what has run out. Asking for a "full refresh" means throwing out every tray and baking everything again from the flour still in the store.</p>
+  </div>
+</section>
+
+<section id="how">
+  <div class="sec-num">How it works</div>
+  <h2>You declare three datasets; the pipeline draws the graph</h2>
+  <div class="stage">
+    <svg viewBox="0 0 360 240" role="img" aria-label="Files in a volume feed a bronze streaming table, which feeds a silver streaming table with expectations, which feeds a gold materialized view. The pipeline works out this order from the queries and runs it in one update.">
+      <defs><path id="dp1" d="M60 70 V100 M60 130 V160"/><path id="dpa" d="M60 60 V100"/><path id="dpb" d="M110 115 H180"/><path id="dpc" d="M250 115 H290 V155"/></defs>
+      <g class="wire"><use href="#dpa"/><use href="#dpb"/><use href="#dpc"/></g>
+      <rect class="box-soft" x="10" y="20" width="100" height="40" rx="6"/><text class="t-m" x="60" y="37" text-anchor="middle">new files in</text><text class="t-m" x="60" y="52" text-anchor="middle">a volume</text>
+      <rect class="box" x="10" y="100" width="100" height="30" rx="6"/><text class="mono" x="60" y="120" text-anchor="middle">bronze (ST)</text>
+      <rect class="box" x="180" y="100" width="70" height="30" rx="6"/><text class="mono" x="215" y="120" text-anchor="middle">silver</text>
+      <text class="t-m" x="215" y="146" text-anchor="middle">ST + rules</text>
+      <rect class="box-acc" x="240" y="155" width="110" height="30" rx="6"/><text class="mono" x="295" y="175" text-anchor="middle">gold (MV)</text>
+      <text class="t-m" x="180" y="220" text-anchor="middle">one update refreshes all three, in order</text>
+      <g class="mover">
+        <circle r="5" class="dot"><animateMotion dur="1.6s" repeatCount="indefinite"><mpath href="#dpa"/></animateMotion></circle>
+        <circle r="5" class="dot"><animateMotion dur="1.6s" begin="-0.5s" repeatCount="indefinite"><mpath href="#dpb"/></animateMotion></circle>
+        <circle r="5" class="dot-ok"><animateMotion dur="1.6s" begin="-1s" repeatCount="indefinite"><mpath href="#dpc"/></animateMotion></circle>
+      </g>
+    </svg>
+    <p class="cap">ST = streaming table, MV = materialized view. You never wrote "run bronze first": silver reads bronze, so the pipeline knows.</p>
+  </div>
+</section>
+
+<section id="demo">
+  <div class="sec-num">Try it</div>
+  <h2>Run the bakery pipeline</h2>
+  <p>Order files land in a volume. Add files, run updates, try a full refresh, and delete old files before a full refresh to see what is lost. Then compare starting the update from the editor with starting it from a job.</p>
+  <div class="stage">
+    <div class="ctrls">
+      <button id="pAdd" type="button">Land 2 new order files</button>
+      <label>Started from <select id="pFrom"><option value="job">a Lakeflow job</option><option value="editor">the Pipelines Editor</option></select></label>
+      <label class="tog"><input type="checkbox" id="pFlaky"> Source has a brief outage</label>
+      <button id="pRun" type="button" class="primary">Run update</button>
+      <button id="pFull" type="button">Full refresh</button>
+      <button id="pPurge" type="button">Delete files older than 2 days</button>
+      <button id="pReset" type="button">Reset</button>
+    </div>
+    <div class="panes">
+      <div class="pane"><h4>Landing volume</h4><div id="pFiles"></div></div>
+      <div class="pane"><h4>Datasets</h4><div id="pSets"></div></div>
+    </div>
+    <div class="log" id="pLog" role="log" aria-label="What happened"></div>
+  </div>
+</section>
+
+<section id="code">
+  <div class="sec-num">Code</div>
+  <h2>The same pipeline in SQL and in Python</h2>
+<pre><code><span class="c-c">-- transformations/orders.sql : three datasets, no run order written anywhere</span>
+
+<span class="c-c">-- Bronze: Auto Loader (read_files with STREAM) picks up each new file once</span>
+CREATE OR REFRESH STREAMING TABLE bronze_orders
+AS SELECT * FROM STREAM read_files('/Volumes/bakery/landing/orders/', format => 'json');
+
+<span class="c-c">-- Silver: a streaming read of bronze, with quality rules (lesson 03-16)</span>
+CREATE OR REFRESH STREAMING TABLE silver_orders (
+  CONSTRAINT qty_positive EXPECT (qty &gt; 0) ON VIOLATION DROP ROW
+)
+AS SELECT order_id, shop, CAST(qty AS INT) AS qty, CAST(price AS DECIMAL(8,2)) AS price
+FROM STREAM bronze_orders;
+
+<span class="c-c">-- Gold: a batch summary, kept up to date. No STREAM for a materialized view.</span>
+CREATE OR REFRESH MATERIALIZED VIEW gold_sales_by_shop
+AS SELECT shop, SUM(qty * price) AS revenue
+FROM silver_orders
+GROUP BY shop;</code></pre>
+<pre><code><span class="c-c"># transformations/orders.py : the same three datasets in Python</span>
+from pyspark import pipelines as dp          <span class="c-c"># legacy code used: import dlt</span>
+from pyspark.sql import functions as F
+
+@dp.table()                                  <span class="c-c"># streaming table: returns a streaming read</span>
+def bronze_orders():
+    return (spark.readStream.format("cloudFiles")
+            .option("cloudFiles.format", "json")
+            .load("/Volumes/bakery/landing/orders/"))
+
+@dp.table()
+@dp.expect_or_drop("qty_positive", "qty &gt; 0")
+def silver_orders():
+    return (spark.readStream.table("bronze_orders")
+            .select("order_id", "shop",
+                    F.col("qty").cast("int").alias("qty"),
+                    F.col("price").cast("decimal(8,2)").alias("price")))
+
+@dp.materialized_view()                      <span class="c-c"># materialized view: returns a batch read</span>
+def gold_sales_by_shop():
+    return (spark.read.table("silver_orders")
+            .groupBy("shop")
+            .agg(F.sum(F.col("qty") * F.col("price")).alias("revenue")))</code></pre>
+  <p class="note">Names without a catalog and schema go to the pipeline's default catalog and schema. A dataset function must only return a DataFrame: never call <code>collect()</code>, <code>count()</code> or <code>saveAsTable()</code> inside it. Check the pipeline SQL and Python references for the full syntax.</p>
+</section>
+
+<section id="whatif">
+  <div class="sec-num">What if I change this?</div>
+  <h2>Choices and their effects</h2>
+  <div class="tbl"><table class="whatif">
+    <tr><th>Change</th><th>Effect</th></tr>
+    <tr><td>Leave out <code>STREAM</code> in the bronze query</td><td>It becomes a batch read; a streaming table needs a streaming source, and <code>read_files</code> needs STREAM to act as Auto Loader.</td></tr>
+    <tr><td>Use <code>STREAM</code> in a materialized view</td><td>Not allowed: materialized views read in batch.</td></tr>
+    <tr><td>Run a normal update twice with no new files</td><td>Little or nothing is processed: streaming tables only take new records.</td></tr>
+    <tr><td>Full refresh a streaming table</td><td>Its data and progress are cleared and every source record is read again. Rows whose files were deleted are gone for good.</td></tr>
+    <tr><td>Start the update from the editor</td><td>Debugging behaviour: the compute is kept running for reuse and failures are not retried.</td></tr>
+    <tr><td>Start the update from a job</td><td>Production behaviour: failures are retried automatically and the compute shuts down afterwards.</td></tr>
+    <tr><td>Switch from triggered to continuous</td><td>The pipeline never stops, so new data lands within moments, but compute runs all the time.</td></tr>
+    <tr><td>Define the same table in a second pipeline</td><td>Not allowed: a dataset can be the target of only one pipeline.</td></tr>
+  </table></div>
+</section>
+
+<section id="compare">
+  <div class="sec-num">Compare</div>
+  <h2>Datasets and refresh options</h2>
+  <div class="tbl"><table>
+    <tr><th></th><th>Streaming table</th><th>Materialized view</th><th>Temporary view</th></tr>
+    <tr><td>SQL</td><td><code>CREATE OR REFRESH STREAMING TABLE ... FROM STREAM ...</code></td><td><code>CREATE OR REFRESH MATERIALIZED VIEW</code></td><td><code>CREATE TEMPORARY VIEW</code></td></tr>
+    <tr><td>Python</td><td><code>@dp.table</code> on a streaming read</td><td><code>@dp.materialized_view</code></td><td><code>@dp.temporary_view</code></td></tr>
+    <tr><td>Stored</td><td>Yes</td><td>Yes</td><td>No</td></tr>
+    <tr><td>Processes</td><td>Each new record once</td><td>Whatever keeps it matching the source</td><td>Recomputed when used</td></tr>
+    <tr><td>Typical layer</td><td>Bronze, silver</td><td>Gold</td><td>Steps in between</td></tr>
+  </table></div>
+  <div class="tbl"><table>
+    <tr><th>Refresh</th><th>What it does</th><th>Use when</th></tr>
+    <tr><td>Refresh (default)</td><td>New records only for streaming tables; materialized views catch up, incrementally if cheaper</td><td>Every normal run</td></tr>
+    <tr><td>Full refresh</td><td>Clears streaming tables and reprocesses all source data</td><td>Logic changed and old rows must be rebuilt, and the source still holds everything</td></tr>
+  </table></div>
+</section>
+
+<section id="scenarios">
+  <div class="sec-num">Real life</div>
+  <h2>Pipelines in practice</h2>
+  <div class="tbl"><table>
+    <tr><th>Scenario</th><th>What happens</th><th>Fix</th></tr>
+    <tr><td>A team keeps a notebook that runs bronze, silver and gold in a fixed order</td><td>Every new table means editing the order by hand</td><td>Declare them as pipeline datasets; the graph is built for you</td></tr>
+    <tr><td>Someone runs a full refresh after the landing folder was cleaned up</td><td>History disappears from bronze and silver</td><td>Keep source files, or block full refresh on that table (<code>pipelines.reset.allowed = false</code>)</td></tr>
+    <tr><td>The nightly pipeline must start after files land</td><td>The pipeline itself has no schedule</td><td>Add a pipeline task to a Lakeflow job with a file arrival trigger</td></tr>
+    <tr><td>Old pipeline code imports <code>dlt</code></td><td>It still works</td><td>Move to <code>from pyspark import pipelines as dp</code> when you next edit it</td></tr>
+  </table></div>
+</section>
+
+<section id="traps">
+  <div class="sec-num">Don't confuse these</div>
+  <h2>Pipeline traps</h2>
+  <div class="grid2">
+    <div class="card trap"><span class="tag">Declarative vs ordered</span><p>You declare datasets; the pipeline decides the order from what each reads.</p></div>
+    <div class="card trap"><span class="tag">STREAM keyword</span><p>Streaming tables read with STREAM. Materialized views never do.</p></div>
+    <div class="card trap"><span class="tag">Refresh vs full refresh</span><p>Refresh processes new data. Full refresh throws away streaming table data and rebuilds it from the source.</p></div>
+    <div class="card trap"><span class="tag">dp vs dlt</span><p>The current Python module is <code>pyspark.pipelines</code> (as <code>dp</code>); <code>dlt</code> is the legacy name.</p></div>
+  </div>
+</section>
+
+<section id="quiz">
+  <div class="sec-num">Check yourself</div>
+  <h2>Quiz</h2>
+  <div class="quiz">
+    <fieldset>
+      <legend>1. How does a declarative pipeline know to build silver before gold?</legend>
+      <label><input type="radio"> You list the order in the pipeline settings</label>
+      <label><input type="radio" data-correct> Gold's query reads silver, so the pipeline puts silver first in the graph</label>
+      <label><input type="radio"> Tables run in alphabetical order</label>
+      <p class="explain" hidden>The pipeline reads the dependencies between datasets and builds the graph itself.</p>
+    </fieldset>
+    <fieldset>
+      <legend>2. Which dataset type suits a gold summary that joins and aggregates silver data?</legend>
+      <label><input type="radio"> A streaming table</label>
+      <label><input type="radio" data-correct> A materialized view</label>
+      <label><input type="radio"> A temporary view</label>
+      <p class="explain" hidden>Materialized views are recomputed to match their source and are made for joins and aggregations.</p>
+    </fieldset>
+    <fieldset>
+      <legend>3. What does a full refresh do to a streaming table?</legend>
+      <label><input type="radio"> Processes only new files</label>
+      <label><input type="radio" data-correct> Clears it and reprocesses all data still in the source</label>
+      <label><input type="radio"> Deletes the pipeline</label>
+      <p class="explain" hidden>Rows whose source files no longer exist cannot come back.</p>
+    </fieldset>
+    <fieldset>
+      <legend>4. Which import does current Python pipeline code use?</legend>
+      <label><input type="radio"> import dlt</label>
+      <label><input type="radio" data-correct> from pyspark import pipelines as dp</label>
+      <label><input type="radio"> from databricks import lakeflow</label>
+      <p class="explain" hidden>dlt still works but is the legacy module name.</p>
+    </fieldset>
+    <fieldset>
+      <legend>5. In the demo, you deleted old files, then ran a full refresh. What happened to bronze?</legend>
+      <label><input type="radio"> Nothing changed</label>
+      <label><input type="radio" data-correct> It lost the rows from the deleted files</label>
+      <label><input type="radio"> It doubled in size</label>
+      <p class="explain" hidden>A full refresh rebuilds only from what the source still holds.</p>
+    </fieldset>
+  </div>
+</section>
+
+<section id="wrap">
+  <div class="sec-num">Wrap up</div>
+  <h2>Key takeaways</h2>
+  <ul>
+    <li>Declare streaming tables, materialized views and temporary views; the pipeline builds the graph and runs it.</li>
+    <li>Streaming tables read with STREAM and process each record once; materialized views read in batch and stay matched to the source.</li>
+    <li>An update is triggered (run then stop) or continuous; a full refresh rebuilds streaming tables from the source.</li>
+    <li>Updates from a job retry failures; updates from the editor favour quick debugging.</li>
+    <li>Python uses <code>from pyspark import pipelines as dp</code>; <code>dlt</code> is legacy.</li>
+  </ul>
+  <h3>Glossary terms used</h3>
+  <p><a href="../../glossary.html#declarative-pipelines">Lakeflow Spark Declarative Pipelines</a> · <a href="../../glossary.html#pipeline-update">pipeline update</a> · <a href="../../glossary.html#full-refresh">full refresh</a> · <a href="../../glossary.html#streaming-table">streaming table</a> · <a href="../../glossary.html#materialized-view">materialized view</a> · <a href="../../glossary.html#pipeline">pipeline</a> · <a href="../../glossary.html#expectation">expectation</a></p>
+  <h3>Official docs</h3>
+  <ul>
+    <li><a href="https://docs.databricks.com/aws/en/ldp/">Spark Declarative Pipelines on Lakeflow</a></li>
+    <li><a href="https://docs.databricks.com/aws/en/ldp/concepts/pipelines">Pipelines concepts</a></li>
+    <li><a href="https://docs.databricks.com/aws/en/ldp/updates">Run a pipeline update</a></li>
+    <li><a href="https://docs.databricks.com/aws/en/ldp/developer/sql-dev">Develop pipeline code with SQL</a></li>
+    <li><a href="https://docs.databricks.com/aws/en/ldp/developer/python-ref">Python language reference</a></li>
+  </ul>
+  <p class="cap">Last verified: 17 November 2026</p>
+</section>
+
+</main>
+
+<script>
+(function () {
+  var C = window.Course, $ = function (id) { return document.getElementById(id); }, L = $('pLog');
+  var S;
+  function reset() { S = { day: 3, files: [{ n: 'orders_day1.json', day: 1, rows: 40 }, { n: 'orders_day2.json', day: 2, rows: 40 }, { n: 'orders_day3.json', day: 3, rows: 40 }], done: {}, bronze: 0, silver: 0, gold: 0, updates: 0 }; }
+  function draw() {
+    $('pFiles').innerHTML = S.files.map(function (f) { return '<div class="item"><span>' + f.n + '</span><span>' + (S.done[f.n] ? 'loaded' : 'new') + '</span></div>'; }).join('') || '<div class="item off">empty</div>';
+    $('pSets').innerHTML = '<div class="item"><span>bronze_orders (ST)</span><span>' + S.bronze + ' rows</span></div><div class="item"><span>silver_orders (ST)</span><span>' + S.silver + ' rows</span></div><div class="item"><span>gold_sales_by_shop (MV)</span><span>' + (S.updates ? '3 shops, from ' + S.silver + ' rows' : 'not built') + '</span></div><div class="item">updates run: ' + S.updates + '</div>';
+  }
+  function process(list) { var r = 0; list.forEach(function (f) { r += f.rows; S.done[f.n] = 1; }); S.bronze += r; S.silver += Math.round(r * 0.95); return r; }
+  function update(full) {
+    var job = $('pFrom').value === 'job';
+    if ($('pFlaky').checked) {
+      if (!job) { C.log(L, 'bad', 'Update from the editor: the source outage failed the update. Editor runs do not retry, so it stopped here (compute stays up for your next try).'); return; }
+      C.log(L, 'skip', 'Update from a job: the source outage failed a step, and the pipeline retried it automatically. Second attempt worked.');
+    }
+    if (full) { S.done = {}; S.bronze = 0; S.silver = 0; }
+    var fresh = S.files.filter(function (f) { return !S.done[f.n]; }), r = process(fresh);
+    S.updates++; draw(); C.bump($('pSets'));
+    C.log(L, 'ok', (full ? 'Full refresh: cleared bronze and silver, then read every file still in the volume (' + fresh.length + ' files, ' + r + ' rows).' : 'Refresh: ' + (fresh.length ? 'processed ' + fresh.length + ' new file(s), ' + r + ' rows.' : 'no new files, so the streaming tables processed nothing.')) + ' Order followed the graph: bronze, then silver (rows failing qty > 0 dropped), then gold recomputed.' + (job ? ' Compute shut down after the run.' : ' Compute kept running for reuse.'));
+  }
+  $('pAdd').onclick = function () { for (var i = 0; i < 2; i++) { S.day++; S.files.push({ n: 'orders_day' + S.day + '.json', day: S.day, rows: 40 }); } draw(); C.log(L, 'skip', 'Two new files landed. Nothing happens until the next update.'); };
+  $('pRun').onclick = function () { update(false); };
+  $('pFull').onclick = function () { update(true); };
+  $('pPurge').onclick = function () {
+    var before = S.files.length; S.files = S.files.filter(function (f) { return f.day > S.day - 2; });
+    draw(); C.log(L, before > S.files.length ? 'bad' : 'skip', 'Deleted ' + (before - S.files.length) + ' old file(s) from the landing volume. Bronze still holds their rows, until a full refresh rebuilds it from what is left.');
+  };
+  $('pReset').onclick = function () { reset(); draw(); L.innerHTML = ''; };
+  reset(); draw();
+})();
+</script>
+</body>
+</html>
