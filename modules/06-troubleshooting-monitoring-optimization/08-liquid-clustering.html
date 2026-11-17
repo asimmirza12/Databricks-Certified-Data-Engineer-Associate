@@ -163,7 +163,7 @@ ALTER TABLE bakery.silver.sales CLUSTER BY NONE;</code></pre>
     <tr><td>Dashboards filter by store and date, and are slow</td><td>Every query scans the whole table</td><td>CLUSTER BY (store_id, sale_date), then OPTIMIZE</td></tr>
     <tr><td>Queries moved from filtering by store to by region</td><td>Old keys no longer help</td><td>ALTER TABLE CLUSTER BY (region); OPTIMIZE FULL when convenient</td></tr>
     <tr><td>Nobody knows which keys to pick</td><td>Guessing wastes effort</td><td>CLUSTER BY AUTO on a managed table with predictive optimization</td></tr>
-    <tr><td>An old table is partitioned by date</td><td>Cannot just add CLUSTER BY</td><td>Rebuild it with CLUSTER BY (use the partition column as a key)</td></tr>
+    <tr><td>An old table is partitioned by date</td><td>Cannot just add CLUSTER BY</td><td>Rebuild it with CLUSTER BY (use the partition column as a key). Newer runtimes (18.1 and above) can convert it in place with <code>ALTER TABLE ... REPLACE PARTITIONED BY WITH CLUSTER BY</code>; verify in the docs</td></tr>
   </table></div>
 </section>
 

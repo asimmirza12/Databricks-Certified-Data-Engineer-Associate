@@ -36,7 +36,7 @@
     <li>Many notebooks attached to one cluster all keep their state on the driver.</li>
   </ul>
   <p>The compute may stop with the termination reason <code>DRIVER_OUT_OF_MEMORY</code>, or the notebook reports that the driver restarted. Fixes: keep big data distributed (write it to a table, aggregate or <code>limit()</code> first, use <code>display()</code> for a look), or choose a larger driver type.</p>
-  <p><strong>An <a href="../../glossary.html#executor">executor</a></strong> processes partitions. It usually <a href="07-disk-spill.html">spills</a> rather than failing, but it can run out when one piece of work cannot be split or spilled: a huge <a href="06-data-skew.html">skewed</a> partition, a broadcast table too big for its memory, or very large single values (giant arrays or strings). Tasks fail and the executor may be lost; Spark retries, and after several failures the job fails. Fixes: fix skew, avoid oversized broadcasts, use more and smaller partitions, carry fewer columns, or use instance types with more memory.</p>
+  <p><strong>An <a href="../../glossary.html#executor">executor</a></strong> processes partitions. It usually <a href="07-disk-spill.html">spills</a> rather than failing, but it can run out when one piece of work cannot be split or spilled: a huge <a href="06-data-skew.html">skewed</a> partition, a broadcast table too big for its memory, or very large single values (giant arrays or strings). Tasks fail and the executor may be lost; Spark retries, and after several failures the job fails (verify the exact symptoms and messages in the docs). Fixes: fix skew, avoid oversized broadcasts, use more and smaller partitions, carry fewer columns, or use instance types with more memory.</p>
   <div class="analogy">
     <span class="tag">Everyday analogy</span>
     <p><strong>The bakery manager's desk.</strong> The bakers (executors) each work at their own bench. If the manager (driver) says "bring me every single receipt from every bench", the desk overflows and the office stops. That is a driver OOM. If one baker is handed a cake too big for any bench, that bench collapses. That is an executor OOM.</p>
@@ -139,7 +139,7 @@ sales.filter("amount &gt; 100").write.mode("overwrite").saveAsTable("bakery.gold
   <div class="tbl"><table>
     <tr><th></th><th>Driver OOM</th><th>Executor OOM</th></tr>
     <tr><td>Typical cause</td><td>collect(), toPandas(), big broadcasts, many notebooks</td><td>Skewed partition, oversized broadcast, huge single values</td></tr>
-    <tr><td>What you see</td><td>Driver restarts; termination reason such as DRIVER_OUT_OF_MEMORY</td><td>Tasks fail and executors are lost; Spark retries, then the job fails</td></tr>
+    <tr><td>What you see</td><td>Driver restarts; termination reason such as DRIVER_OUT_OF_MEMORY</td><td>Tasks fail and executors are lost; Spark retries, then the job fails (verify in the docs)</td></tr>
     <tr><td>Where to look</td><td>Termination reason, driver logs</td><td>Spark UI failed tasks and Executors tab</td></tr>
     <tr><td>First fix</td><td>Do not pull big data to the driver</td><td>Fix skew, smaller partitions, smaller broadcasts</td></tr>
     <tr><td>Bigger machine</td><td>Larger driver type</td><td>Workers with more memory</td></tr>
