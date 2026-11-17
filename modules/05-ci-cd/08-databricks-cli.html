@@ -1,0 +1,256 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>05-08 The Databricks CLI · DE Associate course</title>
+<link rel="stylesheet" href="../../assets/course.css">
+<script src="../../assets/course.js"></script>
+</head>
+<body data-lesson="05-08">
+
+<aside class="disclaimer" aria-label="Disclaimer"><strong>Learning resource only.</strong> This is an independent, unofficial study guide made for learning purposes. It is not affiliated with, endorsed by or sponsored by Databricks. Databricks features change often, so always check the details in the <a href="https://docs.databricks.com">official Databricks documentation</a> and the official exam guide on databricks.com before relying on anything here. Databricks and related names are trademarks of their respective owners.</aside>
+
+<main class="wrap">
+
+<header class="hero">
+  <div class="eyebrow">Module 05 · Implementing CI/CD · Lesson 8 of 10</div>
+  <h1>The Databricks CLI: install, log in, basic commands</h1>
+  <p class="lede">The CLI lets you work with Databricks by typing commands instead of clicking. It is how bundles are deployed, and it is what a CI system uses, because a robot cannot click buttons.</p>
+  <dl class="where">
+    <div><dt>Module</dt><dd>05 Implementing CI/CD (10% of the exam)</dd></div>
+    <div><dt>Exam objective</dt><dd>5.4 Use the Databricks CLI to work with bundles. This lesson covers installing the CLI, signing in and running everyday commands.</dd></div>
+    <div><dt>Time to read</dt><dd>About 12 minutes</dd></div>
+    <div><dt>Before this</dt><dd><a href="../00-foundations/07-what-is-databricks.html">00-07 What is Databricks?</a></dd></div>
+  </dl>
+</header>
+
+<section id="idea">
+  <div class="sec-num">The idea</div>
+  <h2>Talking to Databricks in a terminal</h2>
+  <p>A <a href="../../glossary.html#terminal">terminal</a> is a window where you type commands and read the replies. A CLI (command-line interface) is a program you use that way. The <a href="../../glossary.html#databricks-cli">Databricks CLI</a> is a program called <code>databricks</code>.</p>
+  <p>Using it takes three steps:</p>
+  <ol>
+    <li><strong>Install</strong> it on your computer, for example with Homebrew on a Mac. Check it with <code>databricks -v</code>. Bundles need a recent version (0.205.0 or above is the "new" CLI; individual bundle features may need newer).</li>
+    <li><strong>Log in</strong> with <code>databricks auth login --host &lt;workspace URL&gt;</code>. A browser window opens, you sign in, and the CLI saves a <a href="../../glossary.html#configuration-profile">configuration profile</a>: a named set of connection details in the file <code>~/.databrickscfg</code>.</li>
+    <li><strong>Run commands</strong>. They are grouped by area: <code>databricks jobs ...</code>, <code>databricks clusters ...</code>, <code>databricks fs ...</code>, <code>databricks bundle ...</code>. Add <code>-p &lt;profile&gt;</code> to choose which workspace.</li>
+  </ol>
+  <p>Signing in through the browser is for people. Automated systems sign in as a <a href="../../glossary.html#service-principal">service principal</a> (a non-human identity) using OAuth machine-to-machine credentials, covered in lesson 05-10.</p>
+  <div class="analogy">
+    <span class="tag">Everyday analogy</span>
+    <p><strong>Phoning the bakery instead of walking in.</strong> Installing the CLI is buying a phone. Logging in is saving the shop's number in your contacts (the profile). Each command is a short call: "how many jobs do you have?" With several shops saved, you pick which one to call.</p>
+  </div>
+</section>
+
+<section id="how">
+  <div class="sec-num">How it works</div>
+  <h2>From command to workspace</h2>
+  <div class="stage">
+    <svg viewBox="0 0 360 230" role="img" aria-label="A command typed in the terminal goes to the Databricks CLI. The CLI looks up the chosen profile in the databrickscfg file to find the workspace and credentials, then calls that workspace and prints the reply.">
+      <defs><path id="cl1" d="M110 60 H160"/><path id="cl2" d="M250 60 H290"/><path id="cl3" d="M205 85 V140"/></defs>
+      <g class="wire"><use href="#cl1"/><use href="#cl2"/><use href="#cl3"/></g>
+      <g class="mover">
+        <circle r="5" class="dot"><animateMotion dur="1.4s" repeatCount="indefinite"><mpath href="#cl1"/></animateMotion></circle>
+        <circle r="5" class="dot"><animateMotion dur="1.4s" begin="-0.5s" repeatCount="indefinite"><mpath href="#cl3"/></animateMotion></circle>
+        <circle r="5" class="dot-ok"><animateMotion dur="1.4s" begin="-1s" repeatCount="indefinite"><mpath href="#cl2"/></animateMotion></circle>
+      </g>
+      <rect class="box-soft" x="6" y="36" width="104" height="48" rx="8"/><text class="t-b" x="58" y="56" text-anchor="middle">terminal</text><text class="mono" x="58" y="74" text-anchor="middle">jobs list</text>
+      <rect class="box-acc" x="160" y="36" width="90" height="48" rx="8"/><text class="t-b" x="205" y="64" text-anchor="middle">CLI</text>
+      <rect class="box" x="290" y="36" width="64" height="48" rx="8"/><text class="t-b" x="322" y="56" text-anchor="middle">work-</text><text class="t-b" x="322" y="72" text-anchor="middle">space</text>
+      <rect class="box-soft" x="110" y="140" width="190" height="76" rx="8"/>
+      <text class="mono" x="122" y="160">~/.databrickscfg</text>
+      <text class="mono" x="122" y="180">[DEFAULT] host=dev...</text>
+      <text class="mono" x="122" y="200">[prod]    host=prod...</text>
+    </svg>
+    <p class="cap">The profile tells the CLI which workspace to call and how to prove who you are.</p>
+  </div>
+  <h3>Command groups you will meet</h3>
+  <div class="grid2">
+    <div class="card"><span class="tag">auth</span><p><code>login</code>, <code>profiles</code>, <code>describe</code>: sign in and see who you are.</p></div>
+    <div class="card"><span class="tag">jobs, pipelines, clusters</span><p>List, get, start and change objects in the workspace.</p></div>
+    <div class="card"><span class="tag">fs and workspace</span><p>Files in volumes, and notebooks and folders in the workspace.</p></div>
+    <div class="card"><span class="tag">bundle</span><p>init, validate, deploy, run, destroy. Next lesson.</p></div>
+  </div>
+</section>
+
+<section id="demo">
+  <div class="sec-num">Try it</div>
+  <h2>A pretend terminal</h2>
+  <p>Run commands in different orders. Try listing jobs before logging in, or with a profile that does not exist.</p>
+  <div class="stage">
+    <div class="ctrls">
+      <label class="tog">Command: <select id="cCmd">
+        <option value="ver">databricks -v</option>
+        <option value="install">brew install databricks/tap/databricks</option>
+        <option value="login">databricks auth login --host https://dev-bakery...</option>
+        <option value="loginp">databricks auth login --host https://prod-bakery... -p prod</option>
+        <option value="profiles">databricks auth profiles</option>
+        <option value="jobs">databricks jobs list</option>
+        <option value="jobsp">databricks jobs list -p prod</option>
+        <option value="jobsx">databricks jobs list -p staging</option>
+      </select></label>
+      <button id="cRun" type="button" class="primary">Run</button>
+      <button id="cReset" type="button">New computer</button>
+    </div>
+    <div class="panes">
+      <div class="pane"><h4>Terminal</h4><pre class="filetext" id="cTerm"></pre></div>
+      <div class="pane"><h4>~/.databrickscfg</h4><pre class="filetext" id="cCfg"></pre></div>
+    </div>
+    <div class="log" id="dLog" role="log" aria-label="What happened"></div>
+  </div>
+</section>
+
+<section id="code">
+  <div class="sec-num">Code</div>
+  <h2>Install, log in, look around</h2>
+<pre><code><span class="c-c"># macOS or Linux with Homebrew (other methods: see the install page)</span>
+brew install databricks/tap/databricks
+databricks -v                                  <span class="c-c"># prints the version</span>
+
+<span class="c-c"># sign in through the browser; saves a profile</span>
+databricks auth login --host https://dev-bakery.cloud.databricks.com
+databricks auth login --host https://prod-bakery.cloud.databricks.com -p prod
+databricks auth profiles                       <span class="c-c"># list saved profiles</span>
+
+<span class="c-c"># everyday commands</span>
+databricks jobs list                           <span class="c-c"># uses the DEFAULT profile</span>
+databricks jobs list -p prod -o json           <span class="c-c"># prod workspace, JSON output</span>
+databricks fs ls dbfs:/Volumes/bakery/bronze/landing
+databricks jobs run-now 123456                 <span class="c-c"># start a job by ID</span>
+databricks jobs --help                         <span class="c-c"># see every jobs command</span></code></pre>
+  <p class="note">Every command accepts <code>--help</code>. Newer Homebrew versions may ask you to trust the Databricks tap first; follow the install page.</p>
+</section>
+
+<section id="whatif">
+  <div class="sec-num">What if I change this?</div>
+  <h2>CLI options and their effects</h2>
+  <div class="tbl"><table class="whatif">
+    <tr><th>Change</th><th>Effect</th></tr>
+    <tr><td>Leave out <code>-p</code></td><td>The DEFAULT profile is used.</td></tr>
+    <tr><td><code>-p prod</code></td><td>The command goes to the workspace saved as prod.</td></tr>
+    <tr><td><code>-p</code> with an unknown name</td><td>Error: the profile is not found.</td></tr>
+    <tr><td><code>-o json</code></td><td>Machine-readable output, handy in scripts.</td></tr>
+    <tr><td>Run a command before logging in</td><td>Error: no credentials configured.</td></tr>
+    <tr><td>Use a very old CLI (below 0.205)</td><td>The legacy Python CLI; no bundle commands.</td></tr>
+  </table></div>
+</section>
+
+<section id="compare">
+  <div class="sec-num">Compare</div>
+  <h2>Ways to sign in</h2>
+  <div class="tbl"><table>
+    <tr><th></th><th>OAuth user-to-machine</th><th>OAuth machine-to-machine</th><th>Personal access token</th></tr>
+    <tr><td>Who</td><td>A person</td><td>A service principal</td><td>A person or service principal</td></tr>
+    <tr><td>How</td><td><code>databricks auth login</code>, browser</td><td>Client ID and secret</td><td>A long secret string</td></tr>
+    <tr><td>Good for</td><td>Your laptop</td><td>CI/CD pipelines</td><td>Older setups; OAuth is preferred</td></tr>
+  </table></div>
+</section>
+
+<section id="scenarios">
+  <div class="sec-num">Real life</div>
+  <h2>CLI in practice</h2>
+  <div class="tbl"><table>
+    <tr><th>Scenario</th><th>What happens</th><th>Fix</th></tr>
+    <tr><td>"bundle: unknown command"</td><td>The legacy CLI is installed</td><td>Install the current CLI and check <code>databricks -v</code></td></tr>
+    <tr><td>A command changed prod when you meant dev</td><td>The DEFAULT profile pointed at prod</td><td>Keep DEFAULT on dev; always pass <code>-p prod</code> on purpose</td></tr>
+    <tr><td>A script cannot parse the output</td><td>Text tables are for people</td><td>Add <code>-o json</code></td></tr>
+    <tr><td>The CI build asks for a browser login</td><td>User login was used for a robot</td><td>Use a service principal with OAuth M2M</td></tr>
+  </table></div>
+</section>
+
+<section id="traps">
+  <div class="sec-num">Don't confuse these</div>
+  <h2>CLI traps</h2>
+  <div class="grid2">
+    <div class="card trap"><span class="tag">Profile vs target</span><p>A profile is a saved login in <code>~/.databrickscfg</code>. A target is an environment in <code>databricks.yml</code>.</p></div>
+    <div class="card trap"><span class="tag">New vs legacy CLI</span><p>Bundles need the new CLI (0.205+). The old Python one has no <code>bundle</code> group.</p></div>
+    <div class="card trap"><span class="tag">-p and -t</span><p><code>-p</code> picks a profile. <code>-t</code> picks a bundle target.</p></div>
+    <div class="card trap"><span class="tag">Secrets</span><p>Never commit <code>~/.databrickscfg</code> or tokens to Git.</p></div>
+  </div>
+</section>
+
+<section id="quiz">
+  <div class="sec-num">Check yourself</div>
+  <h2>Quiz</h2>
+  <div class="quiz">
+    <fieldset>
+      <legend>1. Which command signs you in through the browser and saves a profile?</legend>
+      <label><input type="radio"> databricks login</label>
+      <label><input type="radio" data-correct> databricks auth login --host &lt;url&gt;</label>
+      <label><input type="radio"> databricks bundle deploy</label>
+      <p class="explain" hidden><code>auth login</code> runs the OAuth browser flow and writes the profile.</p>
+    </fieldset>
+    <fieldset>
+      <legend>2. Where are profiles saved by default?</legend>
+      <label><input type="radio"> databricks.yml</label>
+      <label><input type="radio" data-correct> ~/.databrickscfg</label>
+      <label><input type="radio"> In the workspace</label>
+      <p class="explain" hidden>Profiles live in your home folder, in <code>.databrickscfg</code>.</p>
+    </fieldset>
+    <fieldset>
+      <legend>3. In the demo, what happened with <code>-p staging</code>?</legend>
+      <label><input type="radio"> It used the DEFAULT profile</label>
+      <label><input type="radio" data-correct> It failed: no such profile</label>
+      <label><input type="radio"> It created a staging profile</label>
+      <p class="explain" hidden>A profile must be saved before you can use it.</p>
+    </fieldset>
+    <fieldset>
+      <legend>4. How should a CI/CD system sign in?</legend>
+      <label><input type="radio"> With a developer's browser login</label>
+      <label><input type="radio" data-correct> As a service principal with OAuth machine-to-machine</label>
+      <label><input type="radio"> It doesn't need to</label>
+      <p class="explain" hidden>Robots get their own identity and credentials, not a person's.</p>
+    </fieldset>
+  </div>
+</section>
+
+<section id="wrap">
+  <div class="sec-num">Wrap up</div>
+  <h2>Key takeaways</h2>
+  <ul>
+    <li>Install the current CLI and check it with <code>databricks -v</code>.</li>
+    <li><code>databricks auth login --host</code> saves a profile in <code>~/.databrickscfg</code>.</li>
+    <li>Commands are grouped by area; <code>-p</code> picks the profile, <code>-o json</code> gives script-friendly output.</li>
+    <li>People use OAuth U2M; CI systems use a service principal with OAuth M2M.</li>
+  </ul>
+  <h3>Glossary terms used</h3>
+  <p><a href="../../glossary.html#databricks-cli">Databricks CLI</a> · <a href="../../glossary.html#terminal">terminal</a> · <a href="../../glossary.html#configuration-profile">configuration profile</a> · <a href="../../glossary.html#service-principal">service principal</a></p>
+  <h3>Official docs</h3>
+  <ul>
+    <li><a href="https://docs.databricks.com/aws/en/dev-tools/cli/install">Install or update the Databricks CLI</a></li>
+    <li><a href="https://docs.databricks.com/aws/en/dev-tools/cli/tutorial">Databricks CLI tutorial</a></li>
+    <li><a href="https://docs.databricks.com/aws/en/dev-tools/cli/authentication">Authentication for the Databricks CLI</a></li>
+  </ul>
+  <p class="cap">Last verified: 16 November 2026</p>
+</section>
+
+</main>
+
+<script>
+(function () {
+  var C = window.Course, $ = function (id) { return document.getElementById(id); }, L = $('dLog'), S;
+  function fresh() { S = { installed: false, profiles: {} }; }
+  function cfg() { var k = Object.keys(S.profiles); $('cCfg').textContent = k.length ? k.map(function (p) { return '[' + p + ']\nhost = https://' + S.profiles[p] + '.cloud.databricks.com\nauth_type = databricks-cli'; }).join('\n\n') : '(file does not exist)'; }
+  function out(cmd, text, kind) { $('cTerm').textContent = '$ ' + cmd + '\n' + text; C.log(L, kind, cmd.split(' ').slice(0, 3).join(' ') + ': ' + text.split('\n')[0]); }
+  function jobs(p) {
+    if (!S.profiles[p]) return [p === 'DEFAULT' ? 'Error: no credentials configured. Run databricks auth login first.' : 'Error: profile ' + p + ' not found in ~/.databrickscfg', 'bad'];
+    var list = S.profiles[p] === 'prod-bakery' ? ['nightly_sales', 'weekly_report'] : ['[dev sam] nightly_sales'];
+    return ['Workspace ' + S.profiles[p] + ':\n' + list.map(function (j, i) { return (1001 + i) + '  ' + j; }).join('\n'), 'ok'];
+  }
+  $('cRun').onclick = function () {
+    var v = $('cCmd').value, cmd = $('cCmd').selectedOptions[0].textContent, r;
+    if (v === 'install') { S.installed = true; r = ['Installed databricks 0.27x.x', 'ok']; }
+    else if (!S.installed) r = ['zsh: command not found: databricks', 'bad'];
+    else if (v === 'ver') r = ['Databricks CLI v0.27x.x', 'ok'];
+    else if (v === 'login') { S.profiles.DEFAULT = 'dev-bakery'; r = ['Browser opened... signed in. Profile DEFAULT saved.', 'ok']; }
+    else if (v === 'loginp') { S.profiles.prod = 'prod-bakery'; r = ['Browser opened... signed in. Profile prod saved.', 'ok']; }
+    else if (v === 'profiles') { var k = Object.keys(S.profiles); r = [k.length ? k.map(function (p) { return p + '  ' + S.profiles[p]; }).join('\n') : 'No profiles saved.', k.length ? 'ok' : 'skip']; }
+    else r = jobs(v === 'jobs' ? 'DEFAULT' : v === 'jobsp' ? 'prod' : 'staging');
+    out(cmd, r[0], r[1]); cfg(); C.bump($('cTerm'));
+  };
+  $('cReset').onclick = function () { fresh(); L.innerHTML = ''; $('cTerm').textContent = ''; cfg(); };
+  fresh(); cfg();
+})();
+</script>
+</body>
+</html>

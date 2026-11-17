@@ -153,10 +153,10 @@ Objectives:
 | [x] | 05-04 What are Declarative Automation Bundles? | `04-what-are-bundles.html` | 5.3 | 05-01, 04-01 |
 | [x] | 05-05 Targets: dev, test and prod | `05-bundle-targets.html` | 5.2, 5.3 | 05-04 |
 | [x] | 05-06 Variables and overrides | `06-bundle-variables-overrides.html` | 5.2 | 05-05 |
-| [ ] | 05-07 Bundle resources: jobs, pipelines and more | `07-bundle-resources.html` | 5.3 | 05-04 |
-| [ ] | 05-08 The Databricks CLI: install, log in, basic commands | `08-databricks-cli.html` | 5.4 | 00-07 |
-| [ ] | 05-09 Bundle commands: validate, deploy, run, destroy | `09-bundle-commands.html` | 5.4 | 05-04, 05-08 |
-| [ ] | 05-10 Automated CI/CD: deploying from a pipeline | `10-automated-ci-cd.html` | 5.4 | 05-03, 05-09 |
+| [x] | 05-07 Bundle resources: jobs, pipelines and more | `07-bundle-resources.html` | 5.3 | 05-04 |
+| [x] | 05-08 The Databricks CLI: install, log in, basic commands | `08-databricks-cli.html` | 5.4 | 00-07 |
+| [x] | 05-09 Bundle commands: validate, deploy, run, destroy | `09-bundle-commands.html` | 5.4 | 05-04, 05-08 |
+| [x] | 05-10 Automated CI/CD: deploying from a pipeline | `10-automated-ci-cd.html` | 5.4 | 05-03, 05-09 |
 
 ## Module 06: Troubleshooting, Monitoring and Optimization (10% of the exam)
 

@@ -1,0 +1,281 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>05-10 Automated CI/CD: deploying from a pipeline · DE Associate course</title>
+<link rel="stylesheet" href="../../assets/course.css">
+<script src="../../assets/course.js"></script>
+</head>
+<body data-lesson="05-10">
+
+<aside class="disclaimer" aria-label="Disclaimer"><strong>Learning resource only.</strong> This is an independent, unofficial study guide made for learning purposes. It is not affiliated with, endorsed by or sponsored by Databricks. Databricks features change often, so always check the details in the <a href="https://docs.databricks.com">official Databricks documentation</a> and the official exam guide on databricks.com before relying on anything here. Databricks and related names are trademarks of their respective owners.</aside>
+
+<main class="wrap">
+
+<header class="hero">
+  <div class="eyebrow">Module 05 · Implementing CI/CD · Lesson 10 of 10</div>
+  <h1>Automated CI/CD: deploying from a pipeline</h1>
+  <p class="lede">So far you ran the bundle commands by hand. Here a robot runs them for you: every pull request gets checked and tried in dev, and every merge reaches prod, with nobody typing a command.</p>
+  <dl class="where">
+    <div><dt>Module</dt><dd>05 Implementing CI/CD (10% of the exam)</dd></div>
+    <div><dt>Exam objective</dt><dd>5.4 Use the Databricks CLI inside automated CI/CD. This lesson covers what a CI/CD workflow runs, which identity it uses, and which target each event deploys to.</dd></div>
+    <div><dt>Time to read</dt><dd>About 14 minutes</dd></div>
+    <div><dt>Before this</dt><dd><a href="03-commit-push-pull-request.html">05-03 Commit, push, pull requests</a> and <a href="09-bundle-commands.html">05-09 Bundle commands</a></dd></div>
+  </dl>
+</header>
+
+<section id="idea">
+  <div class="sec-num">The idea</div>
+  <h2>Let a robot press the buttons</h2>
+  <p><a href="../../glossary.html#ci-cd">CI/CD</a> means two habits. Continuous integration: every change is checked automatically as soon as it is proposed. Continuous delivery: a change that passes is sent to the next environment automatically, with no manual copying.</p>
+  <p>You write the steps once in a <a href="../../glossary.html#workflow-file">workflow file</a> kept in the repository. A CI service such as GitHub Actions starts a fresh machine, called a runner, whenever something happens (a pull request opens, a merge lands) and runs your steps on it.</p>
+  <p>For Databricks the steps are the commands you already know: install the <a href="../../glossary.html#databricks-cli">CLI</a>, then <code>bundle validate</code>, <code>bundle deploy</code> and <code>bundle run</code>. The new part is that the runner has no person logged in, so it needs its own identity: a <a href="../../glossary.html#service-principal">service principal</a>.</p>
+  <div class="analogy">
+    <span class="tag">Everyday analogy</span>
+    <p><strong>A bakery with a night-shift robot.</strong> The recipe book is the repository. The workflow file is the instruction card taped to the robot. When a baker proposes a new recipe, the robot bakes a test batch in the practice kitchen (dev). When the head baker approves it, the robot bakes it in the shop kitchen (prod). The robot carries its own staff badge (the service principal), never a baker's.</p>
+  </div>
+</section>
+
+<section id="how">
+  <div class="sec-num">How it works</div>
+  <h2>Two events, two targets</h2>
+  <div class="stage">
+    <svg viewBox="0 0 360 260" role="img" aria-label="A pull request triggers a runner that validates and deploys to the dev target. A merge to main triggers a runner that deploys to the prod target. Both runners prove who they are as a service principal.">
+      <defs><path id="cp1" d="M70 60 H140 H210 H290"/><path id="cp2" d="M70 150 H140 H210 H290"/></defs>
+      <g class="wire"><use href="#cp1"/><use href="#cp2"/><path d="M175 205 V172"/></g>
+      <g class="mover">
+        <circle r="5" class="dot"><animateMotion dur="3s" repeatCount="indefinite"><mpath href="#cp1"/></animateMotion></circle>
+        <circle r="5" class="dot-ok"><animateMotion dur="3s" begin="-1.5s" repeatCount="indefinite"><mpath href="#cp2"/></animateMotion></circle>
+      </g>
+      <rect class="box-soft" x="10" y="40" width="60" height="40" rx="7"/><text class="t-m" x="40" y="58" text-anchor="middle">pull</text><text class="t-m" x="40" y="72" text-anchor="middle">request</text>
+      <rect class="box" x="110" y="40" width="100" height="40" rx="7"/><text class="mono" x="160" y="64" text-anchor="middle">validate</text>
+      <rect class="box-acc" x="260" y="40" width="90" height="40" rx="7"/><text class="mono" x="305" y="64" text-anchor="middle">deploy dev</text>
+      <rect class="box-soft" x="10" y="130" width="60" height="40" rx="7"/><text class="t-m" x="40" y="148" text-anchor="middle">merge to</text><text class="t-m" x="40" y="162" text-anchor="middle">main</text>
+      <rect class="box" x="110" y="130" width="100" height="40" rx="7"/><text class="mono" x="160" y="154" text-anchor="middle">validate</text>
+      <rect class="box-acc" x="260" y="130" width="90" height="40" rx="7"/><text class="mono" x="305" y="154" text-anchor="middle">deploy prod</text>
+      <rect class="box-soft" x="80" y="205" width="200" height="40" rx="7"/><text class="t-b" x="180" y="230" text-anchor="middle">service principal identity</text>
+    </svg>
+    <p class="cap">The runner is a fresh machine each time. It gets its identity from the workflow settings, not from a person.</p>
+  </div>
+</section>
+
+<section id="demo">
+  <div class="sec-num">Try it</div>
+  <h2>Run the pipeline</h2>
+  <p>Pick what happens in the repository, choose how the runner signs in, and start the workflow. Try a broken bundle, a runner with no identity, and a push to a side branch.</p>
+  <div class="stage">
+    <div class="ctrls">
+      <label>Event
+        <select id="pEvent">
+          <option value="pr">Pull request opened</option>
+          <option value="main">Merge to main</option>
+          <option value="side">Push to a side branch</option>
+        </select>
+      </label>
+      <label>Sign-in
+        <select id="pAuth">
+          <option value="fed">Workload identity federation</option>
+          <option value="tok">Stored service principal token (legacy)</option>
+          <option value="none">Nothing set</option>
+        </select>
+      </label>
+      <label class="tog"><input type="checkbox" id="pBroken"> Bundle has a config error</label>
+      <label class="tog"><input type="checkbox" id="pPerm" checked> Job has id-token permission</label>
+      <button id="pGo" type="button" class="primary">Start workflow</button>
+      <button id="pReset" type="button">Clear log</button>
+    </div>
+    <div class="panes">
+      <div class="pane"><h4>dev workspace</h4><div id="pDev"></div></div>
+      <div class="pane"><h4>prod workspace</h4><div id="pProd"></div></div>
+    </div>
+    <div class="log" id="pLog" role="log" aria-label="What happened"></div>
+  </div>
+</section>
+
+<section id="code">
+  <div class="sec-num">Code</div>
+  <h2>Two workflow files</h2>
+  <p>Workflow files live in <code>.github/workflows/</code>. This one checks and tries every pull request in dev. Names such as <code>nightly</code> and the <code>bakery</code> host are made-up examples.</p>
+<pre><code><span class="c-c"># .github/workflows/dev.yml: runs on every pull request to main</span>
+name: Dev deployment
+on:
+  pull_request:
+    types: [opened, synchronize]
+    branches: [main]
+
+concurrency: 1                       <span class="c-c"># never two deploys at once</span>
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: dev
+    permissions:
+      id-token: write                <span class="c-c"># lets the runner ask for an identity token</span>
+      contents: read
+    env:
+      DATABRICKS_AUTH_TYPE: github-oidc
+      DATABRICKS_HOST: ${{ vars.DATABRICKS_HOST }}
+      DATABRICKS_CLIENT_ID: ${{ secrets.DATABRICKS_CLIENT_ID }}
+      DATABRICKS_BUNDLE_TARGET: dev
+    steps:
+      - uses: actions/checkout@v4
+      - uses: databricks/setup-cli@main
+      - run: databricks bundle validate
+      - run: databricks bundle deploy
+
+  run_job:
+    needs: deploy                    <span class="c-c"># only after the deploy worked</span>
+    runs-on: ubuntu-latest
+    environment: dev
+    permissions: { id-token: write, contents: read }
+    env:
+      DATABRICKS_AUTH_TYPE: github-oidc
+      DATABRICKS_HOST: ${{ vars.DATABRICKS_HOST }}
+      DATABRICKS_CLIENT_ID: ${{ secrets.DATABRICKS_CLIENT_ID }}
+      DATABRICKS_BUNDLE_TARGET: dev
+    steps:
+      - uses: actions/checkout@v4
+      - uses: databricks/setup-cli@main
+      - run: databricks bundle run nightly</code></pre>
+  <p>The production file is nearly the same. It triggers on <code>push</code> to <code>main</code>, uses <code>environment: prod</code>, and sets <code>DATABRICKS_BUNDLE_TARGET: prod</code>.</p>
+  <p class="note">The older recipe stores a service principal token in a repository secret and passes it as <code>DATABRICKS_TOKEN</code>. The docs now steer you to federation instead, so no long-lived secret is stored. Federation needs a policy on the service principal whose subject matches your repository and environment exactly. Verify the exact subject format in the docs for your repository.</p>
+</section>
+
+<section id="whatif">
+  <div class="sec-num">What if I change this?</div>
+  <h2>Workflow choices and their effects</h2>
+  <div class="tbl"><table class="whatif">
+    <tr><th>Change</th><th>Effect</th></tr>
+    <tr><td>Trigger on <code>push</code> to main for dev too</td><td>You only learn about a bad change after it is merged.</td></tr>
+    <tr><td>Leave out <code>permissions: id-token: write</code></td><td>The runner cannot get an identity token, so federated sign-in fails.</td></tr>
+    <tr><td>Use a person's token instead of a service principal</td><td>Deploys break when that person leaves, and the audit trail names a person for a robot's actions.</td></tr>
+    <tr><td>Set <code>DATABRICKS_BUNDLE_TARGET: prod</code> on pull requests</td><td>Unreviewed code reaches prod.</td></tr>
+    <tr><td>Add <code>concurrency</code></td><td>Runs queue up instead of overlapping, so two deploys cannot fight over the same resources.</td></tr>
+    <tr><td>Remove the <code>needs: deploy</code> line</td><td>The run may start before the deploy has finished, using old code.</td></tr>
+    <tr><td>Change the environment name but not the federation policy</td><td>The subject no longer matches, and sign-in is refused.</td></tr>
+  </table></div>
+</section>
+
+<section id="compare">
+  <div class="sec-num">Compare</div>
+  <h2>How a runner can sign in</h2>
+  <div class="tbl"><table>
+    <tr><th>Method</th><th>What is stored in the CI service</th><th>Risk if it leaks</th><th>Status</th></tr>
+    <tr><td>Workload identity federation</td><td>Only the service principal's ID (not a secret)</td><td>Little: tokens are short-lived and tied to one repository and environment</td><td>The docs steer you here</td></tr>
+    <tr><td>OAuth machine-to-machine (M2M)</td><td>The service principal's ID and a client secret</td><td>The secret works anywhere until you rotate it</td><td>Recommended for unattended use in the bundle docs</td></tr>
+    <tr><td>Personal access token (PAT) of a service principal</td><td>A long-lived token</td><td>Works anywhere until it expires or is revoked</td><td>Marked legacy</td></tr>
+    <tr><td>Your own login (U2M)</td><td>Nothing; a person signs in a browser</td><td>Not usable: nobody is there to click</td><td>For local work only</td></tr>
+  </table></div>
+</section>
+
+<section id="scenarios">
+  <div class="sec-num">Real life</div>
+  <h2>Pipelines in practice</h2>
+  <div class="tbl"><table>
+    <tr><th>Scenario</th><th>What happens</th><th>Fix</th></tr>
+    <tr><td>Someone edits prod in the UI, then the next merge deploys</td><td>The deploy overwrites the hand edit</td><td>Change the bundle in a pull request; treat prod as read-only for people</td></tr>
+    <tr><td>The pull request check fails with a sign-in error</td><td>Missing permission, wrong host, or a federation subject that does not match</td><td>Check <code>id-token: write</code>, the env vars and the policy subject</td></tr>
+    <tr><td>Two merges land minutes apart</td><td>Two deploys overlap and one fails midway</td><td>Add <code>concurrency</code></td></tr>
+    <tr><td>A teammate pushes a typo in <code>databricks.yml</code></td><td><code>validate</code> fails on the pull request, so nothing is deployed</td><td>Fix the typo and push again</td></tr>
+    <tr><td>The CI secret holding a token is exposed</td><td>Anyone with it can act as the service principal</td><td>Revoke it and move to federation</td></tr>
+  </table></div>
+</section>
+
+<section id="traps">
+  <div class="sec-num">Don't confuse these</div>
+  <h2>CI/CD traps</h2>
+  <div class="grid2">
+    <div class="card trap"><span class="tag">CI vs CD</span><p>CI checks each change. CD delivers it onward. A pipeline can have one without the other.</p></div>
+    <div class="card trap"><span class="tag">Target vs environment</span><p>A bundle target is where a bundle deploys. A GitHub environment is a CI setting that holds secrets and rules. They are separate things; you often name them alike.</p></div>
+    <div class="card trap"><span class="tag">Service principal, not a person</span><p>Automation runs as a service principal. Its permissions decide what the pipeline can touch.</p></div>
+    <div class="card trap"><span class="tag">deploy does not run</span><p>A deploy only sets things up. A separate <code>bundle run</code> step starts the job.</p></div>
+  </div>
+</section>
+
+<section id="quiz">
+  <div class="sec-num">Check yourself</div>
+  <h2>Quiz</h2>
+  <div class="quiz">
+    <fieldset>
+      <legend>1. Which identity should an automated pipeline deploy as?</legend>
+      <label><input type="radio"> The developer who wrote the change</label>
+      <label><input type="radio" data-correct> A service principal</label>
+      <label><input type="radio"> The workspace admin's personal account</label>
+      <p class="explain" hidden>Automation should not depend on a person. A service principal is a non-human identity made for this.</p>
+    </fieldset>
+    <fieldset>
+      <legend>2. A federated GitHub Actions job fails to get a token. What is the first thing to check?</legend>
+      <label><input type="radio" data-correct> Whether the job lacks <code>id-token: write</code></label>
+      <label><input type="radio"> Whether the bundle has too many jobs</label>
+      <label><input type="radio"> Whether <code>bundle destroy</code> ran</label>
+      <p class="explain" hidden>Without that permission the runner cannot request an identity token. (The policy subject and env vars are the other usual suspects.)</p>
+    </fieldset>
+    <fieldset>
+      <legend>3. Which pair is the usual mapping of event to target?</legend>
+      <label><input type="radio"> Pull request to prod, merge to dev</label>
+      <label><input type="radio" data-correct> Pull request to dev, merge to main to prod</label>
+      <label><input type="radio"> Every event to prod</label>
+      <p class="explain" hidden>Try changes safely in dev first. Only reviewed, merged code reaches prod.</p>
+    </fieldset>
+    <fieldset>
+      <legend>4. In the demo, a pull request with a broken bundle started the workflow. What happened?</legend>
+      <label><input type="radio"> It deployed to dev and failed at run time</label>
+      <label><input type="radio" data-correct> It stopped at validate, and no workspace changed</label>
+      <label><input type="radio"> It deployed to prod</label>
+      <p class="explain" hidden>Validation runs before deploy, so a bad configuration never reaches a workspace.</p>
+    </fieldset>
+  </div>
+</section>
+
+<section id="wrap">
+  <div class="sec-num">Wrap up</div>
+  <h2>Key takeaways</h2>
+  <ul>
+    <li>CI/CD runs the same bundle commands automatically: validate, deploy, run.</li>
+    <li>Pull requests go to dev; a merge to main goes to prod.</li>
+    <li>The runner signs in as a service principal, ideally with workload identity federation and no stored secret.</li>
+    <li>Use <code>needs</code> for order and <code>concurrency</code> to avoid overlapping deploys.</li>
+  </ul>
+  <h3>Glossary terms used</h3>
+  <p><a href="../../glossary.html#ci-cd">CI/CD</a> · <a href="../../glossary.html#workflow-file">workflow file</a> · <a href="../../glossary.html#workload-identity-federation">workload identity federation</a> · <a href="../../glossary.html#service-principal">service principal</a> · <a href="../../glossary.html#databricks-cli">Databricks CLI</a> · <a href="../../glossary.html#target">target</a></p>
+  <h3>Official docs</h3>
+  <ul>
+    <li><a href="https://docs.databricks.com/aws/en/dev-tools/ci-cd/github">GitHub Actions on Databricks</a></li>
+    <li><a href="https://docs.databricks.com/aws/en/dev-tools/ci-cd/flows">CI/CD workflows</a></li>
+    <li><a href="https://docs.databricks.com/aws/en/dev-tools/auth/provider-github">Workload identity federation for GitHub Actions</a></li>
+    <li><a href="https://docs.databricks.com/aws/en/dev-tools/bundles/authentication">Authentication for bundles</a></li>
+  </ul>
+  <p class="cap">Last verified: 16 November 2026. The GitHub Actions page was marked Public Preview when checked; verify in the docs.</p>
+</section>
+
+</main>
+
+<script>
+(function () {
+  var C = window.Course, $ = function (id) { return document.getElementById(id); }, L = $('pLog');
+  var S = { dev: 0, prod: 0 };
+  function draw() {
+    $('pDev').innerHTML = S.dev ? '<div class="item">[dev] bakery pipelines: deploy #' + S.dev + '</div>' : '<div class="item off">nothing deployed</div>';
+    $('pProd').innerHTML = S.prod ? '<div class="item">bakery pipelines: deploy #' + S.prod + '</div>' : '<div class="item off">nothing deployed</div>';
+  }
+  $('pGo').onclick = function () {
+    var ev = $('pEvent').value, au = $('pAuth').value, bad = $('pBroken').checked, perm = $('pPerm').checked;
+    if (ev === 'side') { C.log(L, 'skip', 'Push to a side branch: no workflow is set to trigger on this event, so nothing ran.'); return; }
+    var target = ev === 'pr' ? 'dev' : 'prod';
+    C.log(L, 'ok', 'Event: ' + (ev === 'pr' ? 'pull request opened' : 'merge to main') + '. Runner started. Target: ' + target + '.');
+    if (au === 'none') { C.log(L, 'bad', 'Sign-in failed: no host or identity set on the runner. Nothing changed.'); return; }
+    if (au === 'fed' && !perm) { C.log(L, 'bad', 'Sign-in failed: the job lacks id-token: write, so no identity token could be requested. Nothing changed.'); return; }
+    C.log(L, 'ok', 'Signed in as the service principal (' + (au === 'fed' ? 'federation, no stored secret' : 'stored token, legacy') + ').');
+    if (bad) { C.log(L, 'bad', 'bundle validate: Error in databricks.yml. Stopped before deploy. Workspace unchanged.'); return; }
+    C.log(L, 'ok', 'bundle validate: OK.');
+    S[target]++; draw(); C.bump($(target === 'dev' ? 'pDev' : 'pProd'));
+    C.log(L, 'ok', 'bundle deploy: ' + target + ' updated (deploy #' + S[target] + ').');
+    if (target === 'dev') C.log(L, 'ok', 'bundle run nightly: job started in dev.');
+  };
+  $('pReset').onclick = function () { L.innerHTML = ''; };
+  draw();
+})();
+</script>
+</body>
+</html>

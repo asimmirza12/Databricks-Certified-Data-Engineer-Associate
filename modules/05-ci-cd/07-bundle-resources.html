@@ -1,0 +1,270 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>05-07 Bundle resources: jobs, pipelines and more · DE Associate course</title>
+<link rel="stylesheet" href="../../assets/course.css">
+<script src="../../assets/course.js"></script>
+</head>
+<body data-lesson="05-07">
+
+<aside class="disclaimer" aria-label="Disclaimer"><strong>Learning resource only.</strong> This is an independent, unofficial study guide made for learning purposes. It is not affiliated with, endorsed by or sponsored by Databricks. Databricks features change often, so always check the details in the <a href="https://docs.databricks.com">official Databricks documentation</a> and the official exam guide on databricks.com before relying on anything here. Databricks and related names are trademarks of their respective owners.</aside>
+
+<main class="wrap">
+
+<header class="hero">
+  <div class="eyebrow">Module 05 · Implementing CI/CD · Lesson 7 of 10</div>
+  <h1>Bundle resources: jobs, pipelines and more</h1>
+  <p class="lede">The <code>resources</code> section is the heart of a bundle. It lists every Databricks object the bundle owns: jobs, pipelines, schemas, volumes, dashboards and others. Resources can point at each other, so a job can run a pipeline defined in the same file.</p>
+  <dl class="where">
+    <div><dt>Module</dt><dd>05 Implementing CI/CD (10% of the exam)</dd></div>
+    <div><dt>Exam objective</dt><dd>5.3 Deploy bundles that define Databricks objects. This lesson covers how those objects are written under <code>resources</code> and linked together.</dd></div>
+    <div><dt>Time to read</dt><dd>About 13 minutes</dd></div>
+    <div><dt>Before this</dt><dd><a href="04-what-are-bundles.html">05-04 What are Declarative Automation Bundles?</a></dd></div>
+  </dl>
+</header>
+
+<section id="idea">
+  <div class="sec-num">The idea</div>
+  <h2>A shopping list of objects</h2>
+  <p>A <a href="../../glossary.html#bundle-resource">bundle resource</a> is one Databricks object described in the bundle. Resources are grouped by type under <code>resources</code>: <code>jobs</code>, <code>pipelines</code>, <code>schemas</code>, <code>volumes</code>, <code>dashboards</code> and more. Under each type, every object gets a <strong>resource key</strong>: a short name you choose, such as <code>nightly_load</code>, used to refer to it inside the bundle.</p>
+  <p>The settings under each key are the same ones the object has in the workspace. A job has <code>tasks</code> and a schedule. A pipeline has a catalog, a schema and its source files. A schema has a catalog and a name.</p>
+  <p>Resources often need each other. A job's pipeline task needs the pipeline's ID, but that ID only exists after deploy. So you write a <a href="../../glossary.html#resource-reference">resource reference</a>, such as <code>${resources.pipelines.sales_pipeline.id}</code>, and the CLI fills in the real ID during deploy.</p>
+  <p>Big bundles split resources into several files, for example <code>resources/jobs.yml</code>, and pull them in with <code>include</code>.</p>
+  <div class="analogy">
+    <span class="tag">Everyday analogy</span>
+    <p><strong>A new shop's fit-out list.</strong> "Oven A, oven B, display fridge, till." Each item has a label. The till's notes say "connect to the fridge's alarm": you don't know the fridge's serial number yet, so you write "the fridge" and the installer fills in the real number when it arrives. That label is the resource key; the note is the reference.</p>
+  </div>
+</section>
+
+<section id="how">
+  <div class="sec-num">How it works</div>
+  <h2>Resources and references</h2>
+  <div class="stage">
+    <svg class="tall" viewBox="0 0 360 330" role="img" aria-label="The resources section holds a schema, a pipeline and a job. The pipeline writes into the schema, and the job's task points at the pipeline using a reference. On deploy each becomes a real object in the workspace, and the reference becomes a real ID.">
+      <defs><path id="rr1" d="M120 92 H240"/><path id="rr2" d="M120 172 H240"/><path id="rr3" d="M120 252 H240"/></defs>
+      <g class="wire"><use href="#rr1"/><use href="#rr2"/><use href="#rr3"/><path d="M64 150 V112"/><path d="M64 230 V192"/></g>
+      <g class="mover">
+        <circle r="5" class="dot"><animateMotion dur="1.8s" repeatCount="indefinite"><mpath href="#rr1"/></animateMotion></circle>
+        <circle r="5" class="dot"><animateMotion dur="1.8s" begin="-0.6s" repeatCount="indefinite"><mpath href="#rr2"/></animateMotion></circle>
+        <circle r="5" class="dot-ok"><animateMotion dur="1.8s" begin="-1.2s" repeatCount="indefinite"><mpath href="#rr3"/></animateMotion></circle>
+      </g>
+      <text class="t-b" x="64" y="30" text-anchor="middle">databricks.yml</text>
+      <text class="t-b" x="298" y="30" text-anchor="middle">workspace</text>
+      <rect class="box-soft" x="8" y="72" width="112" height="40" rx="7"/><text class="mono" x="64" y="96" text-anchor="middle">schemas.silver</text>
+      <rect class="box-soft" x="8" y="152" width="112" height="40" rx="7"/><text class="mono" x="64" y="176" text-anchor="middle">pipelines.sales</text>
+      <rect class="box-soft" x="8" y="232" width="112" height="40" rx="7"/><text class="mono" x="64" y="256" text-anchor="middle">jobs.nightly</text>
+      <rect class="box" x="240" y="72" width="114" height="40" rx="7"/><text class="t-m" x="297" y="96" text-anchor="middle">bakery.silver</text>
+      <rect class="box" x="240" y="152" width="114" height="40" rx="7"/><text class="t-m" x="297" y="176" text-anchor="middle">pipeline id 7f3a</text>
+      <rect class="box-acc" x="240" y="232" width="114" height="40" rx="7"/><text class="t-m" x="297" y="256" text-anchor="middle">job runs 7f3a</text>
+      <text class="t-m" x="74" y="135">writes into</text>
+      <text class="t-m" x="74" y="215">referenced by</text>
+      <text class="t-m" x="180" y="300" text-anchor="middle">deploy turns ${resources.pipelines.sales.id} into 7f3a</text>
+    </svg>
+    <p class="cap">On the left, keys you chose. On the right, real objects with real IDs.</p>
+  </div>
+  <h3>Common resource types</h3>
+  <div class="grid2">
+    <div class="card"><span class="tag">jobs</span><p>Lakeflow Jobs: tasks, schedules, triggers, parameters.</p></div>
+    <div class="card"><span class="tag">pipelines</span><p>Lakeflow Spark Declarative Pipelines: source files, catalog, schema.</p></div>
+    <div class="card"><span class="tag">schemas and volumes</span><p>Unity Catalog containers for tables and files.</p></div>
+    <div class="card"><span class="tag">dashboards and more</span><p>AI/BI dashboards, clusters, SQL warehouses, experiments and others. The full list is in the resources docs.</p></div>
+  </div>
+</section>
+
+<section id="demo">
+  <div class="sec-num">Try it</div>
+  <h2>Build a resources section</h2>
+  <p>Tick the resources to include, then validate. The job's task points at the pipeline. See what happens if the pipeline is left out, or the reference has a typo.</p>
+  <div class="stage">
+    <div class="ctrls">
+      <label class="tog"><input type="checkbox" id="rSchema" checked> schema <code>silver</code></label>
+      <label class="tog"><input type="checkbox" id="rPipe" checked> pipeline <code>sales</code></label>
+      <label class="tog"><input type="checkbox" id="rJob" checked> job <code>nightly</code></label>
+      <label class="tog"><input type="checkbox" id="rTypo"> typo: reference <code>sale</code></label>
+      <button id="rGo" type="button" class="primary">Validate</button>
+      <button id="rReset" type="button">Clear log</button>
+    </div>
+    <div class="panes">
+      <div class="pane"><h4>resources:</h4><pre class="filetext" id="rYml"></pre></div>
+      <div class="pane"><h4>Check</h4><div id="rOut"></div></div>
+    </div>
+    <div class="log" id="dLog" role="log" aria-label="What happened"></div>
+  </div>
+</section>
+
+<section id="code">
+  <div class="sec-num">Code</div>
+  <h2>A schema, a pipeline and a job that runs it</h2>
+<pre><code><span class="c-c"># resources/sales.yml, pulled in by include in databricks.yml</span>
+<span class="c-k">resources</span>:
+  <span class="c-k">schemas</span>:
+    <span class="c-k">silver</span>:                               <span class="c-c"># resource key</span>
+      <span class="c-k">catalog_name</span>: ${var.catalog}
+      <span class="c-k">name</span>: silver
+
+  <span class="c-k">pipelines</span>:
+    <span class="c-k">sales</span>:
+      <span class="c-k">name</span>: sales_pipeline
+      <span class="c-k">catalog</span>: ${var.catalog}
+      <span class="c-k">schema</span>: ${resources.schemas.silver.name}
+      <span class="c-k">serverless</span>: true
+      <span class="c-k">libraries</span>:
+        - <span class="c-k">file</span>:
+            <span class="c-k">path</span>: ../src/sales_pipeline.py
+
+  <span class="c-k">jobs</span>:
+    <span class="c-k">nightly</span>:
+      <span class="c-k">name</span>: nightly_sales
+      <span class="c-k">tasks</span>:
+        - <span class="c-k">task_key</span>: refresh_sales
+          <span class="c-k">pipeline_task</span>:
+            <span class="c-k">pipeline_id</span>: ${resources.pipelines.sales.id}   <span class="c-c"># real ID at deploy</span>
+      <span class="c-k">permissions</span>:
+        - <span class="c-k">group_name</span>: bakery-analysts
+          <span class="c-k">level</span>: CAN_VIEW</code></pre>
+<pre><code><span class="c-c"># in databricks.yml</span>
+<span class="c-k">include</span>:
+  - resources/*.yml</code></pre>
+  <p class="note">Field names follow the workspace API for each object. Some newer resource types need a specific deployment engine; verify in the docs before relying on one.</p>
+</section>
+
+<section id="whatif">
+  <div class="sec-num">What if I change this?</div>
+  <h2>Resource changes and their effects</h2>
+  <div class="tbl"><table class="whatif">
+    <tr><th>Change</th><th>Effect</th></tr>
+    <tr><td>Rename a resource key</td><td>The CLI sees a new resource: it creates one and removes the old one on deploy. Rename the <code>name</code> field instead if you only want a new display name.</td></tr>
+    <tr><td>Delete a resource from the file</td><td>The next deploy removes it from the workspace.</td></tr>
+    <tr><td>Reference a key that does not exist</td><td>Validation or deploy fails with an unknown reference.</td></tr>
+    <tr><td>Hard-code a pipeline ID instead of a reference</td><td>Works in one workspace only, and breaks in every other target.</td></tr>
+    <tr><td>Split resources into several files</td><td>Fine, as long as <code>include</code> lists them.</td></tr>
+    <tr><td>Change a job in the workspace UI</td><td>The next deploy puts the bundle's version back.</td></tr>
+  </table></div>
+</section>
+
+<section id="compare">
+  <div class="sec-num">Compare</div>
+  <h2>Ways to name a thing in a bundle</h2>
+  <div class="tbl"><table>
+    <tr><th></th><th>Resource key</th><th><code>name</code> field</th><th>Resource reference</th></tr>
+    <tr><td>Example</td><td><code>sales</code></td><td><code>sales_pipeline</code></td><td><code>${resources.pipelines.sales.id}</code></td></tr>
+    <tr><td>Seen in the workspace?</td><td>No</td><td>Yes, as the display name</td><td>Becomes a real ID</td></tr>
+    <tr><td>Used for</td><td>Identity inside the bundle</td><td>What people see</td><td>Linking one resource to another</td></tr>
+  </table></div>
+</section>
+
+<section id="scenarios">
+  <div class="sec-num">Real life</div>
+  <h2>Resources in practice</h2>
+  <div class="tbl"><table>
+    <tr><th>Scenario</th><th>What happens</th><th>Fix</th></tr>
+    <tr><td>The prod job runs the dev pipeline</td><td>The pipeline ID was pasted in by hand</td><td>Use a resource reference</td></tr>
+    <tr><td>A tidy-up renamed every key; the job lost its run history</td><td>New keys mean new objects</td><td>Keep keys stable; change <code>name</code></td></tr>
+    <tr><td>databricks.yml is 900 lines long</td><td>Hard to review</td><td>One file per area under <code>resources/</code>, with <code>include</code></td></tr>
+    <tr><td>A colleague's UI edit vanished</td><td>Deploy restored the bundle's version</td><td>Make changes in the bundle, through Git</td></tr>
+  </table></div>
+</section>
+
+<section id="traps">
+  <div class="sec-num">Don't confuse these</div>
+  <h2>Resource traps</h2>
+  <div class="grid2">
+    <div class="card trap"><span class="tag">Key vs name</span><p>The key is the bundle's ID for the object. The <code>name</code> is the label in the workspace.</p></div>
+    <div class="card trap"><span class="tag">${resources...} vs ${var...}</span><p>Resource references point at objects in the bundle. Variables hold values you set.</p></div>
+    <div class="card trap"><span class="tag">Bundle wins</span><p>The bundle is the source of truth. UI changes to deployed objects are overwritten.</p></div>
+    <div class="card trap"><span class="tag">Code is not a resource</span><p>Notebooks and Python files are uploaded as files. Only objects like jobs and pipelines go under <code>resources</code>.</p></div>
+  </div>
+</section>
+
+<section id="quiz">
+  <div class="sec-num">Check yourself</div>
+  <h2>Quiz</h2>
+  <div class="quiz">
+    <fieldset>
+      <legend>1. How should a job task point at a pipeline defined in the same bundle?</legend>
+      <label><input type="radio"> Paste the pipeline ID from the UI</label>
+      <label><input type="radio" data-correct> <code>${resources.pipelines.&lt;key&gt;.id}</code></label>
+      <label><input type="radio"> <code>${var.pipeline}</code></label>
+      <p class="explain" hidden>A resource reference becomes the real ID in whichever workspace you deploy to.</p>
+    </fieldset>
+    <fieldset>
+      <legend>2. You rename a job's resource key and deploy. What happens?</legend>
+      <label><input type="radio"> Only the display name changes</label>
+      <label><input type="radio" data-correct> A new job is created and the old one is removed</label>
+      <label><input type="radio"> Nothing</label>
+      <p class="explain" hidden>The key is the job's identity in the bundle, so a new key looks like a new job.</p>
+    </fieldset>
+    <fieldset>
+      <legend>3. In the demo, what did validation report when the pipeline was unticked but the job remained?</legend>
+      <label><input type="radio"> It passed</label>
+      <label><input type="radio" data-correct> An unknown reference to the pipeline</label>
+      <label><input type="radio"> The job was removed too</label>
+      <p class="explain" hidden>The job still pointed at a pipeline key that no longer existed.</p>
+    </fieldset>
+    <fieldset>
+      <legend>4. How do you keep resources in several YAML files?</legend>
+      <label><input type="radio"> You can't; one file only</label>
+      <label><input type="radio" data-correct> List them under <code>include</code> in databricks.yml</label>
+      <label><input type="radio"> Put them in a target</label>
+      <p class="explain" hidden><code>include</code> takes file paths or patterns such as <code>resources/*.yml</code>.</p>
+    </fieldset>
+  </div>
+</section>
+
+<section id="wrap">
+  <div class="sec-num">Wrap up</div>
+  <h2>Key takeaways</h2>
+  <ul>
+    <li><code>resources</code> lists objects by type: jobs, pipelines, schemas, volumes, dashboards and more.</li>
+    <li>Each object has a stable resource key; its <code>name</code> is what the workspace shows.</li>
+    <li>Link objects with <code>${resources.&lt;type&gt;.&lt;key&gt;.&lt;field&gt;}</code>, never hard-coded IDs.</li>
+    <li>Split big bundles with <code>include</code>. The bundle overrides UI edits on deploy.</li>
+  </ul>
+  <h3>Glossary terms used</h3>
+  <p><a href="../../glossary.html#bundle-resource">bundle resource</a> · <a href="../../glossary.html#resource-reference">resource reference</a> · <a href="../../glossary.html#bundle">bundle</a></p>
+  <h3>Official docs</h3>
+  <ul>
+    <li><a href="https://docs.databricks.com/aws/en/dev-tools/bundles/resources">Bundle resources</a></li>
+    <li><a href="https://docs.databricks.com/aws/en/dev-tools/bundles/reference">Bundle configuration reference</a></li>
+    <li><a href="https://docs.databricks.com/aws/en/dev-tools/bundles/examples">Bundle configuration examples</a></li>
+  </ul>
+  <p class="cap">Last verified: 16 November 2026</p>
+</section>
+
+</main>
+
+<script>
+(function () {
+  var C = window.Course, $ = function (id) { return document.getElementById(id); }, L = $('dLog');
+  function st() { return { s: $('rSchema').checked, p: $('rPipe').checked, j: $('rJob').checked, typo: $('rTypo').checked }; }
+  function draw() {
+    var k = st(), y = [];
+    if (k.s) y.push('  schemas:\n    silver:\n      name: silver');
+    if (k.p) y.push('  pipelines:\n    sales:\n      schema: ' + (k.s ? '${resources.schemas.silver.name}' : 'silver'));
+    if (k.j) y.push('  jobs:\n    nightly:\n      tasks:\n        - pipeline_task:\n            pipeline_id: ${resources.pipelines.' + (k.typo ? 'sale' : 'sales') + '.id}');
+    $('rYml').textContent = y.join('\n') || '  (empty)';
+  }
+  ['rSchema', 'rPipe', 'rJob', 'rTypo'].forEach(function (id) { $(id).onchange = draw; });
+  $('rGo').onclick = function () {
+    var k = st(), errs = [], rows = [];
+    if (k.j && (!k.p || k.typo)) errs.push('job nightly: unknown reference resources.pipelines.' + (k.typo ? 'sale' : 'sales'));
+    if (k.s) rows.push({ resource: 'schemas.silver', becomes: 'bakery.silver' });
+    if (k.p) rows.push({ resource: 'pipelines.sales', becomes: 'pipeline id 7f3a' + (k.s ? ', writes to silver' : ', schema typed by hand') });
+    if (k.j && !errs.length) rows.push({ resource: 'jobs.nightly', becomes: 'job running pipeline 7f3a' });
+    if (errs.length) {
+      $('rOut').innerHTML = '<p class="note trap">' + C.esc(errs[0]) + '</p>';
+      C.log(L, 'bad', 'Validate failed: ' + errs[0]); return;
+    }
+    if (!rows.length) { $('rOut').innerHTML = '<p class="note">Nothing to deploy.</p>'; C.log(L, 'skip', 'Validate: no resources.'); return; }
+    $('rOut').innerHTML = C.table(rows);
+    C.log(L, 'ok', 'Validate OK: ' + rows.length + ' resource(s) would be deployed.');
+    C.bump($('rOut'));
+  };
+  $('rReset').onclick = function () { L.innerHTML = ''; $('rOut').innerHTML = ''; };
+  draw();
+})();
+</script>
+</body>
+</html>

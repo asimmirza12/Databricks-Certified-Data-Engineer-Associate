@@ -79,10 +79,10 @@
     ["04", "what-are-bundles", "What are Declarative Automation Bundles?", 1],
     ["05", "bundle-targets", "Targets: dev, test and prod", 1],
     ["06", "bundle-variables-overrides", "Variables and overrides", 1],
-    ["07", "bundle-resources", "Bundle resources: jobs, pipelines and more", 0],
-    ["08", "databricks-cli", "The Databricks CLI: install, log in, basic commands", 0],
-    ["09", "bundle-commands", "Bundle commands: validate, deploy, run, destroy", 0],
-    ["10", "automated-ci-cd", "Automated CI/CD: deploying from a pipeline", 0]
+    ["07", "bundle-resources", "Bundle resources: jobs, pipelines and more", 1],
+    ["08", "databricks-cli", "The Databricks CLI: install, log in, basic commands", 1],
+    ["09", "bundle-commands", "Bundle commands: validate, deploy, run, destroy", 1],
+    ["10", "automated-ci-cd", "Automated CI/CD: deploying from a pipeline", 1]
   ]},
   {n:"06", slug:"troubleshooting-monitoring-optimization", title:"Troubleshooting, Monitoring and Optimization", weight:10, lessons:[
     ["01", "run-history-and-baselines", "Run history: comparing a run with its normal", 0],

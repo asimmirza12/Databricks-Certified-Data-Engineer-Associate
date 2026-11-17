@@ -47,12 +47,15 @@
     <div id="bronze"><dt>Bronze</dt><dd>The layer that holds raw data exactly as it arrived. <span class="cap">First used in 00-10.</span></dd></div>
     <div id="bucket"><dt>Bucket</dt><dd>The top-level container for objects in Amazon S3 and Google Cloud Storage. Azure calls it a container. <span class="cap">First used in 00-06.</span></dd></div>
     <div id="bundle"><dt>Bundle (Declarative Automation Bundle)</dt><dd>A folder holding code plus a databricks.yml file that describes jobs, pipelines and other resources, so they can be deployed as one unit. Formerly Databricks Asset Bundles. <span class="cap">First used in 05-04.</span></dd></div>
+    <div id="bundle-resource"><dt>Bundle resource</dt><dd>One Databricks object, such as a job, pipeline or schema, described under resources in a bundle and identified by a resource key. <span class="cap">First used in 05-07.</span></dd></div>
+    <div id="bundle-template"><dt>Bundle template</dt><dd>A ready-made starting layout for a new bundle, used by databricks bundle init, such as default-python. <span class="cap">First used in 05-09.</span></dd></div>
     <div id="bundle-variable"><dt>Bundle variable</dt><dd>A named placeholder in databricks.yml, used as ${var.name} and filled in when the bundle is deployed. <span class="cap">First used in 05-06.</span></dd></div>
     <div id="cast"><dt>Cast</dt><dd>Converting a value from one data type to another, for example text to a number. <span class="cap">First used in 03-03.</span></dd></div>
     <div id="catalog"><dt>Catalog</dt><dd>The first level of a data name in Unity Catalog. It contains schemas. <span class="cap">First used in 00-09.</span></dd></div>
     <div id="cdc"><dt>Change data capture (CDC)</dt><dd>Reading a source database's own log of inserts, updates and deletes, and replaying them in the target. <span class="cap">First used in 02-01.</span></dd></div>
     <div id="check-constraint"><dt>CHECK constraint</dt><dd>A table constraint that refuses any write where a stated condition is not true. <span class="cap">First used in 03-16.</span></dd></div>
     <div id="checkpoint"><dt>Checkpoint</dt><dd>Two meanings. (1) In streaming: a saved bookmark of how far an incremental or streaming job has read, so the next run continues from there. (2) In a Delta transaction log: a Parquet file that sums up the table's state at one version, so readers need not replay every commit. <span class="cap">First used in 00-04.</span></dd></div>
+    <div id="ci-cd"><dt>CI/CD</dt><dd>Continuous integration and continuous delivery: checking every proposed change automatically, then sending passing changes to the next environment without manual copying. <span class="cap">First used in 05-10.</span></dd></div>
     <div id="classic-compute-plane"><dt>Classic compute plane</dt><dd>Compute that runs on machines in your own cloud account and network. <span class="cap">First used in 01-01.</span></dd></div>
     <div id="clone"><dt>Clone</dt><dd>Copying a remote repository to a local or workspace folder. <span class="cap">First used in 05-02.</span></dd></div>
     <div id="cluster"><dt>Cluster</dt><dd>A group of computers working together as one: a driver plus executors. Also the older name for a classic compute resource on Databricks. <span class="cap">First used in 00-05.</span></dd></div>
@@ -64,6 +67,7 @@
     <div id="compute"><dt>Compute</dt><dd>The computers that run your code. On Databricks you switch compute on when needed and pay while it is on. <span class="cap">First used in 00-06.</span></dd></div>
     <div id="compute-plane"><dt>Compute plane</dt><dd>Where your data is actually processed, on Spark drivers and executors. Older material calls it the data plane. <span class="cap">First used in 01-01.</span></dd></div>
     <div id="condition"><dt>Condition</dt><dd>A test that is true, false or unknown for each row, used in a filter or a join. <span class="cap">First used in 03-08.</span></dd></div>
+    <div id="configuration-profile"><dt>Configuration profile</dt><dd>A named set of connection details (workspace host and sign-in method) saved by the Databricks CLI in ~/.databrickscfg. <span class="cap">First used in 05-08.</span></dd></div>
     <div id="connection"><dt>Connection</dt><dd>A Unity Catalog object that stores the address and login details for one outside system. Using it needs the <code>USE CONNECTION</code> privilege. <span class="cap">First used in 02-03.</span></dd></div>
     <div id="connector"><dt>Connector</dt><dd>Software that knows how to read from one kind of source. <span class="cap">First used in 02-03.</span></dd></div>
     <div id="control-plane"><dt>Control plane</dt><dd>The services Databricks runs in its own account to manage everything: the web application, notebooks, job scheduling and starting compute. It does not process your data. <span class="cap">First used in 01-01.</span></dd></div>
@@ -182,6 +186,7 @@
     <div id="remote"><dt>Remote</dt><dd>A copy of a repository on a shared server, such as GitHub or Azure DevOps. <span class="cap">First used in 05-01.</span></dd></div>
     <div id="repository"><dt>Repository (repo)</dt><dd>A project and its complete history of commits. <span class="cap">First used in 05-01.</span></dd></div>
     <div id="rescued-data"><dt>Rescued data column</dt><dd>A spare column, <code>_rescued_data</code>, where Auto Loader keeps data that did not fit the schema: new columns, wrong types, wrong letter case. <span class="cap">First used in 02-07.</span></dd></div>
+    <div id="resource-reference"><dt>Resource reference</dt><dd>A placeholder such as ${resources.pipelines.sales.id} that points at another resource in the same bundle and becomes its real value at deploy. <span class="cap">First used in 05-07.</span></dd></div>
     <div id="rest-api"><dt>REST API</dt><dd>A common way for programs to request data from a web address. The answer usually comes back as JSON. <span class="cap">First used in 02-10.</span></dd></div>
     <div id="retry"><dt>Retry</dt><dd>An automatic second or later attempt at a failed task, within a limit set by max_retries. <span class="cap">First used in 04-04.</span></dd></div>
     <div id="row"><dt>Row</dt><dd>One record in a table: one order, one customer, one event. <span class="cap">First used in 00-02.</span></dd></div>
@@ -200,6 +205,7 @@
     <div id="semi-structured-data"><dt>Semi-structured data</dt><dd>Data with labels but a loose shape, where records can differ and can contain lists or sub-records. JSON is the usual example. <span class="cap">First used in 00-02.</span></dd></div>
     <div id="serverless"><dt>Serverless</dt><dd>Compute that Databricks sets up, sizes and runs for you. You choose it and it is ready in seconds. <span class="cap">First used in 00-07.</span></dd></div>
     <div id="serverless-compute-plane"><dt>Serverless compute plane</dt><dd>Compute that runs on machines in the Databricks account, in the same region as your workspace. <span class="cap">First used in 01-01.</span></dd></div>
+    <div id="service-principal"><dt>Service principal</dt><dd>A non-human identity used by automated tools and jobs, so they do not run as a person. <span class="cap">First used in 05-08.</span></dd></div>
     <div id="shuffle"><dt>Shuffle</dt><dd>Redistributing rows between partitions and machines so that rows with the same key meet. Used by joins, grouping and sorting, and the slowest step in many jobs. <span class="cap">First used in 03-05.</span></dd></div>
     <div id="silver"><dt>Silver</dt><dd>The layer that holds cleaned, checked, deduplicated data with proper types. <span class="cap">First used in 00-10.</span></dd></div>
     <div id="sku"><dt>SKU</dt><dd>A price label for one kind of usage. Each compute type has its own SKU and its own price per DBU. <span class="cap">First used in 01-05.</span></dd></div>
@@ -224,6 +230,7 @@
     <div id="task-dependency"><dt>Dependency (task)</dt><dd>A link that makes one task wait for another, set with depends_on. <span class="cap">First used in 04-03.</span></dd></div>
     <div id="task-value"><dt>Task value</dt><dd>A small result set by one task and read by later tasks in the same run, referenced as {{tasks.task_key.values.name}}. <span class="cap">First used in 04-05.</span></dd></div>
     <div id="temp-view"><dt>Temporary view</dt><dd>A name given to a DataFrame so that SQL in the same session can use it. It is not stored in the catalog and disappears with the session. <span class="cap">First used in 03-01.</span></dd></div>
+    <div id="terminal"><dt>Terminal</dt><dd>A window where you type text commands and read the replies. <span class="cap">First used in 05-08.</span></dd></div>
     <div id="three-level-namespace"><dt>Three-level namespace</dt><dd>The naming scheme <code>catalog.schema.object</code> used for everything in Unity Catalog. <span class="cap">First used in 00-09.</span></dd></div>
     <div id="time-based-trigger"><dt>Time-based trigger</dt><dd>A trigger that starts runs at set times, whether or not new data has arrived. A scheduled trigger is time-based. <span class="cap">First used in 04-11.</span></dd></div>
     <div id="time-travel"><dt>Time travel</dt><dd>Reading a Delta table as it was at an earlier version or time. <span class="cap">First used in 00-08.</span></dd></div>
@@ -239,7 +246,9 @@
     <div id="view"><dt>View</dt><dd>A saved query that you can read like a table. It holds no data of its own. <span class="cap">First used in 00-09.</span></dd></div>
     <div id="volume"><dt>Volume</dt><dd>A Unity Catalog object that holds files which are not tables, reached by a path starting <code>/Volumes/</code>. <span class="cap">First used in 00-09.</span></dd></div>
     <div id="window-function"><dt>Window function</dt><dd>A function that works out a value for each row by looking at a group of related rows, without collapsing them. <code>row_number()</code> is the common one. <span class="cap">First used in 03-10.</span></dd></div>
+    <div id="workflow-file"><dt>Workflow file</dt><dd>A text file kept in a repository that tells a CI service what to run and when, such as on every pull request. <span class="cap">First used in 05-10.</span></dd></div>
     <div id="workload"><dt>Workload</dt><dd>A piece of work that needs compute, such as a dashboard, a scheduled job or a session of exploring data. <span class="cap">First used in 01-06.</span></dd></div>
+    <div id="workload-identity-federation"><dt>Workload identity federation</dt><dd>A way for an automated job to prove who it is with a short-lived token from its CI service, so no long-lived password or token is stored. <span class="cap">First used in 05-10.</span></dd></div>
     <div id="workspace"><dt>Workspace</dt><dd>The Databricks website you log in to. It holds notebooks, jobs and settings, organised in folders. <span class="cap">First used in 00-07.</span></dd></div>
     <div id="workspace-storage"><dt>Workspace storage</dt><dd>A storage bucket in your cloud account that holds a classic workspace's own housekeeping files, such as job results and logs. It is separate from your table data. <span class="cap">First used in 01-01.</span></dd></div>
     <div id="yaml"><dt>YAML</dt><dd>A plain-text format for settings that uses indentation and name: value pairs. Bundle configuration is written in YAML. <span class="cap">First used in 05-04.</span></dd></div>

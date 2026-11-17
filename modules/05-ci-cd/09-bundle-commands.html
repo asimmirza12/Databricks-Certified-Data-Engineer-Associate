@@ -1,0 +1,250 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>05-09 Bundle commands: validate, deploy, run, destroy · DE Associate course</title>
+<link rel="stylesheet" href="../../assets/course.css">
+<script src="../../assets/course.js"></script>
+</head>
+<body data-lesson="05-09">
+
+<aside class="disclaimer" aria-label="Disclaimer"><strong>Learning resource only.</strong> This is an independent, unofficial study guide made for learning purposes. It is not affiliated with, endorsed by or sponsored by Databricks. Databricks features change often, so always check the details in the <a href="https://docs.databricks.com">official Databricks documentation</a> and the official exam guide on databricks.com before relying on anything here. Databricks and related names are trademarks of their respective owners.</aside>
+
+<main class="wrap">
+
+<header class="hero">
+  <div class="eyebrow">Module 05 · Implementing CI/CD · Lesson 9 of 10</div>
+  <h1>Bundle commands: validate, deploy, run, destroy</h1>
+  <p class="lede">A bundle's whole life is handled by a handful of commands. Start it, check it, send it to a workspace, run what it deployed, and finally clean it all away.</p>
+  <dl class="where">
+    <div><dt>Module</dt><dd>05 Implementing CI/CD (10% of the exam)</dd></div>
+    <div><dt>Exam objective</dt><dd>5.4 Use the Databricks CLI to check, deploy and run bundles. This lesson covers each <code>databricks bundle</code> command and the order they are used in.</dd></div>
+    <div><dt>Time to read</dt><dd>About 13 minutes</dd></div>
+    <div><dt>Before this</dt><dd><a href="04-what-are-bundles.html">05-04 What are bundles?</a> and <a href="08-databricks-cli.html">05-08 The Databricks CLI</a></dd></div>
+  </dl>
+</header>
+
+<section id="idea">
+  <div class="sec-num">The idea</div>
+  <h2>Five verbs for a bundle's life</h2>
+  <p>All bundle commands start with <code>databricks bundle</code> and are run from the bundle's folder. Most take <code>-t &lt;target&gt;</code>.</p>
+  <ul>
+    <li><code>init</code>: creates a new bundle folder from a <a href="../../glossary.html#bundle-template">template</a>, a ready-made starting layout such as <code>default-python</code>.</li>
+    <li><code>validate</code>: reads the configuration and checks it, without touching the workspace. Errors such as an unknown reference or a missing variable show up here. Run it first, every time.</li>
+    <li><code>deploy</code>: uploads the files and creates, updates or removes resources in the target's workspace so they match the bundle.</li>
+    <li><code>run</code>: starts one deployed job or pipeline by its resource key, such as <code>databricks bundle run nightly</code>. It runs what is <em>deployed</em>, not your local edits.</li>
+    <li><code>destroy</code>: permanently deletes everything the bundle deployed to that target. It asks for confirmation unless you add <code>--auto-approve</code>.</li>
+  </ul>
+  <p>Two helpers are worth knowing: <code>summary</code> lists what is deployed with links, and <code>generate</code> writes bundle YAML for a job or pipeline that already exists in the workspace.</p>
+  <div class="analogy">
+    <span class="tag">Everyday analogy</span>
+    <p><strong>Opening a pop-up stall.</strong> init: unpack the starter kit. validate: check the plan against the rules before driving out. deploy: set up the stall exactly as planned. run: open for business. destroy: pack everything away and leave the pitch empty.</p>
+  </div>
+</section>
+
+<section id="how">
+  <div class="sec-num">How it works</div>
+  <h2>The usual loop</h2>
+  <div class="stage">
+    <svg viewBox="0 0 360 250" role="img" aria-label="The bundle lifecycle: init once, then a loop of edit, validate, deploy and run. Validate sends failures back to edit. Destroy ends the cycle and removes deployed resources.">
+      <defs><path id="bl" d="M60 120 H140 H220 H300"/><path id="bb" d="M300 142 C 300 210, 60 210, 60 142"/></defs>
+      <g class="wire"><use href="#bl"/><use href="#bb"/><path d="M60 60 V98"/><path d="M300 98 V60"/></g>
+      <g class="mover">
+        <circle r="5" class="dot"><animateMotion dur="3s" repeatCount="indefinite"><mpath href="#bl"/></animateMotion></circle>
+        <circle r="5" class="dot-ok"><animateMotion dur="3s" begin="-1.5s" repeatCount="indefinite"><mpath href="#bb"/></animateMotion></circle>
+      </g>
+      <rect class="box-soft" x="20" y="22" width="80" height="38" rx="7"/><text class="mono" x="60" y="46" text-anchor="middle">init</text>
+      <rect class="box" x="20" y="100" width="80" height="40" rx="7"/><text class="mono" x="60" y="125" text-anchor="middle">edit</text>
+      <rect class="box" x="100" y="100" width="80" height="40" rx="7"/><text class="mono" x="140" y="125" text-anchor="middle">validate</text>
+      <rect class="box" x="180" y="100" width="80" height="40" rx="7"/><text class="mono" x="220" y="125" text-anchor="middle">deploy</text>
+      <rect class="box-acc" x="260" y="100" width="80" height="40" rx="7"/><text class="mono" x="300" y="125" text-anchor="middle">run</text>
+      <rect class="box-soft" x="260" y="22" width="80" height="38" rx="7"/><text class="mono" x="300" y="46" text-anchor="middle">destroy</text>
+      <text class="t-m" x="180" y="232" text-anchor="middle">change something, go round again</text>
+    </svg>
+    <p class="cap">init happens once. The edit, validate, deploy, run loop happens many times. destroy is the end.</p>
+  </div>
+</section>
+
+<section id="demo">
+  <div class="sec-num">Try it</div>
+  <h2>Drive a bundle</h2>
+  <p>Run the commands against the dev target. Try running before deploying, editing without redeploying, or deploying with a broken file.</p>
+  <div class="stage">
+    <div class="ctrls">
+      <button id="bVal" type="button">validate</button>
+      <button id="bDep" type="button">deploy</button>
+      <button id="bRun" type="button" class="primary">run nightly</button>
+      <button id="bSum" type="button">summary</button>
+      <button id="bDes" type="button">destroy --auto-approve</button>
+      <button id="bEdit" type="button">Edit code locally</button>
+      <label class="tog"><input type="checkbox" id="bBroken"> YAML has an unknown reference</label>
+      <button id="bReset" type="button">Clear log</button>
+    </div>
+    <div class="panes">
+      <div class="pane"><h4>Local folder</h4><div id="bLocal"></div></div>
+      <div class="pane"><h4>dev workspace</h4><div id="bWs"></div></div>
+    </div>
+    <div class="log" id="dLog" role="log" aria-label="What happened"></div>
+  </div>
+</section>
+
+<section id="code">
+  <div class="sec-num">Code</div>
+  <h2>A full cycle in the terminal</h2>
+<pre><code>databricks bundle init default-python        <span class="c-c"># answer the prompts; creates a folder</span>
+cd bakery_pipelines
+
+databricks bundle validate                    <span class="c-c"># default target (dev)</span>
+databricks bundle deploy -t dev
+databricks bundle run -t dev nightly          <span class="c-c"># "nightly" is the resource key</span>
+databricks bundle summary -t dev              <span class="c-c"># what is deployed, with links</span>
+
+<span class="c-c"># bring an existing UI-built job into the bundle</span>
+databricks bundle generate job --existing-job-id 123456
+
+<span class="c-c"># remove everything this bundle deployed to dev (cannot be undone)</span>
+databricks bundle destroy -t dev --auto-approve</code></pre>
+  <p class="note">Each command also takes <code>-p</code> to choose a CLI profile and <code>--var</code> for variables. Check flags with <code>databricks bundle &lt;command&gt; --help</code>.</p>
+</section>
+
+<section id="whatif">
+  <div class="sec-num">What if I change this?</div>
+  <h2>Command choices and their effects</h2>
+  <div class="tbl"><table class="whatif">
+    <tr><th>Change</th><th>Effect</th></tr>
+    <tr><td>Skip <code>validate</code></td><td><code>deploy</code> still checks, but you find problems later and nothing tells you about warnings first.</td></tr>
+    <tr><td>Edit code, then <code>run</code> without <code>deploy</code></td><td>The old deployed code runs.</td></tr>
+    <tr><td><code>run</code> before ever deploying</td><td>Fails: the resource does not exist in the workspace.</td></tr>
+    <tr><td><code>destroy</code> without <code>--auto-approve</code></td><td>Asks you to confirm. In CI there is no one to answer, so it waits or fails.</td></tr>
+    <tr><td>Leave out <code>-t</code></td><td>The default target is used.</td></tr>
+    <tr><td><code>run</code> with a pipeline key</td><td>Starts a pipeline update instead of a job run.</td></tr>
+  </table></div>
+</section>
+
+<section id="compare">
+  <div class="sec-num">Compare</div>
+  <h2>What each command touches</h2>
+  <div class="tbl"><table>
+    <tr><th>Command</th><th>Reads local files</th><th>Changes the workspace</th><th>Runs code</th></tr>
+    <tr><td>init</td><td>No (creates them)</td><td>No</td><td>No</td></tr>
+    <tr><td>validate</td><td>Yes</td><td>No</td><td>No</td></tr>
+    <tr><td>deploy</td><td>Yes</td><td>Yes: creates, updates, removes</td><td>No</td></tr>
+    <tr><td>run</td><td>Only to find the key</td><td>Starts a run</td><td>Yes</td></tr>
+    <tr><td>destroy</td><td>Yes</td><td>Yes: deletes everything deployed</td><td>No</td></tr>
+  </table></div>
+</section>
+
+<section id="scenarios">
+  <div class="sec-num">Real life</div>
+  <h2>Commands in practice</h2>
+  <div class="tbl"><table>
+    <tr><th>Scenario</th><th>What happens</th><th>Fix</th></tr>
+    <tr><td>"I fixed the bug but the job still fails"</td><td>The fix was never deployed</td><td>deploy, then run</td></tr>
+    <tr><td>A pull request breaks the YAML</td><td>Caught only at deploy time</td><td>Run validate in CI on every pull request</td></tr>
+    <tr><td>A feature is finished; the dev copies clutter the workspace</td><td>Old dev resources stay forever</td><td>destroy -t dev</td></tr>
+    <tr><td>A team has dozens of UI-built jobs</td><td>Writing YAML by hand is slow</td><td>generate, then bind or redeploy</td></tr>
+  </table></div>
+</section>
+
+<section id="traps">
+  <div class="sec-num">Don't confuse these</div>
+  <h2>Command traps</h2>
+  <div class="grid2">
+    <div class="card trap"><span class="tag">deploy vs run</span><p>deploy sets things up. run starts them. deploy never runs a job by itself.</p></div>
+    <div class="card trap"><span class="tag">validate is local</span><p>It checks configuration; it does not prove the code works.</p></div>
+    <div class="card trap"><span class="tag">destroy is final</span><p>It deletes the deployed jobs, pipelines and files for that target. Use it on purpose.</p></div>
+    <div class="card trap"><span class="tag">run uses keys</span><p>Pass the resource key from the YAML, not the display name or a job ID.</p></div>
+  </div>
+</section>
+
+<section id="quiz">
+  <div class="sec-num">Check yourself</div>
+  <h2>Quiz</h2>
+  <div class="quiz">
+    <fieldset>
+      <legend>1. Which command checks the configuration without changing the workspace?</legend>
+      <label><input type="radio" data-correct> databricks bundle validate</label>
+      <label><input type="radio"> databricks bundle deploy</label>
+      <label><input type="radio"> databricks bundle run</label>
+      <p class="explain" hidden>validate only reads and checks. deploy and run change things.</p>
+    </fieldset>
+    <fieldset>
+      <legend>2. You edit a notebook locally and run <code>databricks bundle run nightly</code>. Which code runs?</legend>
+      <label><input type="radio"> The edited local code</label>
+      <label><input type="radio" data-correct> The code from the last deploy</label>
+      <label><input type="radio"> Nothing; run deploys first</label>
+      <p class="explain" hidden>run starts what is deployed. Deploy first to send your edit.</p>
+    </fieldset>
+    <fieldset>
+      <legend>3. What does <code>--auto-approve</code> do on destroy?</legend>
+      <label><input type="radio"> Keeps a backup</label>
+      <label><input type="radio" data-correct> Skips the confirmation prompt</label>
+      <label><input type="radio"> Only deletes dev</label>
+      <p class="explain" hidden>Useful in scripts, and dangerous for the same reason.</p>
+    </fieldset>
+    <fieldset>
+      <legend>4. In the demo, what happened when you deployed with the broken YAML ticked?</legend>
+      <label><input type="radio"> It deployed anyway</label>
+      <label><input type="radio" data-correct> It stopped with an error and the workspace stayed as it was</label>
+      <label><input type="radio"> It destroyed the old deployment</label>
+      <p class="explain" hidden>Configuration errors stop the deploy before anything changes.</p>
+    </fieldset>
+  </div>
+</section>
+
+<section id="wrap">
+  <div class="sec-num">Wrap up</div>
+  <h2>Key takeaways</h2>
+  <ul>
+    <li><code>init</code> starts a bundle from a template.</li>
+    <li>The loop is edit, <code>validate</code>, <code>deploy</code>, <code>run</code>, with <code>-t</code> choosing the target.</li>
+    <li><code>run</code> starts what is deployed, by resource key.</li>
+    <li><code>destroy</code> permanently removes the target's deployment; <code>--auto-approve</code> skips the prompt.</li>
+  </ul>
+  <h3>Glossary terms used</h3>
+  <p><a href="../../glossary.html#bundle-template">bundle template</a> · <a href="../../glossary.html#bundle">bundle</a> · <a href="../../glossary.html#databricks-cli">Databricks CLI</a> · <a href="../../glossary.html#target">target</a></p>
+  <h3>Official docs</h3>
+  <ul>
+    <li><a href="https://docs.databricks.com/aws/en/dev-tools/cli/bundle-commands">bundle command group</a></li>
+    <li><a href="https://docs.databricks.com/aws/en/dev-tools/bundles/work-tasks">Develop bundles</a></li>
+  </ul>
+  <p class="cap">Last verified: 16 November 2026</p>
+</section>
+
+</main>
+
+<script>
+(function () {
+  var C = window.Course, $ = function (id) { return document.getElementById(id); }, L = $('dLog');
+  var S = { local: 1, ws: null, runs: 0 };
+  function draw() {
+    $('bLocal').innerHTML = '<div class="item">databricks.yml' + ($('bBroken').checked ? ' (broken reference)' : '') + '</div><div class="item">src/nightly.py: version ' + S.local + '</div>';
+    $('bWs').innerHTML = S.ws === null ? '<div class="item off">nothing deployed</div>' :
+      '<div class="item' + (S.ws === S.local ? '' : ' hot') + '">[dev sam] nightly: code version ' + S.ws + (S.ws === S.local ? '' : ' (out of date)') + '</div><div class="item">runs so far: ' + S.runs + '</div>';
+  }
+  function bad() { return $('bBroken').checked; }
+  $('bVal').onclick = function () { bad() ? C.log(L, 'bad', 'validate: Error: unknown reference resources.pipelines.sale. Workspace untouched.') : C.log(L, 'ok', 'validate: Validation OK. Nothing changed in the workspace.'); };
+  $('bDep').onclick = function () {
+    if (bad()) { C.log(L, 'bad', 'deploy: stopped by a configuration error. Workspace unchanged.'); return; }
+    var was = S.ws; S.ws = S.local; draw(); C.bump($('bWs'));
+    C.log(L, 'ok', 'deploy -t dev: ' + (was === null ? 'created job [dev sam] nightly.' : was === S.local ? 'nothing changed.' : 'updated code from version ' + was + ' to ' + S.local + '.'));
+  };
+  $('bRun').onclick = function () {
+    if (S.ws === null) { C.log(L, 'bad', 'run nightly: Error: resource not deployed. Run deploy first.'); return; }
+    S.runs++; draw();
+    C.log(L, S.ws === S.local ? 'ok' : 'skip', 'run nightly: ran code version ' + S.ws + (S.ws === S.local ? '.' : ', but your local copy is version ' + S.local + '. Deploy to send it.'));
+  };
+  $('bSum').onclick = function () { C.log(L, S.ws === null ? 'skip' : 'ok', 'summary: ' + (S.ws === null ? 'no resources deployed.' : 'jobs.nightly deployed as [dev sam] nightly, code version ' + S.ws + '.')); };
+  $('bDes').onclick = function () {
+    if (S.ws === null) { C.log(L, 'skip', 'destroy: nothing to remove.'); return; }
+    S.ws = null; S.runs = 0; draw(); C.log(L, 'bad', 'destroy --auto-approve: deleted the job and its files from dev. No prompt was shown.');
+  };
+  $('bEdit').onclick = function () { S.local++; draw(); C.log(L, 'skip', 'Edited src/nightly.py locally: now version ' + S.local + '. The workspace does not know yet.'); };
+  $('bBroken').onchange = draw;
+  $('bReset').onclick = function () { L.innerHTML = ''; };
+  draw();
+})();
+</script>
+</body>
+</html>
