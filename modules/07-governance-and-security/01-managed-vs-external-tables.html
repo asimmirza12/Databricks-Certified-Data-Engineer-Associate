@@ -1,0 +1,264 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>07-01 Managed vs external tables · DE Associate course</title>
+<link rel="stylesheet" href="../../assets/course.css">
+<script src="../../assets/course.js"></script>
+</head>
+<body data-lesson="07-01">
+
+<aside class="disclaimer" aria-label="Disclaimer"><strong>Learning resource only.</strong> This is an independent, unofficial study guide made for learning purposes. It is not affiliated with, endorsed by or sponsored by Databricks. Databricks features change often, so always check the details in the <a href="https://docs.databricks.com">official Databricks documentation</a> and the official exam guide on databricks.com before relying on anything here. Databricks and related names are trademarks of their respective owners.</aside>
+
+<main class="wrap">
+
+<header class="hero">
+  <div class="eyebrow">Module 07 · Governance and Security · Lesson 1 of 11</div>
+  <h1>Managed vs external tables</h1>
+  <p class="lede">Every Unity Catalog table has two parts: its description in the catalog, and its data files in cloud storage. Who looks after those files decides whether the table is managed or external. That choice changes what happens when you drop it.</p>
+  <dl class="where">
+    <div><dt>Module</dt><dd>07 Governance and Security (15% of the exam)</dd></div>
+    <div><dt>Exam objective</dt><dd>7.1 Tell managed tables from external tables. This lesson covers where each keeps its data, how to create each, and what DROP and UNDROP do.</dd></div>
+    <div><dt>Time to read</dt><dd>About 12 minutes</dd></div>
+    <div><dt>Before this</dt><dd><a href="../00-foundations/09-unity-catalog-basics.html">00-09 Unity Catalog basics</a> and <a href="../01-databricks-platform/03-unity-catalog-object-model.html">01-03 Unity Catalog object model</a></dd></div>
+  </dl>
+</header>
+
+<section id="idea">
+  <div class="sec-num">The idea</div>
+  <h2>Who owns the files?</h2>
+  <p>A <a href="../../glossary.html#managed-table">managed table</a> lets Unity Catalog look after everything. You do not give a path. The data files go into the <a href="../../glossary.html#managed-storage-location">managed storage location</a> set on the metastore, catalog or schema. Unity Catalog handles reads, writes, layout and clean-up. Managed tables are the default and the type Databricks recommends. Features such as <a href="../06-troubleshooting-monitoring-optimization/09-predictive-optimization.html">predictive optimization</a> only work on them.</p>
+  <p>An <a href="../../glossary.html#external-table">external table</a> keeps its files at a path you choose, given with <code>LOCATION</code>. That path must sit inside a registered <a href="../../glossary.html#external-location">external location</a>. Unity Catalog still governs who can query the table, but you look after the files. External tables make sense when other tools outside Databricks must read the files directly, or when the format is one managed tables do not support (such as CSV or JSON).</p>
+  <p>The big difference shows up on <code>DROP TABLE</code>:</p>
+  <ul>
+    <li><strong>Managed</strong>: the table disappears and its files are deleted, after a recovery period of 7 days by default. Within that period, <a href="../../glossary.html#undrop">UNDROP TABLE</a> brings it back.</li>
+    <li><strong>External</strong>: only the catalog entry is removed. The files stay in your storage until you delete them yourself.</li>
+  </ul>
+  <div class="analogy">
+    <span class="tag">Everyday analogy</span>
+    <p><strong>Storing the bakery's flour.</strong> A managed table is the bakery's own storeroom: the shop decides where sacks go, cleans up, and throws out empty sacks (after keeping them a week in case of mistakes). An external table is flour kept in a rented unit across town: the shop's inventory lists it, but if you cross it off the list, the sacks are still sitting in the unit.</p>
+  </div>
+</section>
+
+<section id="how">
+  <div class="sec-num">How it works</div>
+  <h2>Same catalog entry, different file owner</h2>
+  <div class="stage">
+    <svg viewBox="0 0 360 240" role="img" aria-label="Unity Catalog at the top holds two table entries. The managed table points to the managed storage location chosen by Unity Catalog. The external table points to a path inside an external location you chose. On DROP, managed files are purged after the recovery period while external files remain.">
+      <defs><path id="me1" d="M110 80 V160"/><path id="me2" d="M250 80 V160"/></defs>
+      <rect class="box-soft" x="60" y="10" width="240" height="30" rx="6"/><text class="t-b" x="180" y="30" text-anchor="middle">Unity Catalog: bakery.silver</text>
+      <rect class="box" x="50" y="50" width="120" height="30" rx="6"/><text class="mono" x="110" y="70" text-anchor="middle">sales (managed)</text>
+      <rect class="box" x="190" y="50" width="120" height="30" rx="6"/><text class="mono" x="250" y="70" text-anchor="middle">pos_csv (external)</text>
+      <g class="wire"><use href="#me1"/><use href="#me2"/></g>
+      <rect class="box-acc" x="20" y="160" width="160" height="40" rx="6"/><text class="t-m" x="100" y="178" text-anchor="middle">managed storage location</text><text class="t-m" x="100" y="193" text-anchor="middle">chosen by Unity Catalog</text>
+      <rect class="box-soft" x="190" y="160" width="160" height="40" rx="6"/><text class="t-m" x="270" y="178" text-anchor="middle">s3://bakery-pos/raw/</text><text class="t-m" x="270" y="193" text-anchor="middle">your path (LOCATION)</text>
+      <text class="t-m" x="100" y="222" text-anchor="middle">DROP: files purged later</text>
+      <text class="t-m" x="270" y="222" text-anchor="middle">DROP: files stay</text>
+      <g class="mover">
+        <circle r="5" class="dot"><animateMotion dur="2.4s" repeatCount="indefinite"><mpath href="#me1"/></animateMotion></circle>
+        <circle r="5" class="dot-ok"><animateMotion dur="2.4s" begin="-1.2s" repeatCount="indefinite"><mpath href="#me2"/></animateMotion></circle>
+      </g>
+    </svg>
+    <p class="cap">Both tables are governed the same way. Only the file lifecycle differs.</p>
+  </div>
+</section>
+
+<section id="demo">
+  <div class="sec-num">Try it</div>
+  <h2>Create, drop and undrop</h2>
+  <p>Create the <code>sales</code> table as managed or external, drop it, move time forward, and try to bring it back. Watch the catalog and the storage separately.</p>
+  <div class="stage">
+    <div class="ctrls">
+      <label>Type <select id="tType"><option value="managed">managed (no LOCATION)</option><option value="external">external (LOCATION s3://bakery-pos/sales/)</option></select></label>
+      <button id="tCreate" type="button" class="primary">CREATE TABLE</button>
+      <button id="tDrop" type="button">DROP TABLE</button>
+      <button id="tDay" type="button">Wait 3 days</button>
+      <button id="tUndrop" type="button">UNDROP TABLE</button>
+      <button id="tReset" type="button">Reset</button>
+    </div>
+    <div class="panes">
+      <div class="pane"><h4>Unity Catalog</h4><div id="tCat"></div></div>
+      <div class="pane"><h4>Cloud storage</h4><div id="tSto"></div></div>
+    </div>
+    <div class="log" id="tLog" role="log" aria-label="What happened"></div>
+  </div>
+</section>
+
+<section id="code">
+  <div class="sec-num">Code</div>
+  <h2>Creating each kind</h2>
+<pre><code><span class="c-c">-- Managed: no path. Delta by default.</span>
+CREATE TABLE bakery.silver.sales (
+  sale_id   BIGINT,
+  store_id  INT,
+  amount    DECIMAL(10,2)
+);
+
+<span class="c-c">-- External: you give the path. It must be inside an external location</span>
+<span class="c-c">-- on which you hold CREATE EXTERNAL TABLE.</span>
+CREATE TABLE bakery.bronze.pos_csv (
+  sale_id BIGINT, store_id INT, amount DECIMAL(10,2)
+)
+USING CSV
+OPTIONS (header 'true')
+LOCATION 's3://bakery-pos/raw/';
+
+<span class="c-c">-- Which kind is it? Look for Type: MANAGED or EXTERNAL</span>
+DESCRIBE TABLE EXTENDED bakery.silver.sales;
+
+<span class="c-c">-- Dropped a managed table by mistake? List and restore within the recovery period</span>
+SHOW TABLES DROPPED IN bakery.silver;
+UNDROP TABLE bakery.silver.sales;</code></pre>
+  <p class="note">To create either kind you need USE CATALOG, USE SCHEMA and CREATE TABLE. External tables also need CREATE EXTERNAL TABLE on the external location. The recovery period can be changed per catalog or schema (Public Preview); check the docs for current limits.</p>
+</section>
+
+<section id="whatif">
+  <div class="sec-num">What if I change this?</div>
+  <h2>Choices and their effects</h2>
+  <div class="tbl"><table class="whatif">
+    <tr><th>Change</th><th>Effect</th></tr>
+    <tr><td>Leave out <code>LOCATION</code></td><td>Managed table in the schema's managed storage.</td></tr>
+    <tr><td>Add <code>LOCATION</code></td><td>External table at that path.</td></tr>
+    <tr><td>DROP a managed table</td><td>Gone from the catalog; files deleted after the recovery period (7 days by default, purge can take longer).</td></tr>
+    <tr><td>DROP an external table</td><td>Gone from the catalog; files untouched.</td></tr>
+    <tr><td>UNDROP within the recovery period</td><td>Table, columns, properties and privileges come back. Primary and foreign key constraints must be re-added.</td></tr>
+    <tr><td>UNDROP after the recovery period</td><td>Not possible for a managed table; the files were purged.</td></tr>
+  </table></div>
+</section>
+
+<section id="compare">
+  <div class="sec-num">Compare</div>
+  <h2>Managed vs external</h2>
+  <div class="tbl"><table>
+    <tr><th></th><th>Managed</th><th>External</th></tr>
+    <tr><td>Who picks the path</td><td>Unity Catalog</td><td>You, with LOCATION</td></tr>
+    <tr><td>Formats</td><td>Delta (default) or Iceberg</td><td>Delta, Parquet, CSV, JSON, Avro, ORC, text</td></tr>
+    <tr><td>DROP TABLE</td><td>Deletes files after the recovery period</td><td>Leaves files in place</td></tr>
+    <tr><td>Predictive optimization</td><td>Yes</td><td>No</td></tr>
+    <tr><td>Extra privilege to create</td><td>None beyond CREATE TABLE</td><td>CREATE EXTERNAL TABLE on the external location</td></tr>
+    <tr><td>Recommended for</td><td>Most tables</td><td>Files other tools must read directly, or unsupported formats</td></tr>
+  </table></div>
+</section>
+
+<section id="scenarios">
+  <div class="sec-num">Real life</div>
+  <h2>Table types in practice</h2>
+  <div class="tbl"><table>
+    <tr><th>Scenario</th><th>What happens</th><th>Fix</th></tr>
+    <tr><td>Someone drops the managed gold table on Monday</td><td>It vanishes from queries</td><td>UNDROP TABLE within the recovery period</td></tr>
+    <tr><td>An external table is dropped and recreated</td><td>The data is still there, so the new table sees it</td><td>Nothing; that is how external tables behave</td></tr>
+    <tr><td>Storage bills grow after dropping external tables</td><td>Their files were never deleted</td><td>Delete the files at the path yourself</td></tr>
+    <tr><td>A partner tool reads Parquet files straight from S3</td><td>It needs a stable path</td><td>External table, or Delta Sharing</td></tr>
+  </table></div>
+</section>
+
+<section id="traps">
+  <div class="sec-num">Don't confuse these</div>
+  <h2>Table type traps</h2>
+  <div class="grid2">
+    <div class="card trap"><span class="tag">Both are governed</span><p>External does not mean ungoverned. Unity Catalog checks permissions on both.</p></div>
+    <div class="card trap"><span class="tag">DROP is different</span><p>Managed files are purged later; external files stay forever.</p></div>
+    <div class="card trap"><span class="tag">LOCATION decides</span><p>Give a path and you get an external table.</p></div>
+    <div class="card trap"><span class="tag">UNDROP has a window</span><p>7 days by default. After that the managed files are gone.</p></div>
+  </div>
+</section>
+
+<section id="quiz">
+  <div class="sec-num">Check yourself</div>
+  <h2>Quiz</h2>
+  <div class="quiz">
+    <fieldset>
+      <legend>1. You drop an external table. What happens to its data files?</legend>
+      <label><input type="radio"> They are deleted immediately</label>
+      <label><input type="radio"> They are deleted after 7 days</label>
+      <label><input type="radio" data-correct> They stay in your storage</label>
+      <p class="explain" hidden>DROP on an external table only removes the catalog entry.</p>
+    </fieldset>
+    <fieldset>
+      <legend>2. Which statement creates a managed table?</legend>
+      <label><input type="radio" data-correct> CREATE TABLE ... without a LOCATION clause</label>
+      <label><input type="radio"> CREATE TABLE ... LOCATION 's3://...'</label>
+      <label><input type="radio"> CREATE EXTERNAL TABLE ...</label>
+      <p class="explain" hidden>No path means Unity Catalog stores the files in managed storage.</p>
+    </fieldset>
+    <fieldset>
+      <legend>3. A managed table was dropped 2 days ago with the default settings. What can you do?</legend>
+      <label><input type="radio"> Nothing; it is gone</label>
+      <label><input type="radio" data-correct> UNDROP TABLE to restore it</label>
+      <label><input type="radio"> Recreate it with LOCATION</label>
+      <p class="explain" hidden>It is still inside the default 7 day recovery period.</p>
+    </fieldset>
+    <fieldset>
+      <legend>4. In the demo, what happened when you tried UNDROP 9 days after dropping a managed table?</legend>
+      <label><input type="radio"> It worked</label>
+      <label><input type="radio" data-correct> It failed: the recovery period had passed and the files were purged</label>
+      <label><input type="radio"> It restored an empty table</label>
+      <p class="explain" hidden>After the recovery period, managed files are deleted for good.</p>
+    </fieldset>
+  </div>
+</section>
+
+<section id="wrap">
+  <div class="sec-num">Wrap up</div>
+  <h2>Key takeaways</h2>
+  <ul>
+    <li>Managed: Unity Catalog stores and cleans up the files. Default and recommended.</li>
+    <li>External: you give a LOCATION inside an external location; you own the files.</li>
+    <li>DROP managed: files purged after the recovery period (7 days by default); UNDROP works inside it.</li>
+    <li>DROP external: only metadata is removed.</li>
+  </ul>
+  <h3>Glossary terms used</h3>
+  <p><a href="../../glossary.html#managed-table">managed table</a> · <a href="../../glossary.html#external-table">external table</a> · <a href="../../glossary.html#managed-storage-location">managed storage location</a> · <a href="../../glossary.html#external-location">external location</a> · <a href="../../glossary.html#undrop">UNDROP</a></p>
+  <h3>Official docs</h3>
+  <ul>
+    <li><a href="https://docs.databricks.com/aws/en/tables/managed">Unity Catalog managed tables</a></li>
+    <li><a href="https://docs.databricks.com/aws/en/tables/external">External tables</a></li>
+    <li><a href="https://docs.databricks.com/aws/en/data-governance/unity-catalog/managed-versus-external">Managed versus external</a></li>
+    <li><a href="https://docs.databricks.com/aws/en/sql/language-manual/sql-ref-syntax-ddl-undrop-table">UNDROP TABLE</a></li>
+  </ul>
+  <p class="cap">Last verified: 17 November 2026</p>
+</section>
+
+</main>
+
+<script>
+(function () {
+  var C = window.Course, $ = function (id) { return document.getElementById(id); }, L = $('tLog');
+  var S;
+  function reset() { S = { exists: false, type: null, files: false, droppedDay: null, day: 0 }; }
+  function draw() {
+    var where = S.type === 'external' ? 's3://bakery-pos/sales/' : 'managed storage (bakery catalog)';
+    $('tCat').innerHTML = S.exists ? '<div class="item"><span>bakery.silver.sales</span><span>' + S.type.toUpperCase() + '</span></div>' : (S.droppedDay !== null ? '<div class="item off">sales (dropped on day ' + S.droppedDay + ')</div>' : '<div class="item off">no table</div>');
+    $('tSto').innerHTML = S.files ? '<div class="item' + (!S.exists ? ' hot' : '') + '"><span>' + where + '</span><span>12 files</span></div>' : '<div class="item off">no files</div>';
+    $('tCat').insertAdjacentHTML('beforeend', '<div class="item">today: day ' + S.day + '</div>');
+  }
+  $('tCreate').onclick = function () {
+    if (S.exists) { C.log(L, 'bad', 'CREATE TABLE: the table already exists.'); return; }
+    var t = $('tType').value, reuse = S.files && S.type === 'external' && t === 'external';
+    S.exists = true; S.type = t; S.files = true; S.droppedDay = null; draw(); C.bump($('tCat'));
+    C.log(L, 'ok', 'Created ' + t + ' table bakery.silver.sales' + (reuse ? '. The old files were still at the path, so the new table already has data.' : ' and wrote 12 files ' + (t === 'external' ? 'to s3://bakery-pos/sales/.' : 'to managed storage.')));
+  };
+  $('tDrop').onclick = function () {
+    if (!S.exists) { C.log(L, 'skip', 'DROP TABLE: no table to drop.'); return; }
+    S.exists = false; S.droppedDay = S.day; draw(); C.bump($('tSto'));
+    C.log(L, S.type === 'managed' ? 'bad' : 'ok', S.type === 'managed' ? 'Dropped the managed table. Files are kept for the 7 day recovery period, then purged.' : 'Dropped the external table. Only the catalog entry was removed; the 12 files stay at the path.');
+  };
+  $('tDay').onclick = function () {
+    S.day += 3;
+    if (!S.exists && S.type === 'managed' && S.files && S.day - S.droppedDay > 7) { S.files = false; C.log(L, 'bad', 'Day ' + S.day + ': the recovery period passed, so the managed files were purged.'); }
+    else C.log(L, 'skip', 'Day ' + S.day + '.');
+    draw();
+  };
+  $('tUndrop').onclick = function () {
+    if (S.exists || S.droppedDay === null) { C.log(L, 'skip', 'UNDROP: no dropped table to restore.'); return; }
+    if (S.type === 'managed' && !S.files) { C.log(L, 'bad', 'UNDROP failed: dropped ' + (S.day - S.droppedDay) + ' days ago, past the recovery period. The files are gone.'); return; }
+    S.exists = true; S.droppedDay = null; draw(); C.bump($('tCat'));
+    C.log(L, 'ok', 'UNDROP TABLE: restored with its columns, properties and privileges' + (S.type === 'managed' ? '.' : '. (External undrop also needs CREATE EXTERNAL TABLE on the location.)'));
+  };
+  $('tReset').onclick = function () { reset(); draw(); L.innerHTML = ''; };
+  reset(); draw();
+})();
+</script>
+</body>
+</html>

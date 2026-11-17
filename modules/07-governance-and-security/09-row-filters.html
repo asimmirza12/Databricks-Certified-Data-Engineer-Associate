@@ -1,0 +1,264 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>07-09 Row filters · DE Associate course</title>
+<link rel="stylesheet" href="../../assets/course.css">
+<script src="../../assets/course.js"></script>
+</head>
+<body data-lesson="07-09">
+
+<aside class="disclaimer" aria-label="Disclaimer"><strong>Learning resource only.</strong> This is an independent, unofficial study guide made for learning purposes. It is not affiliated with, endorsed by or sponsored by Databricks. Databricks features change often, so always check the details in the <a href="https://docs.databricks.com">official Databricks documentation</a> and the official exam guide on databricks.com before relying on anything here. Databricks and related names are trademarks of their respective owners.</aside>
+
+<main class="wrap">
+
+<header class="hero">
+  <div class="eyebrow">Module 07 · Governance and Security · Lesson 9 of 11</div>
+  <h1>Row filters</h1>
+  <p class="lede">The north region manager should see north sales, and the south manager south sales, from one shared table. A row filter quietly removes the rows a reader is not allowed to see, every time they query.</p>
+  <dl class="where">
+    <div><dt>Module</dt><dd>07 Governance and Security (15% of the exam)</dd></div>
+    <div><dt>Exam objective</dt><dd>7.3 Understand row filters that show different rows of a table to different groups.</dd></div>
+    <div><dt>Time to read</dt><dd>About 12 minutes</dd></div>
+    <div><dt>Before this</dt><dd><a href="08-column-masks.html">07-08 Column masks</a></dd></div>
+  </dl>
+</header>
+
+<section id="idea">
+  <div class="sec-num">The idea</div>
+  <h2>A yes-or-no function for every row</h2>
+  <p>A <a href="../../glossary.html#row-filter">row filter</a> is a SQL <a href="../../glossary.html#udf">UDF</a> that returns a BOOLEAN, attached to a table. For each row, Databricks passes in the values of the columns you chose. If the function returns TRUE the reader sees the row; if it returns FALSE or NULL the row is left out, as if it were not there.</p>
+  <p>The function usually combines a column value with who is asking: "admins see everything; members of <code>region_north</code> see rows where region is North". When the rules are too many to write as code, keep them in a <a href="../../glossary.html#mapping-table">mapping table</a> (which user or group may see which region) and look it up inside the function.</p>
+  <p>Rules to know:</p>
+  <ul>
+    <li>One row filter per table. Apply with <code>ALTER TABLE ... SET ROW FILTER fn ON (columns)</code>; remove with <code>DROP ROW FILTER</code>. You can also add it in <code>CREATE TABLE ... WITH ROW FILTER</code>.</li>
+    <li>Permissions are the same as for masks: owner of the table, or MANAGE and SELECT on it, plus EXECUTE on the function.</li>
+    <li>It applies to every reader, including the owner, unless the function says otherwise.</li>
+    <li>Compute requirements match column masks; older runtimes fail safely and return no data.</li>
+    <li>Filters cannot be put on views, and time travel and clones are not supported on filtered tables.</li>
+  </ul>
+  <div class="analogy">
+    <span class="tag">Everyday analogy</span>
+    <p><strong>The bakery's order book.</strong> Each branch manager asks for "the orders". The head office clerk hands over the book but quietly removes every page that belongs to another branch. Everyone thinks they got the whole book; each got only their part. The clerk's rule is the filter function.</p>
+  </div>
+</section>
+
+<section id="how">
+  <div class="sec-num">How it works</div>
+  <h2>Each row is checked against the reader</h2>
+  <div class="stage">
+    <svg viewBox="0 0 360 230" role="img" aria-label="Rows for North, South and East pass through a filter function. A reader in region_north receives only the North rows. An admin receives all rows.">
+      <defs><path id="rf1" d="M110 75 H170"/><path id="rf2" d="M240 75 C 260 75, 260 45, 280 45"/><path id="rf3" d="M240 75 C 260 75, 260 150, 280 150"/></defs>
+      <rect class="box" x="10" y="25" width="100" height="25" rx="5"/><text class="mono" x="60" y="42" text-anchor="middle">North 120</text>
+      <rect class="box" x="10" y="62" width="100" height="25" rx="5"/><text class="mono" x="60" y="79" text-anchor="middle">South 90</text>
+      <rect class="box" x="10" y="99" width="100" height="25" rx="5"/><text class="mono" x="60" y="116" text-anchor="middle">East 75</text>
+      <g class="wire"><use href="#rf1"/><use href="#rf2"/><use href="#rf3"/></g>
+      <rect class="box-soft" x="170" y="55" width="70" height="40" rx="6"/><text class="t-m" x="205" y="72" text-anchor="middle">filter</text><text class="t-m" x="205" y="86" text-anchor="middle">TRUE?</text>
+      <rect class="box-acc" x="280" y="25" width="75" height="40" rx="6"/><text class="t-m" x="317" y="41" text-anchor="middle">north mgr</text><text class="mono" x="317" y="56" text-anchor="middle">1 row</text>
+      <rect class="box-acc" x="280" y="130" width="75" height="40" rx="6"/><text class="t-m" x="317" y="146" text-anchor="middle">admin</text><text class="mono" x="317" y="161" text-anchor="middle">3 rows</text>
+      <g class="mover">
+        <circle r="5" class="dot"><animateMotion dur="2.4s" repeatCount="indefinite"><mpath href="#rf1"/></animateMotion></circle>
+        <circle r="5" class="dot-ok"><animateMotion dur="2.4s" begin="-0.8s" repeatCount="indefinite"><mpath href="#rf2"/></animateMotion></circle>
+        <circle r="5" class="dot-ok"><animateMotion dur="2.4s" begin="-1.6s" repeatCount="indefinite"><mpath href="#rf3"/></animateMotion></circle>
+      </g>
+    </svg>
+    <p class="cap">Sums and counts also change: each reader's totals only include the rows they can see.</p>
+  </div>
+</section>
+
+<section id="demo">
+  <div class="sec-num">Try it</div>
+  <h2>Filter the sales table</h2>
+  <p>Choose a reader and a filter style, then query. Try the mapping-table style and give a manager a second region.</p>
+  <div class="stage">
+    <div class="ctrls">
+      <label>Reader <select id="fWho"><option value="north">ana (region_north)</option><option value="south">ben (region_south)</option><option value="admin">kim (data_admins)</option><option value="owner">sam (table owner, no group)</option></select></label>
+      <label>Filter <select id="fType"><option value="none">no filter</option><option value="group">group per region</option><option value="map">mapping table</option></select></label>
+      <button id="fGrantEast" type="button">Mapping: give ana East too</button>
+      <button id="fRun" type="button" class="primary">SELECT region, SUM(amount)</button>
+      <button id="fReset" type="button">Reset</button>
+    </div>
+    <div class="panes">
+      <div class="pane"><h4>Rows returned</h4><div id="fOut"></div></div>
+      <div class="pane"><h4>region_access mapping table</h4><div id="fMap"></div></div>
+    </div>
+    <div class="log" id="fLog" role="log" aria-label="What happened"></div>
+  </div>
+</section>
+
+<section id="code">
+  <div class="sec-num">Code</div>
+  <h2>Two styles of row filter</h2>
+<pre><code><span class="c-c">-- Style 1: rules written in the function</span>
+CREATE OR REPLACE FUNCTION bakery.gov.region_filter(region STRING)
+RETURNS BOOLEAN
+RETURN is_account_group_member('data_admins')
+    OR (region = 'North' AND is_account_group_member('region_north'))
+    OR (region = 'South' AND is_account_group_member('region_south'));
+
+ALTER TABLE bakery.gold.regional_sales SET ROW FILTER bakery.gov.region_filter ON (region);
+
+<span class="c-c">-- Style 2: rules kept in a mapping table, so changes need no code</span>
+CREATE TABLE bakery.gov.region_access (user_email STRING, region STRING);
+INSERT INTO bakery.gov.region_access VALUES
+  ('ana@example.com', 'North'), ('ben@example.com', 'South');
+
+CREATE OR REPLACE FUNCTION bakery.gov.region_filter_map(r STRING)
+RETURNS BOOLEAN
+RETURN is_account_group_member('data_admins')
+    OR EXISTS (SELECT 1 FROM bakery.gov.region_access a
+               WHERE a.user_email = session_user() AND a.region = r);
+
+ALTER TABLE bakery.gold.regional_sales SET ROW FILTER bakery.gov.region_filter_map ON (region);
+
+<span class="c-c">-- Remove the filter (do this before dropping the function)</span>
+ALTER TABLE bakery.gold.regional_sales DROP ROW FILTER;</code></pre>
+  <p class="note">Inside a filter, <code>session_user()</code> and <code>is_account_group_member()</code> check the person running the query. Turn ANSI mode on so type mismatches raise errors instead of silently becoming NULL (which would hide rows).</p>
+</section>
+
+<section id="whatif">
+  <div class="sec-num">What if I change this?</div>
+  <h2>Choices and their effects</h2>
+  <div class="tbl"><table class="whatif">
+    <tr><th>Change</th><th>Effect</th></tr>
+    <tr><td>Function returns NULL for a row</td><td>The row is hidden, same as FALSE.</td></tr>
+    <tr><td>Mapping table instead of hard-coded rules</td><td>Change access with INSERT and DELETE; no function changes.</td></tr>
+    <tr><td>No admin exemption in the function</td><td>Admins and the owner see filtered data too.</td></tr>
+    <tr><td>Try to add a second filter to the table</td><td>Not allowed; combine rules in one function.</td></tr>
+    <tr><td>Drop the function first</td><td>The table becomes unreadable until the filter is dropped.</td></tr>
+    <tr><td>Query with time travel</td><td>Not supported on a table with a row filter.</td></tr>
+  </table></div>
+</section>
+
+<section id="compare">
+  <div class="sec-num">Compare</div>
+  <h2>Row filter vs column mask</h2>
+  <div class="tbl"><table>
+    <tr><th></th><th>Row filter</th><th>Column mask</th></tr>
+    <tr><td>Hides</td><td>Whole rows</td><td>Values in one column</td></tr>
+    <tr><td>Function returns</td><td>BOOLEAN</td><td>The column's type</td></tr>
+    <tr><td>How many</td><td>One per table</td><td>One per column</td></tr>
+    <tr><td>Attach</td><td>ALTER TABLE ... SET ROW FILTER fn ON (cols)</td><td>ALTER TABLE ... ALTER COLUMN c SET MASK fn</td></tr>
+    <tr><td>Remove</td><td>DROP ROW FILTER</td><td>ALTER COLUMN c DROP MASK</td></tr>
+  </table></div>
+</section>
+
+<section id="scenarios">
+  <div class="sec-num">Real life</div>
+  <h2>Filters in practice</h2>
+  <div class="tbl"><table>
+    <tr><th>Scenario</th><th>What happens</th><th>Fix</th></tr>
+    <tr><td>Regional managers must see only their region</td><td>One table for everyone</td><td>Row filter on region</td></tr>
+    <tr><td>Managers change region every month</td><td>Editing the function each time is risky</td><td>Mapping table</td></tr>
+    <tr><td>A dashboard shows lower totals than expected</td><td>The viewer only sees their rows</td><td>That is the filter working; check who views it</td></tr>
+    <tr><td>Analysts on old dedicated clusters get no rows</td><td>Unsupported compute fails safely</td><td>Use serverless, a SQL warehouse or a supported runtime</td></tr>
+  </table></div>
+</section>
+
+<section id="traps">
+  <div class="sec-num">Don't confuse these</div>
+  <h2>Filter traps</h2>
+  <div class="grid2">
+    <div class="card trap"><span class="tag">FALSE or NULL hides</span><p>Only TRUE shows the row.</p></div>
+    <div class="card trap"><span class="tag">One per table</span><p>Put all rules in one function.</p></div>
+    <div class="card trap"><span class="tag">Owners filtered too</span><p>No built-in exemption; write it into the function.</p></div>
+    <div class="card trap"><span class="tag">Not on views</span><p>Filters attach to tables. (Views can contain their own WHERE logic.)</p></div>
+  </div>
+</section>
+
+<section id="quiz">
+  <div class="sec-num">Check yourself</div>
+  <h2>Quiz</h2>
+  <div class="quiz">
+    <fieldset>
+      <legend>1. What must a row filter function return?</legend>
+      <label><input type="radio" data-correct> BOOLEAN</label>
+      <label><input type="radio"> The column's type</label>
+      <label><input type="radio"> A table</label>
+      <p class="explain" hidden>TRUE keeps the row; FALSE or NULL hides it.</p>
+    </fieldset>
+    <fieldset>
+      <legend>2. Which statement attaches a row filter?</legend>
+      <label><input type="radio"> GRANT FILTER ON TABLE ...</label>
+      <label><input type="radio" data-correct> ALTER TABLE t SET ROW FILTER fn ON (region)</label>
+      <label><input type="radio"> CREATE VIEW ... WHERE region = 'North'</label>
+      <p class="explain" hidden>A view can filter too, but it is a different object that people could bypass.</p>
+    </fieldset>
+    <fieldset>
+      <legend>3. Why use a mapping table in a row filter?</legend>
+      <label><input type="radio"> It makes queries faster</label>
+      <label><input type="radio" data-correct> Access rules change with data edits instead of code edits</label>
+      <label><input type="radio"> It is required</label>
+      <p class="explain" hidden>Add or remove rows to change who sees what.</p>
+    </fieldset>
+    <fieldset>
+      <legend>4. In the demo, with the group filter on, what did sam (owner, no group) see?</legend>
+      <label><input type="radio"> All rows</label>
+      <label><input type="radio" data-correct> No rows</label>
+      <label><input type="radio"> Only North</label>
+      <p class="explain" hidden>The owner is not in any allowed group, and owners are not exempt.</p>
+    </fieldset>
+  </div>
+</section>
+
+<section id="wrap">
+  <div class="sec-num">Wrap up</div>
+  <h2>Key takeaways</h2>
+  <ul>
+    <li>A row filter is a BOOLEAN SQL UDF attached to a table; TRUE shows the row.</li>
+    <li>SET ROW FILTER fn ON (cols) to attach; DROP ROW FILTER to remove; one per table.</li>
+    <li>Use is_account_group_member() or a mapping table to decide; nobody is exempt by default.</li>
+  </ul>
+  <h3>Glossary terms used</h3>
+  <p><a href="../../glossary.html#row-filter">row filter</a> · <a href="../../glossary.html#udf">UDF</a> · <a href="../../glossary.html#mapping-table">mapping table</a> · <a href="../../glossary.html#column-mask">column mask</a></p>
+  <h3>Official docs</h3>
+  <ul>
+    <li><a href="https://docs.databricks.com/aws/en/tables/row-and-column-filters">Row filters and column masks</a></li>
+    <li><a href="https://docs.databricks.com/aws/en/data-governance/unity-catalog/filters-and-masks/manually-apply">Apply filters and masks to a table</a></li>
+    <li><a href="https://docs.databricks.com/aws/en/sql/language-manual/sql-ref-syntax-ddl-row-filter">ROW FILTER clause</a></li>
+  </ul>
+  <p class="cap">Last verified: 17 November 2026</p>
+</section>
+
+</main>
+
+<script>
+(function () {
+  var C = window.Course, $ = function (id) { return document.getElementById(id); }, L = $('fLog');
+  var ROWS = [['North', 120], ['North', 80], ['South', 90], ['South', 60], ['East', 75]];
+  var WHO = { north: { email: 'ana@example.com', groups: ['region_north'] }, south: { email: 'ben@example.com', groups: ['region_south'] }, admin: { email: 'kim@example.com', groups: ['data_admins'] }, owner: { email: 'sam@example.com', groups: [] } };
+  var MAP;
+  function reset() { MAP = [['ana@example.com', 'North'], ['ben@example.com', 'South']]; }
+  function keep(r) {
+    var w = WHO[$('fWho').value], t = $('fType').value, g = function (x) { return w.groups.indexOf(x) > -1; };
+    if (t === 'none') return true;
+    if (g('data_admins')) return true;
+    if (t === 'group') return (r[0] === 'North' && g('region_north')) || (r[0] === 'South' && g('region_south'));
+    return MAP.some(function (m) { return m[0] === w.email && m[1] === r[0]; });
+  }
+  function draw() {
+    var rs = ROWS.filter(keep), sums = {};
+    rs.forEach(function (r) { sums[r[0]] = (sums[r[0]] || 0) + r[1]; });
+    var k = Object.keys(sums);
+    $('fOut').innerHTML = k.length ? k.map(function (x) { return '<div class="item"><span>' + x + '</span><span>' + sums[x] + '</span></div>'; }).join('') : '<div class="item off">0 rows</div>';
+    $('fMap').innerHTML = MAP.map(function (m) { return '<div class="item"><span>' + m[0] + '</span><span>' + m[1] + '</span></div>'; }).join('');
+    return rs.length;
+  }
+  $('fRun').onclick = function () {
+    var n = draw(); C.bump($('fOut'));
+    var who = $('fWho').options[$('fWho').selectedIndex].text, t = $('fType').value;
+    C.log(L, n === ROWS.length ? 'ok' : n ? 'skip' : 'bad', who + ': ' + n + ' of ' + ROWS.length + ' rows visible' + (t === 'none' ? ' (no filter).' : t === 'map' ? ' (looked up in region_access).' : ' (group checks in the function).'));
+    if ($('fWho').value === 'owner' && t !== 'none') C.log(L, 'bad', 'The owner is filtered too: no rule in the function lets sam see any region.');
+  };
+  $('fGrantEast').onclick = function () {
+    if (!MAP.some(function (m) { return m[0] === 'ana@example.com' && m[1] === 'East'; })) MAP.push(['ana@example.com', 'East']);
+    draw(); C.bump($('fMap')); C.log(L, 'ok', "INSERT INTO region_access VALUES ('ana@example.com', 'East'). No function change needed" + ($('fType').value === 'map' ? '.' : '; switch the filter to the mapping table to see the effect.'));
+  };
+  ['fWho', 'fType'].forEach(function (id) { $(id).onchange = draw; });
+  $('fReset').onclick = function () { reset(); draw(); L.innerHTML = ''; };
+  reset(); draw();
+})();
+</script>
+</body>
+</html>

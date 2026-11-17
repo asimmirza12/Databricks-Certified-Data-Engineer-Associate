@@ -1,0 +1,291 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>07-11 ABAC in practice: central row filters and column masks · DE Associate course</title>
+<link rel="stylesheet" href="../../assets/course.css">
+<script src="../../assets/course.js"></script>
+</head>
+<body data-lesson="07-11">
+
+<aside class="disclaimer" aria-label="Disclaimer"><strong>Learning resource only.</strong> This is an independent, unofficial study guide made for learning purposes. It is not affiliated with, endorsed by or sponsored by Databricks. Databricks features change often, so always check the details in the <a href="https://docs.databricks.com">official Databricks documentation</a> and the official exam guide on databricks.com before relying on anything here. Databricks and related names are trademarks of their respective owners.</aside>
+
+<main class="wrap">
+
+<header class="hero">
+  <div class="eyebrow">Module 07 · Governance and Security · Lesson 11 of 11</div>
+  <h1>ABAC in practice: central row filters and column masks</h1>
+  <p class="lede">With tags and policies understood, this lesson builds a realistic setup for the bakery: one row filter policy and one mask policy for a whole catalog. Then it looks at what goes wrong in real life: clashing rules, old compute, deleted tags and exemptions.</p>
+  <dl class="where">
+    <div><dt>Module</dt><dd>07 Governance and Security (15% of the exam)</dd></div>
+    <div><dt>Exam objective</dt><dd>7.4 Understand how ABAC policies apply row filters and column masks centrally, and how they behave alongside other rules.</dd></div>
+    <div><dt>Time to read</dt><dd>About 13 minutes</dd></div>
+    <div><dt>Before this</dt><dd><a href="10-abac-tags-and-policies.html">07-10 ABAC: governed tags and policies</a></dd></div>
+  </dl>
+</header>
+
+<section id="idea">
+  <div class="sec-num">The idea</div>
+  <h2>A few central policies instead of many table rules</h2>
+  <p>The bakery wants two rules across the whole <code>bakery</code> catalog:</p>
+  <ul>
+    <li>Regional managers see only their own region's rows, in any table that holds regional data.</li>
+    <li>Nobody except data admins sees customer emails.</li>
+  </ul>
+  <p>With <a href="../../glossary.html#abac">ABAC</a> that is two <a href="../../glossary.html#abac-policy">policies</a> on the catalog:</p>
+  <ul>
+    <li>A <strong>row filter policy</strong> for tables tagged <code>scope = regional</code>. <code>MATCH COLUMNS has_tag_value('geo', 'region') AS r</code> finds the region column in each table, whatever it is called, and <code>USING COLUMNS (r)</code> passes it to the filter function.</li>
+    <li>A <strong>column mask policy</strong> for columns tagged <code>pii = email</code>, as in the last lesson.</li>
+  </ul>
+  <p>How policies behave in practice:</p>
+  <ul>
+    <li><strong>Central</strong>: a policy on the catalog applies to every matching table below. A table owner cannot switch it off.</li>
+    <li><strong>No clashes</strong>: a user can have only one distinct row filter per table and one mask per column. Two different rules for the same table and user (for example a policy and a table-level filter) cause an error, not a silent pick.</li>
+    <li><strong><a href="../../glossary.html#fail-closed">Fail closed</a></strong>: if a function or governed tag the policy needs is deleted, or the compute is too old, queries fail instead of showing unprotected data.</li>
+    <li><strong>Exemptions</strong>: use <code>EXCEPT</code> for trusted identities only, such as the ETL service principal that must write full data.</li>
+    <li><strong>Limits</strong>: there are quotas, such as 100 policies per catalog and 50 per table; check the docs for current values.</li>
+  </ul>
+  <div class="analogy">
+    <span class="tag">Everyday analogy</span>
+    <p><strong>Head office rules for every branch.</strong> Head office says "each manager sees only their own branch's books" and "card numbers are always covered". Every branch follows it, including branches opened next year, and a branch manager cannot override it. If two rules ever disagree, staff stop and ask rather than guessing, and if the rulebook goes missing, the books stay locked.</p>
+  </div>
+</section>
+
+<section id="how">
+  <div class="sec-num">How it works</div>
+  <h2>Two policies across a catalog</h2>
+  <div class="stage">
+    <svg viewBox="0 0 360 240" role="img" aria-label="Catalog bakery has a row filter policy and a mask policy. Tables sales and deliveries are tagged scope regional, each with a region column tagged geo region; both get the row filter. Tables customers and orders have email columns tagged pii email; both get the mask.">
+      <defs><path id="ap1" d="M110 60 C 110 100, 60 100, 60 140"/><path id="ap2" d="M110 60 C 110 100, 150 100, 150 140"/><path id="ap3" d="M250 60 C 250 100, 220 100, 220 140"/><path id="ap4" d="M250 60 C 250 100, 305 100, 305 140"/></defs>
+      <rect class="box-soft" x="100" y="5" width="160" height="22" rx="5"/><text class="t-b" x="180" y="21" text-anchor="middle">catalog bakery</text>
+      <rect class="box-acc" x="40" y="32" width="140" height="28" rx="6"/><text class="t-m" x="110" y="50" text-anchor="middle">row filter: geo = region</text>
+      <rect class="box-acc" x="190" y="32" width="140" height="28" rx="6"/><text class="t-m" x="260" y="50" text-anchor="middle">mask: pii = email</text>
+      <g class="wire"><use href="#ap1"/><use href="#ap2"/><use href="#ap3"/><use href="#ap4"/></g>
+      <rect class="box" x="15" y="140" width="85" height="45" rx="6"/><text class="mono" x="57" y="158" text-anchor="middle">sales</text><text class="t-m" x="57" y="174" text-anchor="middle">region</text>
+      <rect class="box" x="108" y="140" width="85" height="45" rx="6"/><text class="mono" x="150" y="158" text-anchor="middle">deliveries</text><text class="t-m" x="150" y="174" text-anchor="middle">area</text>
+      <rect class="box" x="178" y="195" width="85" height="40" rx="6"/><text class="mono" x="220" y="212" text-anchor="middle">customers</text><text class="t-m" x="220" y="227" text-anchor="middle">email</text>
+      <rect class="box" x="265" y="140" width="85" height="45" rx="6"/><text class="mono" x="307" y="158" text-anchor="middle">orders</text><text class="t-m" x="307" y="174" text-anchor="middle">cust_email</text>
+      <g class="mover">
+        <circle r="5" class="dot"><animateMotion dur="2.4s" repeatCount="indefinite"><mpath href="#ap1"/></animateMotion></circle>
+        <circle r="5" class="dot"><animateMotion dur="2.4s" begin="-0.6s" repeatCount="indefinite"><mpath href="#ap2"/></animateMotion></circle>
+        <circle r="5" class="dot-ok"><animateMotion dur="2.4s" begin="-1.2s" repeatCount="indefinite"><mpath href="#ap3"/></animateMotion></circle>
+        <circle r="5" class="dot-ok"><animateMotion dur="2.4s" begin="-1.8s" repeatCount="indefinite"><mpath href="#ap4"/></animateMotion></circle>
+      </g>
+    </svg>
+    <p class="cap">The region column is called <code>region</code> in one table and <code>area</code> in another. The tag, not the name, connects them to the policy.</p>
+  </div>
+</section>
+
+<section id="demo">
+  <div class="sec-num">Try it</div>
+  <h2>Run the bakery's policies</h2>
+  <p>Both policies are on the catalog. Pick a reader and compute, then query <code>sales</code>. Try adding a table-level filter too, deleting the governed tag, and using an old runtime.</p>
+  <div class="stage">
+    <div class="ctrls">
+      <label>Reader <select id="xWho"><option value="north">ana (region_north)</option><option value="south">ben (region_south)</option><option value="etl">etl-bot (in EXCEPT)</option></select></label>
+      <label>Compute <select id="xRt"><option value="serverless">serverless</option><option value="16.4">standard, DBR 16.4</option><option value="14.3">standard, DBR 14.3</option></select></label>
+      <label class="tog"><input type="checkbox" id="xLocal"> Owner adds a table-level row filter to sales</label>
+      <label class="tog"><input type="checkbox" id="xNoTag"> Governed tag geo deleted</label>
+      <label class="tog"><input type="checkbox" id="xUntag"> deliveries.area not tagged geo</label>
+      <button id="xSales" type="button" class="primary">SELECT * FROM sales</button>
+      <button id="xDel" type="button">SELECT * FROM deliveries</button>
+      <button id="xReset" type="button">Reset</button>
+    </div>
+    <div class="panes">
+      <div class="pane"><h4>Result</h4><div id="xOut"></div></div>
+      <div class="pane"><h4>Policies in effect</h4><div id="xPol"></div></div>
+    </div>
+    <div class="log" id="xLog" role="log" aria-label="What happened"></div>
+  </div>
+</section>
+
+<section id="code">
+  <div class="sec-num">Code</div>
+  <h2>The bakery's two catalog policies</h2>
+<pre><code><span class="c-c">-- Tag the data</span>
+ALTER TABLE bakery.gold.sales      SET TAGS ('scope' = 'regional');
+ALTER TABLE bakery.gold.sales      ALTER COLUMN region SET TAGS ('geo' = 'region');
+ALTER TABLE bakery.ops.deliveries  SET TAGS ('scope' = 'regional');
+ALTER TABLE bakery.ops.deliveries  ALTER COLUMN area   SET TAGS ('geo' = 'region');
+
+<span class="c-c">-- Filter function: the reader sees a row if they are in that region's group</span>
+CREATE OR REPLACE FUNCTION bakery.gov.own_region(r STRING)
+RETURNS BOOLEAN
+RETURN (r = 'North' AND is_account_group_member('region_north'))
+    OR (r = 'South' AND is_account_group_member('region_south'));
+
+<span class="c-c">-- Row filter policy for every regional table in the catalog</span>
+CREATE POLICY regional_rows
+ON CATALOG bakery
+ROW FILTER bakery.gov.own_region
+TO `account users` EXCEPT `6f1c2b7e-0a4d-4c1e-9b8a-2d3e4f5a6b7c`, `data_admins`
+FOR TABLES
+WHEN has_tag_value('scope', 'regional')
+MATCH COLUMNS has_tag_value('geo', 'region') AS r
+USING COLUMNS (r);
+
+<span class="c-c">-- Mask policy for every email column in the catalog</span>
+CREATE POLICY mask_emails
+ON CATALOG bakery
+COLUMN MASK bakery.gov.hide_email
+TO `account users` EXCEPT `data_admins`
+FOR TABLES
+MATCH COLUMNS has_tag_value('pii', 'email') AS e
+ON COLUMN e;
+
+<span class="c-c">-- What applies to one table?</span>
+SHOW EFFECTIVE POLICIES ON TABLE bakery.gold.sales;</code></pre>
+  <p class="note">The tag keys <code>scope</code> and <code>geo</code> are made-up governed tags, and so is the service principal ID. With many regions, a mapping table (lesson 07-09) inside the filter function scales better than one line per region. Check the CREATE POLICY reference for the full syntax.</p>
+</section>
+
+<section id="whatif">
+  <div class="sec-num">What if I change this?</div>
+  <h2>Situations and their effects</h2>
+  <div class="tbl"><table class="whatif">
+    <tr><th>Change</th><th>Effect</th></tr>
+    <tr><td>Add a table-level row filter to a table a policy already filters</td><td>Conflicting filters: queries error.</td></tr>
+    <tr><td>Two policies with identical functions and arguments</td><td>Allowed: they are not distinct rules.</td></tr>
+    <tr><td>Delete a governed tag or function a policy uses</td><td>Queries on matching tables fail (fail closed).</td></tr>
+    <tr><td>Query from a runtime too old for ABAC</td><td>Fails closed; no data returned.</td></tr>
+    <tr><td>Forget to tag a region column</td><td>The policy cannot match it; that table is not filtered.</td></tr>
+    <tr><td>Put the ETL principal in EXCEPT</td><td>It reads and writes full data.</td></tr>
+  </table></div>
+</section>
+
+<section id="compare">
+  <div class="sec-num">Compare</div>
+  <h2>Policy parts</h2>
+  <div class="tbl"><table>
+    <tr><th>Clause</th><th>Meaning</th><th>Example</th></tr>
+    <tr><td><code>ON</code></td><td>Where it is attached; covers that object and below</td><td><code>ON CATALOG bakery</code></td></tr>
+    <tr><td><code>ROW FILTER</code> / <code>COLUMN MASK</code></td><td>Which function to apply</td><td><code>ROW FILTER bakery.gov.own_region</code></td></tr>
+    <tr><td><code>TO</code> / <code>EXCEPT</code></td><td>Who is affected / who is exempt</td><td><code>TO `account users` EXCEPT `data_admins`</code></td></tr>
+    <tr><td><code>WHEN</code></td><td>Which tables, by their tags</td><td><code>WHEN has_tag_value('scope', 'regional')</code></td></tr>
+    <tr><td><code>MATCH COLUMNS ... AS</code></td><td>Which columns, by their tags, with an alias</td><td><code>MATCH COLUMNS has_tag_value('geo', 'region') AS r</code></td></tr>
+    <tr><td><code>USING COLUMNS</code> / <code>ON COLUMN</code></td><td>Columns passed to the function / the column to mask</td><td><code>USING COLUMNS (r)</code></td></tr>
+  </table></div>
+</section>
+
+<section id="scenarios">
+  <div class="sec-num">Real life</div>
+  <h2>ABAC in practice</h2>
+  <div class="tbl"><table>
+    <tr><th>Scenario</th><th>What happens</th><th>Fix</th></tr>
+    <tr><td>A team's old filter on one table starts erroring after a catalog policy is added</td><td>Two distinct row filters for the same table</td><td>Drop the table-level filter; let the policy do it</td></tr>
+    <tr><td>A jobs cluster on an old runtime returns errors on tagged tables</td><td>ABAC fails closed there</td><td>Move the job to serverless or DBR 16.4+</td></tr>
+    <tr><td>Someone deletes the geo tag during a clean-up</td><td>All regional tables become unreadable</td><td>Restore the tag; restrict who can manage governed tags</td></tr>
+    <tr><td>Nightly ETL writes only one region's rows</td><td>Its service principal is filtered</td><td>Add it to EXCEPT</td></tr>
+  </table></div>
+</section>
+
+<section id="traps">
+  <div class="sec-num">Don't confuse these</div>
+  <h2>Practice traps</h2>
+  <div class="grid2">
+    <div class="card trap"><span class="tag">Conflict means error</span><p>Two distinct filters for one table and user do not combine; they fail.</p></div>
+    <div class="card trap"><span class="tag">Owners cannot override</span><p>A catalog or schema policy applies even to the table owner, unless they are in EXCEPT.</p></div>
+    <div class="card trap"><span class="tag">WHEN vs MATCH COLUMNS</span><p>WHEN picks tables by table tags; MATCH COLUMNS picks columns by column tags.</p></div>
+    <div class="card trap"><span class="tag">Untagged means unprotected</span><p>Policies only see what is tagged.</p></div>
+  </div>
+</section>
+
+<section id="quiz">
+  <div class="sec-num">Check yourself</div>
+  <h2>Quiz</h2>
+  <div class="quiz">
+    <fieldset>
+      <legend>1. A catalog row filter policy and a table-level row filter both apply to the same table for a user. What happens?</legend>
+      <label><input type="radio"> The stricter one wins</label>
+      <label><input type="radio" data-correct> The query errors because of conflicting filters</label>
+      <label><input type="radio"> Both are combined with AND</label>
+      <p class="explain" hidden>Only one distinct row filter per table and user is allowed.</p>
+    </fieldset>
+    <fieldset>
+      <legend>2. How does a row filter policy find the region column when tables name it differently?</legend>
+      <label><input type="radio"> By the column name region</label>
+      <label><input type="radio" data-correct> By a column tag, with MATCH COLUMNS has_tag_value('geo', 'region') AS r</label>
+      <label><input type="radio"> By the column's position</label>
+      <p class="explain" hidden>Tags connect the policy to columns, whatever they are called.</p>
+    </fieldset>
+    <fieldset>
+      <legend>3. What does "fail closed" mean for ABAC?</legend>
+      <label><input type="radio"> Data is shown unfiltered when something is missing</label>
+      <label><input type="radio" data-correct> Queries fail rather than show unprotected data when a tag, function or supported runtime is missing</label>
+      <label><input type="radio"> The catalog is locked for everyone forever</label>
+      <p class="explain" hidden>Safety first: no data rather than unprotected data.</p>
+    </fieldset>
+    <fieldset>
+      <legend>4. In the demo, what happened when you queried deliveries with area not tagged?</legend>
+      <label><input type="radio"> Only the reader's region was shown</label>
+      <label><input type="radio" data-correct> All regions were shown, because the policy could not match an untagged column</label>
+      <label><input type="radio"> The query failed</label>
+      <p class="explain" hidden>Untagged data is invisible to policies, so tagging is part of security.</p>
+    </fieldset>
+  </div>
+</section>
+
+<section id="wrap">
+  <div class="sec-num">Wrap up</div>
+  <h2>Key takeaways</h2>
+  <ul>
+    <li>A few policies on a catalog can filter rows and mask columns across every tagged table.</li>
+    <li>WHEN matches tables by tag; MATCH COLUMNS finds columns by tag and passes them with USING COLUMNS or ON COLUMN.</li>
+    <li>Distinct conflicting rules error; missing tags, functions or supported runtimes fail closed.</li>
+    <li>Exempt only trusted identities with EXCEPT, and tag new data as part of creating it.</li>
+  </ul>
+  <h3>Glossary terms used</h3>
+  <p><a href="../../glossary.html#abac">ABAC</a> · <a href="../../glossary.html#abac-policy">ABAC policy</a> · <a href="../../glossary.html#fail-closed">fail closed</a> · <a href="../../glossary.html#governed-tag">governed tag</a> · <a href="../../glossary.html#row-filter">row filter</a> · <a href="../../glossary.html#column-mask">column mask</a></p>
+  <h3>Official docs</h3>
+  <ul>
+    <li><a href="https://docs.databricks.com/aws/en/data-governance/unity-catalog/abac/core-concepts">ABAC core concepts</a></li>
+    <li><a href="https://docs.databricks.com/aws/en/data-governance/unity-catalog/abac/policy-evaluation">Policy evaluation</a></li>
+    <li><a href="https://docs.databricks.com/aws/en/data-governance/unity-catalog/abac/requirements">ABAC requirements and limitations</a></li>
+    <li><a href="https://docs.databricks.com/aws/en/data-governance/unity-catalog/abac/abac-vs-rls-cm">ABAC vs table-level filters and masks</a></li>
+  </ul>
+  <p class="cap">Last verified: 17 November 2026</p>
+</section>
+
+</main>
+
+<script>
+(function () {
+  var C = window.Course, $ = function (id) { return document.getElementById(id); }, L = $('xLog');
+  var SALES = [['North', 'ana@example.com', 120], ['South', 'ben@mail.example', 90], ['East', 'cai@example.com', 75]];
+  var DEL = [['North', 'van 1'], ['South', 'van 2'], ['East', 'van 3']];
+  var REG = { north: 'North', south: 'South', etl: null };
+  function polText() {
+    $('xPol').innerHTML = '<div class="item">regional_rows: ROW FILTER, scope = regional, geo = region</div><div class="item">mask_emails: COLUMN MASK, pii = email</div><div class="item">EXCEPT: etl-bot, data_admins</div>' + ($('xLocal').checked ? '<div class="item hot">sales: table-level filter too</div>' : '');
+  }
+  function blocked() {
+    if ($('xRt').value === '14.3') return 'This runtime is too old for ABAC, so the query fails closed. Use serverless or DBR 16.4+.';
+    if ($('xNoTag').checked) return 'The governed tag geo was deleted, so the policy cannot be evaluated: fail closed.';
+    return '';
+  }
+  function run(tbl) {
+    var who = $('xWho').value, exempt = who === 'etl', b = blocked();
+    polText();
+    if (b && !exempt) { $('xOut').innerHTML = '<div class="item hot">query failed</div>'; C.log(L, 'bad', 'SELECT * FROM ' + tbl + ': ' + b); return; }
+    if (tbl === 'sales' && $('xLocal').checked && !exempt) { $('xOut').innerHTML = '<div class="item hot">query failed</div>'; C.log(L, 'bad', 'SELECT * FROM sales: error, two distinct row filters apply (the catalog policy and the table-level filter). Drop one.'); return; }
+    var rows, out;
+    if (tbl === 'sales') {
+      rows = exempt ? SALES : SALES.filter(function (r) { return r[0] === REG[who]; });
+      out = rows.map(function (r) { var e = exempt ? r[1] : r[1].charAt(0) + '***@' + r[1].split('@')[1]; return '<div class="item"><span>' + r[0] + ' ' + r[2] + '</span><span>' + e + '</span></div>'; });
+    } else {
+      var untag = $('xUntag').checked;
+      rows = exempt || untag ? DEL : DEL.filter(function (r) { return r[0] === REG[who]; });
+      out = rows.map(function (r) { return '<div class="item"><span>' + r[0] + '</span><span>' + r[1] + '</span></div>'; });
+      if (untag && !exempt) C.log(L, 'bad', 'deliveries.area has no geo tag, so MATCH COLUMNS found nothing and the policy did not filter this table.');
+    }
+    $('xOut').innerHTML = out.join('') || '<div class="item off">0 rows</div>'; C.bump($('xOut'));
+    C.log(L, rows.length === 3 ? (exempt ? 'ok' : 'skip') : 'ok', 'SELECT * FROM ' + tbl + ' as ' + $('xWho').options[$('xWho').selectedIndex].text + ': ' + rows.length + ' of 3 rows' + (tbl === 'sales' ? (exempt ? ', emails in clear (EXCEPT).' : ', emails masked.') : '.'));
+  }
+  $('xSales').onclick = function () { run('sales'); };
+  $('xDel').onclick = function () { run('deliveries'); };
+  ['xWho', 'xRt', 'xLocal', 'xNoTag', 'xUntag'].forEach(function (id) { $(id).onchange = polText; });
+  $('xReset').onclick = function () { ['xLocal', 'xNoTag', 'xUntag'].forEach(function (id) { $(id).checked = false; }); $('xRt').value = 'serverless'; $('xOut').innerHTML = '<div class="item off">run a query</div>'; polText(); L.innerHTML = ''; };
+  $('xReset').onclick();
+})();
+</script>
+</body>
+</html>

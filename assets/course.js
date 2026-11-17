@@ -99,17 +99,17 @@
     ["12", "out-of-memory", "Out-of-memory errors", 1]
   ]},
   {n:"07", slug:"governance-and-security", title:"Governance and Security", weight:15, lessons:[
-    ["01", "managed-vs-external-tables", "Managed vs external tables", 0],
-    ["02", "table-operations", "Creating, changing and dropping tables", 0],
-    ["03", "converting-tables", "Converting between managed and external", 0],
-    ["04", "principals", "Principals: users, groups, service principals", 0],
-    ["05", "securable-hierarchy", "The security hierarchy and privilege inheritance", 0],
-    ["06", "grant-and-revoke", "GRANT and REVOKE in SQL and the UI", 0],
-    ["07", "deny", "DENY: what it does and where it applies", 0],
-    ["08", "column-masks", "Column masks", 0],
-    ["09", "row-filters", "Row filters", 0],
-    ["10", "abac-tags-and-policies", "ABAC: governed tags and policies", 0],
-    ["11", "abac-in-practice", "ABAC in practice: central row filters and column masks", 0]
+    ["01", "managed-vs-external-tables", "Managed vs external tables", 1],
+    ["02", "table-operations", "Creating, changing and dropping tables", 1],
+    ["03", "converting-tables", "Converting between managed and external", 1],
+    ["04", "principals", "Principals: users, groups, service principals", 1],
+    ["05", "securable-hierarchy", "The security hierarchy and privilege inheritance", 1],
+    ["06", "grant-and-revoke", "GRANT and REVOKE in SQL and the UI", 1],
+    ["07", "deny", "DENY: what it does and where it applies", 1],
+    ["08", "column-masks", "Column masks", 1],
+    ["09", "row-filters", "Row filters", 1],
+    ["10", "abac-tags-and-policies", "ABAC: governed tags and policies", 1],
+    ["11", "abac-in-practice", "ABAC in practice: central row filters and column masks", 1]
   ]}
 ]/*END*/;
 

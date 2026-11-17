@@ -1,0 +1,257 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>07-03 Converting between managed and external · DE Associate course</title>
+<link rel="stylesheet" href="../../assets/course.css">
+<script src="../../assets/course.js"></script>
+</head>
+<body data-lesson="07-03">
+
+<aside class="disclaimer" aria-label="Disclaimer"><strong>Learning resource only.</strong> This is an independent, unofficial study guide made for learning purposes. It is not affiliated with, endorsed by or sponsored by Databricks. Databricks features change often, so always check the details in the <a href="https://docs.databricks.com">official Databricks documentation</a> and the official exam guide on databricks.com before relying on anything here. Databricks and related names are trademarks of their respective owners.</aside>
+
+<main class="wrap">
+
+<header class="hero">
+  <div class="eyebrow">Module 07 · Governance and Security · Lesson 3 of 11</div>
+  <h1>Converting between managed and external</h1>
+  <p class="lede">Many teams start with external tables and later want the benefits of managed ones. Unity Catalog has a single command for that direction. Going the other way means making a copy.</p>
+  <dl class="where">
+    <div><dt>Module</dt><dd>07 Governance and Security (15% of the exam)</dd></div>
+    <div><dt>Exam objective</dt><dd>7.1 Convert tables between managed and external, and know what each conversion costs.</dd></div>
+    <div><dt>Time to read</dt><dd>About 11 minutes</dd></div>
+    <div><dt>Before this</dt><dd><a href="02-table-operations.html">07-02 Creating, changing and dropping tables</a></dd></div>
+  </dl>
+</header>
+
+<section id="idea">
+  <div class="sec-num">The idea</div>
+  <h2>One command one way, a copy the other way</h2>
+  <p><strong>External to managed</strong>: <code>ALTER TABLE ... SET MANAGED</code>. Databricks copies the data into managed storage, then switches the table over. The table keeps its name, history and grants, so queries and permissions keep working. Requirements from the docs:</p>
+  <ul>
+    <li>The table must be Delta.</li>
+    <li>Run it on Databricks Runtime 17.3 LTS or above, or serverless compute.</li>
+    <li>You must own the table or hold MANAGE on it.</li>
+    <li>Writers pause briefly during the switch (about a minute for small tables, a few minutes for very large ones). Readers on recent runtimes see no downtime.</li>
+    <li>Stop scheduled OPTIMIZE jobs on the table while it converts.</li>
+  </ul>
+  <p>Changed your mind? <code>ALTER TABLE ... UNSET MANAGED</code> points the table back to its old external location, within 14 days of converting. The old external files are kept for 14 days and then cleaned up.</p>
+  <p><strong>Managed to external</strong>: there is no one-step command. You make a copy at a path with a <a href="../../glossary.html#deep-clone">deep clone</a> (<code>CREATE TABLE ... DEEP CLONE ... LOCATION</code>) or a <a href="../../glossary.html#ctas">CTAS</a> with LOCATION, point readers at the copy, then drop the old managed table.</p>
+  <div class="analogy">
+    <span class="tag">Everyday analogy</span>
+    <p><strong>Moving stock into the bakery's own storeroom.</strong> Moving flour from the rented unit into the storeroom is a service the shop offers: staff carry it over, update the inventory, and the door is only closed for a moment (SET MANAGED). For two weeks you can still ask to move it back. Moving flour out to a new rented unit means buying a second batch for there (a copy), then emptying the storeroom.</p>
+  </div>
+</section>
+
+<section id="how">
+  <div class="sec-num">How it works</div>
+  <h2>SET MANAGED step by step</h2>
+  <div class="stage">
+    <svg viewBox="0 0 360 230" role="img" aria-label="Data is copied from the external location into managed storage while reads and writes continue. A short writer pause happens during the switch. The table entry then points to managed storage. The old files are kept 14 days for rollback.">
+      <defs><path id="cv1" d="M95 70 H265"/></defs>
+      <rect class="box-soft" x="10" y="50" width="85" height="40" rx="6"/><text class="t-m" x="52" y="68" text-anchor="middle">external</text><text class="t-m" x="52" y="82" text-anchor="middle">location</text>
+      <rect class="box-acc" x="265" y="50" width="85" height="40" rx="6"/><text class="t-m" x="307" y="68" text-anchor="middle">managed</text><text class="t-m" x="307" y="82" text-anchor="middle">storage</text>
+      <g class="wire"><use href="#cv1"/></g>
+      <text class="t-m" x="180" y="60" text-anchor="middle">1 copy (no downtime)</text>
+      <rect class="box" x="120" y="115" width="120" height="30" rx="6"/><text class="t-m" x="180" y="135" text-anchor="middle">2 short writer pause</text>
+      <rect class="box" x="120" y="160" width="120" height="30" rx="6"/><text class="t-m" x="180" y="180" text-anchor="middle">3 table points here</text>
+      <text class="t-m" x="52" y="115" text-anchor="middle">kept 14 days</text>
+      <text class="t-m" x="52" y="130" text-anchor="middle">for UNSET</text>
+      <text class="t-m" x="180" y="215" text-anchor="middle">same name, history and grants</text>
+      <g class="mover"><circle r="5" class="dot"><animateMotion dur="2.5s" repeatCount="indefinite"><mpath href="#cv1"/></animateMotion></circle></g>
+    </svg>
+    <p class="cap">Because the table object stays the same, nobody has to change their queries or permissions.</p>
+  </div>
+</section>
+
+<section id="demo">
+  <div class="sec-num">Try it</div>
+  <h2>Convert the POS table</h2>
+  <p><code>bakery.bronze.pos_sales</code> is external. Pick its format, your compute and your role, then convert it, roll back, or copy a managed table out to a path.</p>
+  <div class="stage">
+    <div class="ctrls">
+      <label>Format <select id="vFmt"><option value="delta">Delta</option><option value="csv">CSV</option></select></label>
+      <label>Compute <select id="vRt"><option value="serverless">serverless</option><option value="17.3">DBR 17.3 LTS</option><option value="15.4">DBR 15.4 LTS</option></select></label>
+      <label>You are <select id="vRole"><option value="owner">table owner</option><option value="manage">holder of MANAGE</option><option value="select">holder of SELECT only</option></select></label>
+      <button id="vSet" type="button" class="primary">SET MANAGED</button>
+      <button id="vUnset" type="button">UNSET MANAGED</button>
+      <button id="vDays" type="button">Wait 10 days</button>
+      <button id="vClone" type="button">DEEP CLONE to a LOCATION</button>
+      <button id="vReset" type="button">Reset</button>
+    </div>
+    <div class="panes">
+      <div class="pane"><h4>Table</h4><div id="vTbl"></div></div>
+      <div class="pane"><h4>Storage</h4><div id="vSto"></div></div>
+    </div>
+    <div class="log" id="vLog" role="log" aria-label="What happened"></div>
+  </div>
+</section>
+
+<section id="code">
+  <div class="sec-num">Code</div>
+  <h2>Both directions</h2>
+<pre><code><span class="c-c">-- External to managed (Delta only; DBR 17.3 LTS+ or serverless; owner or MANAGE)</span>
+ALTER TABLE bakery.bronze.pos_sales SET MANAGED;
+
+<span class="c-c">-- Check it worked: Type should now be MANAGED</span>
+DESCRIBE TABLE EXTENDED bakery.bronze.pos_sales;
+SELECT table_type FROM system.information_schema.tables
+WHERE table_catalog = 'bakery' AND table_schema = 'bronze' AND table_name = 'pos_sales';
+
+<span class="c-c">-- Roll back within 14 days</span>
+ALTER TABLE bakery.bronze.pos_sales UNSET MANAGED;
+
+<span class="c-c">-- Managed to external: copy to a path, then retire the managed table</span>
+CREATE TABLE bakery.share.daily_sales_export
+  DEEP CLONE bakery.gold.daily_sales
+  LOCATION 's3://bakery-share/daily_sales/';
+DROP TABLE bakery.gold.daily_sales;   <span class="c-c">-- only after readers have moved</span></code></pre>
+  <p class="note">A CSV or JSON external table cannot be converted with SET MANAGED. Load it into a managed Delta table instead (CTAS or COPY INTO). Check the conversion page for current runtime versions and edge cases.</p>
+</section>
+
+<section id="whatif">
+  <div class="sec-num">What if I change this?</div>
+  <h2>Conditions and their effects</h2>
+  <div class="tbl"><table class="whatif">
+    <tr><th>Change</th><th>Effect</th></tr>
+    <tr><td>Table is not Delta</td><td>SET MANAGED is not possible; build a new managed table from it.</td></tr>
+    <tr><td>Older runtime</td><td>The command is not available; use serverless or 17.3 LTS+.</td></tr>
+    <tr><td>You only have SELECT</td><td>Permission denied; it needs ownership or MANAGE.</td></tr>
+    <tr><td>OPTIMIZE runs during conversion</td><td>Can interfere; pause it first.</td></tr>
+    <tr><td>UNSET MANAGED after 14 days</td><td>Too late; the window has closed.</td></tr>
+    <tr><td>DEEP CLONE with LOCATION</td><td>Full, independent copy as an external table; storage doubles until the old one is dropped.</td></tr>
+  </table></div>
+</section>
+
+<section id="compare">
+  <div class="sec-num">Compare</div>
+  <h2>Ways to change a table's type</h2>
+  <div class="tbl"><table>
+    <tr><th>Method</th><th>Direction</th><th>Keeps name, history, grants</th><th>Copies data</th></tr>
+    <tr><td>ALTER TABLE ... SET MANAGED</td><td>External to managed</td><td>Yes</td><td>Yes, behind the scenes</td></tr>
+    <tr><td>ALTER TABLE ... UNSET MANAGED</td><td>Back to external (14 days)</td><td>Yes</td><td>No, points back to the old files</td></tr>
+    <tr><td>DEEP CLONE ... LOCATION</td><td>Any to external copy</td><td>No: new table, new grants</td><td>Yes</td></tr>
+    <tr><td>CTAS with or without LOCATION</td><td>Any to either</td><td>No</td><td>Yes</td></tr>
+  </table></div>
+</section>
+
+<section id="scenarios">
+  <div class="sec-num">Real life</div>
+  <h2>Conversions in practice</h2>
+  <div class="tbl"><table>
+    <tr><th>Scenario</th><th>What happens</th><th>Fix</th></tr>
+    <tr><td>Old external Delta tables miss out on predictive optimization</td><td>Manual upkeep continues</td><td>SET MANAGED on each</td></tr>
+    <tr><td>After converting, an outside tool can no longer find the files</td><td>Data moved to managed storage</td><td>UNSET MANAGED within 14 days, or switch the tool to a supported reader</td></tr>
+    <tr><td>A partner needs a file copy of a managed table</td><td>No direct conversion</td><td>DEEP CLONE to a LOCATION, or Delta Sharing</td></tr>
+    <tr><td>The external table is raw CSV</td><td>Not convertible</td><td>Load it into a managed Delta table</td></tr>
+  </table></div>
+</section>
+
+<section id="traps">
+  <div class="sec-num">Don't confuse these</div>
+  <h2>Conversion traps</h2>
+  <div class="grid2">
+    <div class="card trap"><span class="tag">Delta only</span><p>SET MANAGED needs a Delta table.</p></div>
+    <div class="card trap"><span class="tag">No SET EXTERNAL for this</span><p>Managed to external means copying.</p></div>
+    <div class="card trap"><span class="tag">Clone is a new table</span><p>A clone needs its own grants.</p></div>
+    <div class="card trap"><span class="tag">14 day rollback</span><p>UNSET MANAGED only works within 14 days.</p></div>
+  </div>
+</section>
+
+<section id="quiz">
+  <div class="sec-num">Check yourself</div>
+  <h2>Quiz</h2>
+  <div class="quiz">
+    <fieldset>
+      <legend>1. Which command turns an external Delta table into a managed table in place?</legend>
+      <label><input type="radio" data-correct> ALTER TABLE ... SET MANAGED</label>
+      <label><input type="radio"> ALTER TABLE ... SET LOCATION</label>
+      <label><input type="radio"> CONVERT TO DELTA</label>
+      <p class="explain" hidden>It copies the data into managed storage and switches the table over.</p>
+    </fieldset>
+    <fieldset>
+      <legend>2. What do users notice after SET MANAGED?</legend>
+      <label><input type="radio"> They must update queries to a new name</label>
+      <label><input type="radio" data-correct> Nothing much: name, history and grants stay the same</label>
+      <label><input type="radio"> All grants are reset</label>
+      <p class="explain" hidden>Only a brief writer pause happens during the switch.</p>
+    </fieldset>
+    <fieldset>
+      <legend>3. How do you get an external copy of a managed table?</legend>
+      <label><input type="radio"> ALTER TABLE ... UNSET MANAGED</label>
+      <label><input type="radio" data-correct> CREATE TABLE ... DEEP CLONE ... LOCATION</label>
+      <label><input type="radio"> DROP TABLE</label>
+      <p class="explain" hidden>UNSET MANAGED only undoes a recent SET MANAGED.</p>
+    </fieldset>
+    <fieldset>
+      <legend>4. In the demo, what happened when you ran SET MANAGED on DBR 15.4 LTS?</legend>
+      <label><input type="radio"> It converted the table</label>
+      <label><input type="radio" data-correct> It failed: SET MANAGED needs DBR 17.3 LTS or above, or serverless</label>
+      <label><input type="radio"> It deleted the table</label>
+      <p class="explain" hidden>Switch to serverless or a newer runtime.</p>
+    </fieldset>
+  </div>
+</section>
+
+<section id="wrap">
+  <div class="sec-num">Wrap up</div>
+  <h2>Key takeaways</h2>
+  <ul>
+    <li>External to managed: ALTER TABLE ... SET MANAGED (Delta, DBR 17.3 LTS+ or serverless, owner or MANAGE).</li>
+    <li>It keeps the name, history and grants; writers pause briefly.</li>
+    <li>UNSET MANAGED rolls back within 14 days.</li>
+    <li>Managed to external: copy with DEEP CLONE or CTAS at a LOCATION.</li>
+  </ul>
+  <h3>Glossary terms used</h3>
+  <p><a href="../../glossary.html#deep-clone">deep clone</a> · <a href="../../glossary.html#ctas">CTAS</a> · <a href="../../glossary.html#managed-table">managed table</a> · <a href="../../glossary.html#external-table">external table</a></p>
+  <h3>Official docs</h3>
+  <ul>
+    <li><a href="https://docs.databricks.com/aws/en/tables/convert-to-managed">Convert an external table to a managed table</a></li>
+    <li><a href="https://docs.databricks.com/aws/en/sql/language-manual/delta-clone">CREATE TABLE CLONE</a></li>
+    <li><a href="https://docs.databricks.com/aws/en/sql/language-manual/sql-ref-syntax-ddl-alter-table">ALTER TABLE</a></li>
+  </ul>
+  <p class="cap">Last verified: 17 November 2026</p>
+</section>
+
+</main>
+
+<script>
+(function () {
+  var C = window.Course, $ = function (id) { return document.getElementById(id); }, L = $('vLog');
+  var S;
+  function reset() { S = { type: 'EXTERNAL', since: null, oldFiles: false, clone: false }; }
+  function draw() {
+    $('vTbl').innerHTML = '<div class="item"><span>bakery.bronze.pos_sales</span><span>' + S.type + '</span></div><div class="item">grants: bakery-analysts SELECT</div>' + (S.since !== null ? '<div class="item">converted ' + S.since + ' days ago</div>' : '') + (S.clone ? '<div class="item"><span>bakery.share.pos_export</span><span>EXTERNAL copy</span></div>' : '');
+    $('vSto').innerHTML = (S.type === 'EXTERNAL' || S.oldFiles ? '<div class="item' + (S.oldFiles ? ' off' : '') + '">s3://bakery-pos/sales/' + (S.oldFiles ? ' (kept for rollback)' : '') + '</div>' : '') + (S.type === 'MANAGED' ? '<div class="item">managed storage (bakery)</div>' : '') + (S.clone ? '<div class="item">s3://bakery-share/pos/ (clone)</div>' : '');
+  }
+  $('vSet').onclick = function () {
+    if (S.type === 'MANAGED') { C.log(L, 'skip', 'Already managed.'); return; }
+    if ($('vRole').value === 'select') { C.log(L, 'bad', 'PERMISSION_DENIED: SET MANAGED needs ownership or MANAGE on the table.'); return; }
+    if ($('vRt').value === '15.4') { C.log(L, 'bad', 'Not supported on DBR 15.4 LTS. Use DBR 17.3 LTS or above, or serverless.'); return; }
+    if ($('vFmt').value !== 'delta') { C.log(L, 'bad', 'Only Delta tables can be converted. Load this CSV data into a new managed Delta table instead.'); return; }
+    S.type = 'MANAGED'; S.since = 0; S.oldFiles = true; draw(); C.bump($('vTbl'));
+    C.log(L, 'ok', 'SET MANAGED: copied data to managed storage, paused writers briefly, switched the table. Same name, history and grants.');
+  };
+  $('vUnset').onclick = function () {
+    if (S.type !== 'MANAGED' || S.since === null) { C.log(L, 'skip', 'UNSET MANAGED only undoes a recent SET MANAGED.'); return; }
+    if (S.since > 14) { C.log(L, 'bad', 'UNSET MANAGED failed: converted ' + S.since + ' days ago, past the 14 day window.'); return; }
+    S.type = 'EXTERNAL'; S.since = null; S.oldFiles = false; draw(); C.bump($('vTbl'));
+    C.log(L, 'ok', 'UNSET MANAGED: the table points back to s3://bakery-pos/sales/. Writes made while managed are kept.');
+  };
+  $('vDays').onclick = function () {
+    if (S.since === null) { C.log(L, 'skip', '10 days pass. Nothing to clean up.'); return; }
+    S.since += 10; if (S.since > 14 && S.oldFiles) { S.oldFiles = false; C.log(L, 'skip', S.since + ' days after converting: the old external files were cleaned up and rollback is no longer possible.'); } else C.log(L, 'skip', S.since + ' days after converting. Rollback still possible.');
+    draw();
+  };
+  $('vClone').onclick = function () {
+    if (S.type !== 'MANAGED') { C.log(L, 'skip', 'Convert it to managed first to try copying a managed table out.'); return; }
+    S.clone = true; draw(); C.bump($('vSto'));
+    C.log(L, 'ok', 'DEEP CLONE ... LOCATION: made an external copy, bakery.share.pos_export. It is a new table, so grant access to it separately.');
+  };
+  $('vReset').onclick = function () { reset(); draw(); L.innerHTML = ''; };
+  reset(); draw();
+})();
+</script>
+</body>
+</html>

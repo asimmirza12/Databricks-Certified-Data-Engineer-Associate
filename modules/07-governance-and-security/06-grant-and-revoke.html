@@ -1,0 +1,250 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>07-06 GRANT and REVOKE in SQL and the UI · DE Associate course</title>
+<link rel="stylesheet" href="../../assets/course.css">
+<script src="../../assets/course.js"></script>
+</head>
+<body data-lesson="07-06">
+
+<aside class="disclaimer" aria-label="Disclaimer"><strong>Learning resource only.</strong> This is an independent, unofficial study guide made for learning purposes. It is not affiliated with, endorsed by or sponsored by Databricks. Databricks features change often, so always check the details in the <a href="https://docs.databricks.com">official Databricks documentation</a> and the official exam guide on databricks.com before relying on anything here. Databricks and related names are trademarks of their respective owners.</aside>
+
+<main class="wrap">
+
+<header class="hero">
+  <div class="eyebrow">Module 07 · Governance and Security · Lesson 6 of 11</div>
+  <h1>GRANT and REVOKE in SQL and the UI</h1>
+  <p class="lede">Giving and taking away access comes down to two SQL statements and one tab in Catalog Explorer. This lesson shows both, plus who is allowed to use them and how to check the result.</p>
+  <dl class="where">
+    <div><dt>Module</dt><dd>07 Governance and Security (15% of the exam)</dd></div>
+    <div><dt>Exam objective</dt><dd>7.2 Give and remove access with GRANT and REVOKE, in SQL and in the UI, for users, groups and service principals.</dd></div>
+    <div><dt>Time to read</dt><dd>About 11 minutes</dd></div>
+    <div><dt>Before this</dt><dd><a href="05-securable-hierarchy.html">07-05 The security hierarchy and privilege inheritance</a></dd></div>
+  </dl>
+</header>
+
+<section id="idea">
+  <div class="sec-num">The idea</div>
+  <h2>Give with GRANT, take with REVOKE</h2>
+  <p><a href="../../glossary.html#grant">GRANT</a> gives one or more <a href="../../glossary.html#privilege">privileges</a> on a securable to a <a href="../../glossary.html#principal">principal</a>. <a href="../../glossary.html#revoke">REVOKE</a> takes them away. The pattern is always the same:</p>
+  <ul>
+    <li><code>GRANT &lt;privileges&gt; ON &lt;object type&gt; &lt;name&gt; TO &lt;principal&gt;</code></li>
+    <li><code>REVOKE &lt;privileges&gt; ON &lt;object type&gt; &lt;name&gt; FROM &lt;principal&gt;</code></li>
+  </ul>
+  <p>The same can be done without SQL in <a href="../../glossary.html#catalog-explorer">Catalog Explorer</a>: open the object, go to the <strong>Permissions</strong> tab, click <strong>Grant</strong>, pick the principal and the privileges, and confirm. Revoke from the same tab.</p>
+  <p>Who may grant or revoke on an object: its owner, the owner of the catalog or schema it sits in, anyone with MANAGE on it, or a metastore admin.</p>
+  <p>Check the result with <code>SHOW GRANTS</code>, which lists granted and inherited privileges, or the Permissions tab.</p>
+  <p>Two details: revoking a privilege that was never granted is not an error, and revoking on a table does not remove a privilege the principal inherits from the schema or catalog. To fully remove access, revoke it where it was granted.</p>
+  <div class="analogy">
+    <span class="tag">Everyday analogy</span>
+    <p><strong>The key register at the bakery.</strong> The manager writes "morning shift: front door key" in the register (GRANT) and crosses it out later (REVOKE). Only the manager or someone they trust with the register (owner or MANAGE) may write in it. Crossing out "back room key" does nothing if the shift still holds the master key for the whole building.</p>
+  </div>
+</section>
+
+<section id="how">
+  <div class="sec-num">How it works</div>
+  <h2>Two ways in, one set of grants</h2>
+  <div class="stage">
+    <svg viewBox="0 0 360 220" role="img" aria-label="A GRANT statement in SQL and the Grant button in Catalog Explorer both write to the same grants on a table in Unity Catalog. SHOW GRANTS and the Permissions tab both read them.">
+      <defs><path id="gr1" d="M100 55 C 150 55, 150 110, 180 110"/><path id="gr2" d="M100 165 C 150 165, 150 110, 180 110"/></defs>
+      <g class="wire"><use href="#gr1"/><use href="#gr2"/><path d="M290 110 H340"/></g>
+      <rect class="box" x="10" y="35" width="90" height="40" rx="6"/><text class="t-m" x="55" y="52" text-anchor="middle">SQL</text><text class="mono" x="55" y="66" text-anchor="middle">GRANT ...</text>
+      <rect class="box" x="10" y="145" width="90" height="40" rx="6"/><text class="t-m" x="55" y="162" text-anchor="middle">Catalog</text><text class="t-m" x="55" y="176" text-anchor="middle">Explorer</text>
+      <rect class="box-acc" x="180" y="85" width="110" height="50" rx="7"/><text class="t-b" x="235" y="106" text-anchor="middle">grants on</text><text class="mono" x="235" y="122" text-anchor="middle">gold.daily</text>
+      <text class="t-m" x="320" y="100" text-anchor="middle">SHOW</text><text class="t-m" x="320" y="128" text-anchor="middle">GRANTS</text>
+      <g class="mover">
+        <circle r="5" class="dot"><animateMotion dur="2.4s" repeatCount="indefinite"><mpath href="#gr1"/></animateMotion></circle>
+        <circle r="5" class="dot"><animateMotion dur="2.4s" begin="-1.2s" repeatCount="indefinite"><mpath href="#gr2"/></animateMotion></circle>
+      </g>
+    </svg>
+    <p class="cap">SQL and the UI are two front ends for the same permissions.</p>
+  </div>
+</section>
+
+<section id="demo">
+  <div class="sec-num">Try it</div>
+  <h2>Build and run a GRANT or REVOKE</h2>
+  <p>Choose who you are, then build a statement. Try granting as a plain user, revoking only at table level when the grant came from the schema, and revoking something that was never granted.</p>
+  <div class="stage">
+    <div class="ctrls">
+      <label>You are <select id="gMe"><option value="owner">owner of schema gold</option><option value="manage">holder of MANAGE on the table</option><option value="plain">analyst with SELECT</option></select></label>
+      <label>Privilege <select id="gPriv"><option>SELECT</option><option>MODIFY</option><option>ALL PRIVILEGES</option></select></label>
+      <label>On <select id="gObj"><option value="TABLE bakery.gold.daily">TABLE bakery.gold.daily</option><option value="SCHEMA bakery.gold">SCHEMA bakery.gold</option></select></label>
+      <label>Principal <select id="gTo"><option value="`bakery-analysts`">`bakery-analysts`</option><option value="`lee@example.com`">`lee@example.com`</option><option value="`6f1c2b7e-0a4d-4c1e-9b8a-2d3e4f5a6b7c`">etl-bot service principal</option></select></label>
+      <button id="gGrant" type="button" class="primary">GRANT</button>
+      <button id="gRevoke" type="button">REVOKE</button>
+      <button id="gShow" type="button">SHOW GRANTS ON TABLE</button>
+      <button id="gReset" type="button">Reset</button>
+    </div>
+    <div class="panes">
+      <div class="pane"><h4>Statement</h4><div id="gSql"></div></div>
+      <div class="pane"><h4>Grants that reach gold.daily</h4><div id="gList"></div></div>
+    </div>
+    <div class="log" id="gLog" role="log" aria-label="What happened"></div>
+  </div>
+</section>
+
+<section id="code">
+  <div class="sec-num">Code</div>
+  <h2>GRANT, REVOKE and SHOW GRANTS</h2>
+<pre><code><span class="c-c">-- Several privileges in one statement</span>
+GRANT SELECT, MODIFY ON TABLE bakery.gold.daily TO `6f1c2b7e-0a4d-4c1e-9b8a-2d3e4f5a6b7c`;
+
+<span class="c-c">-- Everything that applies to the object (not MANAGE)</span>
+GRANT ALL PRIVILEGES ON SCHEMA bakery.sandbox TO `bakery-engineers`;
+
+<span class="c-c">-- Take it away</span>
+REVOKE MODIFY ON TABLE bakery.gold.daily FROM `6f1c2b7e-0a4d-4c1e-9b8a-2d3e4f5a6b7c`;
+
+<span class="c-c">-- What is granted on the table, and to one principal</span>
+SHOW GRANTS ON TABLE bakery.gold.daily;
+SHOW GRANTS `bakery-analysts` ON TABLE bakery.gold.daily;
+
+<span class="c-c">-- Hand over ownership</span>
+ALTER TABLE bakery.gold.daily OWNER TO `data_admins`;</code></pre>
+  <p class="note">The service principal ID above is made up. In Catalog Explorer, the Permissions tab shows the same list and has Grant and Revoke buttons.</p>
+</section>
+
+<section id="whatif">
+  <div class="sec-num">What if I change this?</div>
+  <h2>Choices and their effects</h2>
+  <div class="tbl"><table class="whatif">
+    <tr><th>Change</th><th>Effect</th></tr>
+    <tr><td>Grant on the schema instead of the table</td><td>Applies to every table in it, now and later.</td></tr>
+    <tr><td>Revoke on the table when the grant was on the schema</td><td>No effect on access: the schema grant still reaches the table.</td></tr>
+    <tr><td>Revoke something never granted</td><td>Succeeds quietly; nothing changes.</td></tr>
+    <tr><td>Grant as a user with only SELECT</td><td>Denied: you need ownership, MANAGE, parent ownership or metastore admin.</td></tr>
+    <tr><td>REVOKE ALL PRIVILEGES</td><td>Removes the object's privileges, but not MANAGE.</td></tr>
+  </table></div>
+</section>
+
+<section id="compare">
+  <div class="sec-num">Compare</div>
+  <h2>SQL vs Catalog Explorer</h2>
+  <div class="tbl"><table>
+    <tr><th></th><th>SQL</th><th>Catalog Explorer</th></tr>
+    <tr><td>Grant</td><td><code>GRANT ... TO ...</code></td><td>Permissions tab, Grant</td></tr>
+    <tr><td>Revoke</td><td><code>REVOKE ... FROM ...</code></td><td>Permissions tab, select, Revoke</td></tr>
+    <tr><td>Check</td><td><code>SHOW GRANTS</code></td><td>Permissions tab list</td></tr>
+    <tr><td>Best for</td><td>Repeatable scripts, CI/CD, many objects</td><td>One-off changes, learning, checking</td></tr>
+  </table></div>
+</section>
+
+<section id="scenarios">
+  <div class="sec-num">Real life</div>
+  <h2>Grants in practice</h2>
+  <div class="tbl"><table>
+    <tr><th>Scenario</th><th>What happens</th><th>Fix</th></tr>
+    <tr><td>Lee was revoked on the table but can still read it</td><td>Lee's group has SELECT on the schema</td><td>Check SHOW GRANTS; revoke where it was granted or remove Lee from the group</td></tr>
+    <tr><td>An analyst tries to share a table with a colleague</td><td>Permission denied</td><td>Ask the owner or a MANAGE holder</td></tr>
+    <tr><td>Permissions differ between dev and prod</td><td>They were set by hand in the UI</td><td>Keep GRANT statements in code and run them in CI/CD</td></tr>
+    <tr><td>A pipeline needs to write to one table</td><td>Granting ALL PRIVILEGES on the catalog is too broad</td><td>GRANT MODIFY on that table to its service principal</td></tr>
+  </table></div>
+</section>
+
+<section id="traps">
+  <div class="sec-num">Don't confuse these</div>
+  <h2>Grant traps</h2>
+  <div class="grid2">
+    <div class="card trap"><span class="tag">TO vs FROM</span><p>GRANT ... TO; REVOKE ... FROM.</p></div>
+    <div class="card trap"><span class="tag">Revoke where granted</span><p>Inherited privileges are only removed at the level they were granted.</p></div>
+    <div class="card trap"><span class="tag">Who can grant</span><p>Owner, parent owner, MANAGE holder or metastore admin. Not someone with just SELECT.</p></div>
+    <div class="card trap"><span class="tag">Least privilege</span><p>Grant the narrowest privilege at the narrowest level that works.</p></div>
+  </div>
+</section>
+
+<section id="quiz">
+  <div class="sec-num">Check yourself</div>
+  <h2>Quiz</h2>
+  <div class="quiz">
+    <fieldset>
+      <legend>1. Which statement removes SELECT on a table from a group?</legend>
+      <label><input type="radio"> GRANT NONE ON TABLE t TO `g`</label>
+      <label><input type="radio" data-correct> REVOKE SELECT ON TABLE t FROM `g`</label>
+      <label><input type="radio"> DENY SELECT ON TABLE t TO `g`</label>
+      <p class="explain" hidden>REVOKE ... FROM. DENY is not supported by Unity Catalog (next lesson).</p>
+    </fieldset>
+    <fieldset>
+      <legend>2. Who can grant SELECT on bakery.gold.daily?</legend>
+      <label><input type="radio"> Anyone with SELECT on it</label>
+      <label><input type="radio" data-correct> Its owner, the owner of gold or bakery, a MANAGE holder, or a metastore admin</label>
+      <label><input type="radio"> Only account admins</label>
+      <p class="explain" hidden>Holding a privilege does not let you pass it on.</p>
+    </fieldset>
+    <fieldset>
+      <legend>3. Where in the UI do you grant access to a table?</legend>
+      <label><input type="radio"> The Spark UI</label>
+      <label><input type="radio" data-correct> Catalog Explorer, the table's Permissions tab</label>
+      <label><input type="radio"> The compute event log</label>
+      <p class="explain" hidden>The Permissions tab has Grant and Revoke buttons.</p>
+    </fieldset>
+    <fieldset>
+      <legend>4. In the demo, you granted SELECT on the schema, then revoked SELECT on the table. Could the analysts still read gold.daily?</legend>
+      <label><input type="radio" data-correct> Yes, the schema grant still reached it</label>
+      <label><input type="radio"> No</label>
+      <label><input type="radio"> Only the owner could</label>
+      <p class="explain" hidden>Revoke at the level where the privilege was granted.</p>
+    </fieldset>
+  </div>
+</section>
+
+<section id="wrap">
+  <div class="sec-num">Wrap up</div>
+  <h2>Key takeaways</h2>
+  <ul>
+    <li>GRANT privileges ON object TO principal; REVOKE ... FROM principal.</li>
+    <li>Catalog Explorer's Permissions tab does the same thing.</li>
+    <li>Owners, parent owners, MANAGE holders and metastore admins can grant.</li>
+    <li>SHOW GRANTS shows granted and inherited privileges; revoke where the grant was made.</li>
+  </ul>
+  <h3>Glossary terms used</h3>
+  <p><a href="../../glossary.html#grant">GRANT</a> · <a href="../../glossary.html#revoke">REVOKE</a> · <a href="../../glossary.html#catalog-explorer">Catalog Explorer</a> · <a href="../../glossary.html#privilege">privilege</a> · <a href="../../glossary.html#principal">principal</a></p>
+  <h3>Official docs</h3>
+  <ul>
+    <li><a href="https://docs.databricks.com/aws/en/data-governance/unity-catalog/manage-privileges/">Manage privileges in Unity Catalog</a></li>
+    <li><a href="https://docs.databricks.com/aws/en/sql/language-manual/security-grant">GRANT</a></li>
+    <li><a href="https://docs.databricks.com/aws/en/sql/language-manual/security-revoke">REVOKE</a></li>
+    <li><a href="https://docs.databricks.com/aws/en/sql/language-manual/security-show-grant">SHOW GRANTS</a></li>
+  </ul>
+  <p class="cap">Last verified: 17 November 2026</p>
+</section>
+
+</main>
+
+<script>
+(function () {
+  var C = window.Course, $ = function (id) { return document.getElementById(id); }, L = $('gLog');
+  var G;
+  function reset() { G = [{ p: '`bakery-analysts`', priv: 'SELECT', obj: 'TABLE bakery.gold.daily' }]; }
+  function exp(priv) { return priv === 'ALL PRIVILEGES' ? ['SELECT', 'MODIFY', 'APPLY TAG'] : [priv]; }
+  function sql(verb) { return verb + ' ' + $('gPriv').value + ' ON ' + $('gObj').value + (verb === 'GRANT' ? ' TO ' : ' FROM ') + $('gTo').value + ';'; }
+  function draw(verb) {
+    $('gSql').innerHTML = '<div class="item">' + C.esc(sql(verb || 'GRANT')) + '</div>';
+    $('gList').innerHTML = G.length ? G.map(function (g) { return '<div class="item"><span>' + C.esc(g.p.length > 24 ? 'etl-bot (SP)' : g.p) + ': ' + g.priv + '</span><span>' + (g.obj.indexOf('SCHEMA') === 0 ? 'inherited from schema' : 'on table') + '</span></div>'; }).join('') : '<div class="item off">owner only</div>';
+  }
+  function allowed() { if ($('gMe').value === 'plain') { C.log(L, 'bad', 'PERMISSION_DENIED: only an owner, a parent owner, a MANAGE holder or a metastore admin can change grants.'); return false; } return true; }
+  $('gGrant').onclick = function () {
+    draw('GRANT'); C.log(L, 'skip', sql('GRANT')); if (!allowed()) return;
+    var p = $('gTo').value, obj = $('gObj').value;
+    exp($('gPriv').value).forEach(function (priv) { if (!G.some(function (g) { return g.p === p && g.priv === priv && g.obj === obj; })) G.push({ p: p, priv: priv, obj: obj }); });
+    draw('GRANT'); C.bump($('gList')); C.log(L, 'ok', 'Granted.' + (obj.indexOf('SCHEMA') === 0 ? ' It applies to every table in bakery.gold.' : ''));
+  };
+  $('gRevoke').onclick = function () {
+    draw('REVOKE'); C.log(L, 'skip', sql('REVOKE')); if (!allowed()) return;
+    var p = $('gTo').value, obj = $('gObj').value, privs = exp($('gPriv').value), before = G.length;
+    G = G.filter(function (g) { return !(g.p === p && g.obj === obj && privs.indexOf(g.priv) > -1); });
+    draw('REVOKE'); C.bump($('gList'));
+    if (G.length === before) C.log(L, 'skip', 'Nothing matched at that level, so nothing changed (no error).'); else C.log(L, 'ok', 'Revoked ' + (before - G.length) + ' privilege(s).');
+    var still = G.filter(function (g) { return g.p === p && privs.indexOf(g.priv) > -1; });
+    if (still.length) C.log(L, 'bad', 'Still granted at another level: ' + still.map(function (g) { return g.priv + ' on ' + g.obj; }).join(', ') + '. That principal keeps access to gold.daily.');
+  };
+  $('gShow').onclick = function () { C.log(L, 'ok', 'SHOW GRANTS ON TABLE bakery.gold.daily: ' + (G.map(function (g) { return (g.p.length > 24 ? 'etl-bot' : g.p) + ' ' + g.priv + (g.obj.indexOf('SCHEMA') === 0 ? ' (inherited)' : ''); }).join('; ') || 'none') + '.'); };
+  ['gPriv', 'gObj', 'gTo'].forEach(function (id) { $(id).onchange = function () { draw(); }; });
+  $('gReset').onclick = function () { reset(); draw(); L.innerHTML = ''; };
+  reset(); draw();
+})();
+</script>
+</body>
+</html>

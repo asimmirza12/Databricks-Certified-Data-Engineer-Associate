@@ -1,0 +1,249 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>07-07 DENY: what it does and where it applies · DE Associate course</title>
+<link rel="stylesheet" href="../../assets/course.css">
+<script src="../../assets/course.js"></script>
+</head>
+<body data-lesson="07-07">
+
+<aside class="disclaimer" aria-label="Disclaimer"><strong>Learning resource only.</strong> This is an independent, unofficial study guide made for learning purposes. It is not affiliated with, endorsed by or sponsored by Databricks. Databricks features change often, so always check the details in the <a href="https://docs.databricks.com">official Databricks documentation</a> and the official exam guide on databricks.com before relying on anything here. Databricks and related names are trademarks of their respective owners.</aside>
+
+<main class="wrap">
+
+<header class="hero">
+  <div class="eyebrow">Module 07 · Governance and Security · Lesson 7 of 11</div>
+  <h1>DENY: what it does and where it applies</h1>
+  <p class="lede">DENY sounds like the opposite of GRANT, and in older Databricks permissions it was: a hard "no" that beat any "yes". Unity Catalog works differently. Knowing where DENY applies, and where it does not, is a classic exam question.</p>
+  <dl class="where">
+    <div><dt>Module</dt><dd>07 Governance and Security (15% of the exam)</dd></div>
+    <div><dt>Exam objective</dt><dd>7.2 Know what DENY does, where it applies, and how to block access in Unity Catalog instead.</dd></div>
+    <div><dt>Time to read</dt><dd>About 11 minutes</dd></div>
+    <div><dt>Before this</dt><dd><a href="06-grant-and-revoke.html">07-06 GRANT and REVOKE</a></dd></div>
+  </dl>
+</header>
+
+<section id="idea">
+  <div class="sec-num">The idea</div>
+  <h2>A hard "no", but only in the legacy catalog</h2>
+  <p><strong>In the legacy Hive metastore</strong> (the <code>hive_metastore</code> catalog, using the older <a href="../../glossary.html#table-acl">table access control</a>), <a href="../../glossary.html#deny">DENY</a> blocks a privilege for a principal. A DENY beats any GRANT, direct or through a group. Denying on a schema or catalog also denies on everything below it. To undo a DENY, you REVOKE the same privilege.</p>
+  <p><strong>In Unity Catalog</strong>, the DENY statement is not supported. Unity Catalog permissions are additive: a principal can do something if any grant (on the object, a parent, or through any group) allows it. There is no general "deny SELECT". To stop someone reading a table you:</p>
+  <ul>
+    <li>Revoke the grant where it was made, or remove them from the group that has it.</li>
+    <li>Grant at a narrower level (the schema or table) instead of broadly (the catalog).</li>
+    <li>Use <a href="09-row-filters.html">row filters</a> and <a href="08-column-masks.html">column masks</a>, or ABAC policies, when people may see the table but not every row or value.</li>
+  </ul>
+  <p>One newer exception: ABAC <strong>DENY policies</strong> (Beta) can deny <code>MANAGE ACCESS CONTROL</code>, so selected people cannot change permissions on tagged objects even if they would normally be allowed. They do not deny SELECT or MODIFY.</p>
+  <div class="analogy">
+    <span class="tag">Everyday analogy</span>
+    <p><strong>Two bakeries with different rules.</strong> The old shop keeps a "banned" list at the door: if your name is on it, no key you hold works (DENY). The new shop has no banned list. You get in if you hold any valid key, so to keep someone out you take back every key they hold, or never hand one to their whole team.</p>
+  </div>
+</section>
+
+<section id="how">
+  <div class="sec-num">How it works</div>
+  <h2>Deny-wins vs grant-only</h2>
+  <div class="stage">
+    <svg viewBox="0 0 360 230" role="img" aria-label="Left: in hive_metastore, a group GRANT plus a user DENY results in the user being blocked. Right: in Unity Catalog, there is no DENY; a group GRANT means the user can read, and only revoking or removing them from the group blocks access.">
+      <defs><path id="dn1" d="M85 70 V150"/><path id="dn2" d="M265 70 V150"/></defs>
+      <text class="t-b" x="85" y="22" text-anchor="middle">hive_metastore (legacy)</text>
+      <text class="t-b" x="265" y="22" text-anchor="middle">Unity Catalog</text>
+      <rect class="box" x="20" y="35" width="130" height="35" rx="6"/><text class="t-m" x="85" y="50" text-anchor="middle">GRANT SELECT to group</text><text class="t-m" x="85" y="63" text-anchor="middle">DENY SELECT to sam</text>
+      <rect class="box" x="200" y="35" width="130" height="35" rx="6"/><text class="t-m" x="265" y="50" text-anchor="middle">GRANT SELECT to group</text><text class="t-m" x="265" y="63" text-anchor="middle">DENY: not supported</text>
+      <g class="wire"><use href="#dn1"/><use href="#dn2"/><path d="M180 30 V210" stroke-dasharray="4 4"/></g>
+      <rect class="box-acc" x="30" y="150" width="110" height="35" rx="6"/><text class="t-b" x="85" y="172" text-anchor="middle">sam blocked</text>
+      <rect class="box-soft" x="210" y="150" width="110" height="35" rx="6"/><text class="t-b" x="265" y="172" text-anchor="middle">sam can read</text>
+      <text class="t-m" x="85" y="205" text-anchor="middle">DENY beats GRANT</text>
+      <text class="t-m" x="265" y="205" text-anchor="middle">any grant allows</text>
+      <g class="mover">
+        <circle r="5" class="dot"><animateMotion dur="2.4s" repeatCount="indefinite"><mpath href="#dn1"/></animateMotion></circle>
+        <circle r="5" class="dot-ok"><animateMotion dur="2.4s" begin="-1.2s" repeatCount="indefinite"><mpath href="#dn2"/></animateMotion></circle>
+      </g>
+    </svg>
+    <p class="cap">In Unity Catalog, block access by not granting it, not by denying it.</p>
+  </div>
+</section>
+
+<section id="demo">
+  <div class="sec-num">Try it</div>
+  <h2>Try to block sam</h2>
+  <p>sam is in <code>bakery-analysts</code>, which has SELECT on the sales table. Pick a catalog and try to stop sam reading it.</p>
+  <div class="stage">
+    <div class="ctrls">
+      <label>Catalog <select id="dCat"><option value="hms">hive_metastore (legacy)</option><option value="uc">bakery (Unity Catalog)</option></select></label>
+      <button id="dDeny" type="button">DENY SELECT ... TO sam</button>
+      <button id="dRevU" type="button">REVOKE SELECT ... FROM sam</button>
+      <button id="dRevG" type="button">REVOKE SELECT ... FROM bakery-analysts</button>
+      <button id="dLeave" type="button">Remove sam from the group</button>
+      <button id="dRead" type="button" class="primary">sam runs SELECT</button>
+      <button id="dReset" type="button">Reset</button>
+    </div>
+    <div class="panes">
+      <div class="pane"><h4>Permissions</h4><div id="dPerm"></div></div>
+      <div class="pane"><h4>sam's access</h4><div id="dRes"></div></div>
+    </div>
+    <div class="log" id="dLog" role="log" aria-label="What happened"></div>
+  </div>
+</section>
+
+<section id="code">
+  <div class="sec-num">Code</div>
+  <h2>DENY in the legacy catalog, alternatives in Unity Catalog</h2>
+<pre><code><span class="c-c">-- Legacy hive_metastore only (table access control)</span>
+DENY SELECT ON TABLE hive_metastore.default.sales TO `sam@example.com`;
+REVOKE SELECT ON TABLE hive_metastore.default.sales FROM `sam@example.com`;  <span class="c-c">-- removes the DENY</span>
+
+<span class="c-c">-- Unity Catalog: DENY is not supported. Instead...</span>
+<span class="c-c">-- 1. Grant narrowly, so only the right people get access</span>
+REVOKE SELECT ON CATALOG bakery FROM `bakery-analysts`;
+GRANT  SELECT ON SCHEMA  bakery.gold TO `bakery-analysts`;
+
+<span class="c-c">-- 2. Hide rows or values inside a table (lessons 07-08 and 07-09)</span>
+ALTER TABLE bakery.gold.daily SET ROW FILTER bakery.gov.region_filter ON (region);
+
+<span class="c-c">-- 3. Beta: stop people changing permissions on sensitive objects</span>
+CREATE POLICY no_regrant ON CATALOG bakery
+  TO `account users` EXCEPT `data_admins`
+  DENY MANAGE ACCESS CONTROL
+  FOR TABLES WHEN has_tag('sensitive');</code></pre>
+  <p class="note">ABAC DENY policies were in Beta when this lesson was written and need recent runtimes; check the docs before relying on them. SHOW GRANTS does not list them; use SHOW EFFECTIVE POLICIES.</p>
+</section>
+
+<section id="whatif">
+  <div class="sec-num">What if I change this?</div>
+  <h2>Actions and their effects</h2>
+  <div class="tbl"><table class="whatif">
+    <tr><th>Change</th><th>Effect</th></tr>
+    <tr><td>DENY in hive_metastore</td><td>Blocks that privilege for that principal, even if a group grants it.</td></tr>
+    <tr><td>DENY on a hive_metastore schema</td><td>Blocks it on every object in the schema too.</td></tr>
+    <tr><td>REVOKE after a DENY (legacy)</td><td>Removes the DENY.</td></tr>
+    <tr><td>DENY in Unity Catalog</td><td>Error: not supported.</td></tr>
+    <tr><td>REVOKE from sam only, in Unity Catalog</td><td>sam still reads through the group.</td></tr>
+    <tr><td>Remove sam from the group</td><td>sam loses the access that came through it.</td></tr>
+  </table></div>
+</section>
+
+<section id="compare">
+  <div class="sec-num">Compare</div>
+  <h2>Ways to say "no"</h2>
+  <div class="tbl"><table>
+    <tr><th>Method</th><th>Where</th><th>What it blocks</th></tr>
+    <tr><td>DENY statement</td><td>hive_metastore only (legacy)</td><td>A privilege for a principal; beats grants</td></tr>
+    <tr><td>Not granting / REVOKE</td><td>Unity Catalog</td><td>Access, as long as no other grant allows it</td></tr>
+    <tr><td>Row filters, column masks, ABAC policies</td><td>Unity Catalog</td><td>Some rows or values for some people</td></tr>
+    <tr><td>ABAC DENY policy (Beta)</td><td>Unity Catalog</td><td>MANAGE ACCESS CONTROL only</td></tr>
+  </table></div>
+</section>
+
+<section id="scenarios">
+  <div class="sec-num">Real life</div>
+  <h2>Saying no in practice</h2>
+  <div class="tbl"><table>
+    <tr><th>Scenario</th><th>What happens</th><th>Fix</th></tr>
+    <tr><td>A migration script with DENY statements fails on Unity Catalog</td><td>DENY is not supported there</td><td>Redesign grants so the blocked people never receive them</td></tr>
+    <tr><td>One contractor in the analysts group must not see salaries</td><td>The group's SELECT lets them read</td><td>Mask the salary column for that contractor's group, or move them to another group</td></tr>
+    <tr><td>Analysts got SELECT on the whole catalog</td><td>They can read raw data too</td><td>Revoke at catalog level, grant on gold</td></tr>
+    <tr><td>Table owners keep re-sharing sensitive tables</td><td>They are allowed to grant</td><td>An ABAC DENY policy on MANAGE ACCESS CONTROL (Beta), or make a group the owner</td></tr>
+  </table></div>
+</section>
+
+<section id="traps">
+  <div class="sec-num">Don't confuse these</div>
+  <h2>DENY traps</h2>
+  <div class="grid2">
+    <div class="card trap"><span class="tag">UC has no DENY SELECT</span><p>The DENY statement is not supported by Unity Catalog.</p></div>
+    <div class="card trap"><span class="tag">Legacy DENY wins</span><p>In hive_metastore a DENY beats any GRANT.</p></div>
+    <div class="card trap"><span class="tag">Additive model</span><p>In Unity Catalog, any grant that applies allows access.</p></div>
+    <div class="card trap"><span class="tag">REVOKE where granted</span><p>Revoking from a user does nothing if a group still grants it.</p></div>
+  </div>
+</section>
+
+<section id="quiz">
+  <div class="sec-num">Check yourself</div>
+  <h2>Quiz</h2>
+  <div class="quiz">
+    <fieldset>
+      <legend>1. Where does the DENY statement apply?</legend>
+      <label><input type="radio"> Every Unity Catalog catalog</label>
+      <label><input type="radio" data-correct> Only the legacy hive_metastore catalog</label>
+      <label><input type="radio"> Only volumes</label>
+      <p class="explain" hidden>Unity Catalog does not support DENY.</p>
+    </fieldset>
+    <fieldset>
+      <legend>2. In hive_metastore, a group has SELECT and one member is denied SELECT. Can that member read?</legend>
+      <label><input type="radio"> Yes, the group grant wins</label>
+      <label><input type="radio" data-correct> No, DENY takes precedence</label>
+      <label><input type="radio"> Only on weekdays</label>
+      <p class="explain" hidden>In the legacy model, DENY beats any explicit or inherited grant.</p>
+    </fieldset>
+    <fieldset>
+      <legend>3. In Unity Catalog, how do you stop one person reading a table their group can read?</legend>
+      <label><input type="radio"> DENY SELECT to that person</label>
+      <label><input type="radio" data-correct> Remove them from the group, or restructure grants or use a mask or filter</label>
+      <label><input type="radio"> REVOKE SELECT from that person only</label>
+      <p class="explain" hidden>Permissions are additive, so the group grant still lets them in.</p>
+    </fieldset>
+    <fieldset>
+      <legend>4. In the demo, in Unity Catalog, what happened when you revoked SELECT from sam only?</legend>
+      <label><input type="radio"> sam was blocked</label>
+      <label><input type="radio" data-correct> sam could still read through bakery-analysts</label>
+      <label><input type="radio"> An error was shown</label>
+      <p class="explain" hidden>sam never had a direct grant; access came from the group.</p>
+    </fieldset>
+  </div>
+</section>
+
+<section id="wrap">
+  <div class="sec-num">Wrap up</div>
+  <h2>Key takeaways</h2>
+  <ul>
+    <li>DENY applies only to the legacy hive_metastore, where it beats any grant.</li>
+    <li>Unity Catalog has no DENY SELECT: permissions are additive.</li>
+    <li>Block access by granting narrowly, revoking where granted, and using groups carefully.</li>
+    <li>Hide rows or values with filters, masks or ABAC; ABAC DENY policies (Beta) only cover MANAGE ACCESS CONTROL.</li>
+  </ul>
+  <h3>Glossary terms used</h3>
+  <p><a href="../../glossary.html#deny">DENY</a> · <a href="../../glossary.html#table-acl">table access control</a> · <a href="../../glossary.html#grant">GRANT</a> · <a href="../../glossary.html#revoke">REVOKE</a></p>
+  <h3>Official docs</h3>
+  <ul>
+    <li><a href="https://docs.databricks.com/aws/en/sql/language-manual/security-deny">DENY (legacy Hive metastore)</a></li>
+    <li><a href="https://docs.databricks.com/aws/en/data-governance/unity-catalog/access-control/permissions-concepts">Unity Catalog permissions concepts</a></li>
+    <li><a href="https://docs.databricks.com/aws/en/data-governance/unity-catalog/abac/deny-policies">ABAC DENY policies</a></li>
+  </ul>
+  <p class="cap">Last verified: 17 November 2026</p>
+</section>
+
+</main>
+
+<script>
+(function () {
+  var C = window.Course, $ = function (id) { return document.getElementById(id); }, L = $('dLog');
+  var S;
+  function reset() { S = { groupGrant: true, userGrant: false, deny: false, member: true }; }
+  function uc() { return $('dCat').value === 'uc'; }
+  function can() { if (!uc() && S.deny) return false; return S.userGrant || (S.groupGrant && S.member); }
+  function draw() {
+    var t = uc() ? 'bakery.silver.sales' : 'hive_metastore.default.sales';
+    $('dPerm').innerHTML = '<div class="item">' + t + '</div><div class="item"><span>bakery-analysts</span><span>' + (S.groupGrant ? 'SELECT' : '-') + '</span></div><div class="item"><span>sam</span><span>' + (S.deny ? 'DENY SELECT' : S.userGrant ? 'SELECT' : '-') + '</span></div><div class="item">sam in group: ' + (S.member ? 'yes' : 'no') + '</div>';
+    $('dRes').innerHTML = '<div class="big">' + (can() ? 'can read' : 'blocked') + '</div>';
+  }
+  $('dDeny').onclick = function () {
+    if (uc()) { C.log(L, 'bad', 'DENY SELECT ON TABLE bakery.silver.sales TO `sam@example.com`: error. DENY is not supported by Unity Catalog.'); return; }
+    S.deny = true; draw(); C.bump($('dRes')); C.log(L, 'ok', 'DENY SELECT to sam in hive_metastore. A DENY beats the group\'s GRANT.');
+  };
+  $('dRevU').onclick = function () {
+    if (!uc() && S.deny) { S.deny = false; draw(); C.log(L, 'ok', 'REVOKE removed the DENY. sam is back to whatever the group allows.'); return; }
+    S.userGrant = false; draw(); C.log(L, can() ? 'bad' : 'ok', 'REVOKE SELECT FROM sam: sam had no direct grant, so nothing changed.' + (can() ? ' sam still reads through bakery-analysts.' : ''));
+  };
+  $('dRevG').onclick = function () { S.groupGrant = false; draw(); C.bump($('dRes')); C.log(L, 'ok', 'REVOKE SELECT FROM bakery-analysts: the whole group lost access, sam included.'); };
+  $('dLeave').onclick = function () { S.member = false; draw(); C.bump($('dRes')); C.log(L, 'ok', 'sam removed from bakery-analysts: the group\'s access no longer reaches sam.'); };
+  $('dRead').onclick = function () { draw(); C.log(L, can() ? 'ok' : 'bad', 'sam runs SELECT: ' + (can() ? 'rows returned.' : 'PERMISSION_DENIED.')); };
+  $('dCat').onchange = function () { reset(); draw(); C.log(L, 'skip', 'Switched to ' + (uc() ? 'Unity Catalog' : 'the legacy hive_metastore') + '. Permissions reset.'); };
+  $('dReset').onclick = function () { reset(); draw(); L.innerHTML = ''; };
+  reset(); draw();
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,274 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>07-04 Principals: users, groups, service principals · DE Associate course</title>
+<link rel="stylesheet" href="../../assets/course.css">
+<script src="../../assets/course.js"></script>
+</head>
+<body data-lesson="07-04">
+
+<aside class="disclaimer" aria-label="Disclaimer"><strong>Learning resource only.</strong> This is an independent, unofficial study guide made for learning purposes. It is not affiliated with, endorsed by or sponsored by Databricks. Databricks features change often, so always check the details in the <a href="https://docs.databricks.com">official Databricks documentation</a> and the official exam guide on databricks.com before relying on anything here. Databricks and related names are trademarks of their respective owners.</aside>
+
+<main class="wrap">
+
+<header class="hero">
+  <div class="eyebrow">Module 07 · Governance and Security · Lesson 4 of 11</div>
+  <h1>Principals: users, groups, service principals</h1>
+  <p class="lede">Before you can give anyone access, you need to know who "anyone" can be. In Unity Catalog, access is granted to principals. There are three kinds, and one kind of group that cannot be used at all.</p>
+  <dl class="where">
+    <div><dt>Module</dt><dd>07 Governance and Security (15% of the exam)</dd></div>
+    <div><dt>Exam objective</dt><dd>7.2 Know who access can be given to: users, groups and service principals, and how to name each in SQL.</dd></div>
+    <div><dt>Time to read</dt><dd>About 11 minutes</dd></div>
+    <div><dt>Before this</dt><dd><a href="../00-foundations/09-unity-catalog-basics.html">00-09 Unity Catalog basics</a></dd></div>
+  </dl>
+</header>
+
+<section id="idea">
+  <div class="sec-num">The idea</div>
+  <h2>Three kinds of "who"</h2>
+  <p>A <a href="../../glossary.html#principal">principal</a> is anything that can be given a <a href="../../glossary.html#privilege">privilege</a>:</p>
+  <ul>
+    <li><strong>User</strong>: a person, named by their email address, such as <code>`sam@example.com`</code>.</li>
+    <li><strong>Group</strong>: a named set of users and service principals, such as <code>`bakery-analysts`</code>. Grant to groups, not individuals: when someone joins or leaves, you change the group, not dozens of grants.</li>
+    <li><strong><a href="../../glossary.html#service-principal">Service principal</a></strong>: a non-human identity for jobs and tools such as CI/CD pipelines. In SQL it is named by its application ID, a long string of letters and numbers.</li>
+  </ul>
+  <p>Groups come in two kinds, and the difference matters:</p>
+  <ul>
+    <li><a href="../../glossary.html#account-group">Account groups</a> are defined once for the whole Databricks account (often synced from your company's identity system). They can be granted Unity Catalog privileges.</li>
+    <li><a href="../../glossary.html#workspace-local-group">Workspace-local groups</a> are a legacy kind that exists in one workspace only. They cannot be granted Unity Catalog privileges. The built-in <code>users</code> group is one of them; use <code>`account users`</code> instead to mean everyone in the account.</li>
+  </ul>
+  <p>In SQL, wrap names that contain characters such as <code>@</code>, hyphens or spaces in backticks.</p>
+  <div class="analogy">
+    <span class="tag">Everyday analogy</span>
+    <p><strong>Keys at the bakery.</strong> You can hand a key to a named baker (user), to "all morning-shift staff" (group), or to the delivery robot (service principal). Handing keys to the shift is easier than to each baker. A list of staff written on one shop's notice board (workspace-local group) is not recognised by head office, so keys cannot be issued to it.</p>
+  </div>
+</section>
+
+<section id="how">
+  <div class="sec-num">How it works</div>
+  <h2>Grants go to principals; people inherit through groups</h2>
+  <div class="stage">
+    <svg viewBox="0 0 360 230" role="img" aria-label="A SELECT grant on a table goes to the account group bakery-analysts. Two users and one service principal are members of the group, so all three can read. A workspace-local group cannot receive the grant.">
+      <defs><path id="pr1" d="M180 55 V95"/><path id="pr2" d="M180 125 C 180 150, 60 150, 60 170"/><path id="pr3" d="M180 125 V170"/><path id="pr4" d="M180 125 C 180 150, 300 150, 300 170"/></defs>
+      <rect class="box-acc" x="100" y="20" width="160" height="35" rx="6"/><text class="t-b" x="180" y="42" text-anchor="middle">GRANT SELECT</text>
+      <rect class="box" x="100" y="95" width="160" height="30" rx="6"/><text class="mono" x="180" y="115" text-anchor="middle">bakery-analysts</text>
+      <rect class="box-soft" x="10" y="170" width="100" height="30" rx="6"/><text class="t-m" x="60" y="190" text-anchor="middle">sam (user)</text>
+      <rect class="box-soft" x="130" y="170" width="100" height="30" rx="6"/><text class="t-m" x="180" y="190" text-anchor="middle">lee (user)</text>
+      <rect class="box-soft" x="250" y="170" width="100" height="30" rx="6"/><text class="t-m" x="300" y="190" text-anchor="middle">etl-bot (SP)</text>
+      <g class="wire"><use href="#pr1"/><use href="#pr2"/><use href="#pr3"/><use href="#pr4"/></g>
+      <text class="t-m" x="290" y="75">account group</text>
+      <g class="mover">
+        <circle r="5" class="dot"><animateMotion dur="2.4s" repeatCount="indefinite"><mpath href="#pr1"/></animateMotion></circle>
+        <circle r="5" class="dot-ok"><animateMotion dur="2.4s" begin="-1.2s" repeatCount="indefinite"><mpath href="#pr2"/></animateMotion></circle>
+        <circle r="5" class="dot-ok"><animateMotion dur="2.4s" begin="-0.8s" repeatCount="indefinite"><mpath href="#pr3"/></animateMotion></circle>
+        <circle r="5" class="dot-ok"><animateMotion dur="2.4s" begin="-0.4s" repeatCount="indefinite"><mpath href="#pr4"/></animateMotion></circle>
+      </g>
+    </svg>
+    <p class="cap">One grant to the group covers every member, now and in future.</p>
+  </div>
+</section>
+
+<section id="demo">
+  <div class="sec-num">Try it</div>
+  <h2>Grant to the right principal</h2>
+  <p>Pick a principal and a way of writing it, then grant SELECT on <code>bakery.gold.daily_sales</code>. Then change group membership and check who can read.</p>
+  <div class="stage">
+    <div class="ctrls">
+      <label>Principal <select id="nWho">
+        <option value="grp">account group bakery-analysts</option>
+        <option value="user">user sam@example.com</option>
+        <option value="sp">service principal etl-bot</option>
+        <option value="local">workspace group users</option>
+        <option value="all">account users</option>
+      </select></label>
+      <label class="tog"><input type="checkbox" id="nTick" checked> Wrap in backticks</label>
+      <button id="nGrant" type="button" class="primary">GRANT SELECT</button>
+      <button id="nJoin" type="button">Add pat to bakery-analysts</button>
+      <button id="nLeave" type="button">Remove sam from bakery-analysts</button>
+      <button id="nCheck" type="button">Who can read?</button>
+      <button id="nReset" type="button">Reset</button>
+    </div>
+    <div class="panes">
+      <div class="pane"><h4>Grants on the table</h4><div id="nGrants"></div></div>
+      <div class="pane"><h4>bakery-analysts members</h4><div id="nMembers"></div></div>
+    </div>
+    <div class="log" id="nLog" role="log" aria-label="What happened"></div>
+  </div>
+</section>
+
+<section id="code">
+  <div class="sec-num">Code</div>
+  <h2>Naming principals in SQL</h2>
+<pre><code><span class="c-c">-- An account group (backticks because of the hyphen)</span>
+GRANT SELECT ON TABLE bakery.gold.daily_sales TO `bakery-analysts`;
+
+<span class="c-c">-- A user, by email</span>
+GRANT SELECT ON TABLE bakery.gold.daily_sales TO `sam@example.com`;
+
+<span class="c-c">-- A service principal, by its application ID (made-up value)</span>
+GRANT MODIFY ON TABLE bakery.gold.daily_sales TO `6f1c2b7e-0a4d-4c1e-9b8a-2d3e4f5a6b7c`;
+
+<span class="c-c">-- Everyone in the account (not the workspace-local `users` group)</span>
+GRANT BROWSE ON CATALOG bakery TO `account users`;
+
+<span class="c-c">-- In a notebook or SQL function: is the current person in an account group?</span>
+SELECT is_account_group_member('bakery-analysts');</code></pre>
+  <p class="note">A name made only of letters, digits and underscores, such as <code>data_admins</code>, needs no backticks. Users, groups and service principals are managed in the account console or workspace admin settings.</p>
+</section>
+
+<section id="whatif">
+  <div class="sec-num">What if I change this?</div>
+  <h2>Choices and their effects</h2>
+  <div class="tbl"><table class="whatif">
+    <tr><th>Change</th><th>Effect</th></tr>
+    <tr><td>Grant to a group instead of each user</td><td>One grant; joiners get access automatically, leavers lose it.</td></tr>
+    <tr><td>Grant to a person for a job's access</td><td>The job breaks when they leave. Use a service principal.</td></tr>
+    <tr><td>Grant to workspace group <code>users</code></td><td>Fails: workspace-local groups cannot hold Unity Catalog privileges.</td></tr>
+    <tr><td>Forget backticks around <code>bakery-analysts</code></td><td>Syntax error: the hyphen is read as minus.</td></tr>
+    <tr><td>Remove a user from a group</td><td>They lose every privilege that came only through that group.</td></tr>
+  </table></div>
+</section>
+
+<section id="compare">
+  <div class="sec-num">Compare</div>
+  <h2>The principal types</h2>
+  <div class="grid3">
+    <div class="card"><h3>User</h3><p>A person. Named by email. Use for individual work, but prefer granting through groups.</p></div>
+    <div class="card"><h3>Group</h3><p>A set of principals. Account groups only for Unity Catalog. The normal target of grants.</p></div>
+    <div class="card"><h3>Service principal</h3><p>A robot identity for jobs and pipelines. Named by application ID. Keeps automation independent of people.</p></div>
+  </div>
+  <div class="tbl"><table>
+    <tr><th>Group kind</th><th>Defined in</th><th>Can hold Unity Catalog grants</th></tr>
+    <tr><td>Account group (including groups synced from your identity provider)</td><td>The account</td><td>Yes</td></tr>
+    <tr><td><code>account users</code> (built in)</td><td>The account</td><td>Yes</td></tr>
+    <tr><td>Workspace-local group, including <code>users</code> and <code>admins</code></td><td>One workspace (legacy)</td><td>No</td></tr>
+  </table></div>
+</section>
+
+<section id="scenarios">
+  <div class="sec-num">Real life</div>
+  <h2>Principals in practice</h2>
+  <div class="tbl"><table>
+    <tr><th>Scenario</th><th>What happens</th><th>Fix</th></tr>
+    <tr><td>A new analyst cannot see any tables</td><td>They were not added to the analysts group</td><td>Add them to the group; no new grants needed</td></tr>
+    <tr><td>The nightly job fails after an engineer leaves</td><td>It ran with their personal access</td><td>Run it as a service principal</td></tr>
+    <tr><td>GRANT to an old workspace group errors</td><td>Workspace-local groups are not allowed</td><td>Convert it to an account group</td></tr>
+    <tr><td>Everyone should be able to see what tables exist</td><td>Granting to <code>users</code> fails</td><td>GRANT BROWSE ... TO `account users`</td></tr>
+  </table></div>
+</section>
+
+<section id="traps">
+  <div class="sec-num">Don't confuse these</div>
+  <h2>Principal traps</h2>
+  <div class="grid2">
+    <div class="card trap"><span class="tag">users vs account users</span><p><code>users</code> is workspace-local and unusable for Unity Catalog. <code>account users</code> works.</p></div>
+    <div class="card trap"><span class="tag">SP name</span><p>A service principal is named by its application ID, not its display name.</p></div>
+    <div class="card trap"><span class="tag">Backticks</span><p>Needed for emails and hyphenated names.</p></div>
+    <div class="card trap"><span class="tag">Groups first</span><p>Grant to groups; manage people through membership.</p></div>
+  </div>
+</section>
+
+<section id="quiz">
+  <div class="sec-num">Check yourself</div>
+  <h2>Quiz</h2>
+  <div class="quiz">
+    <fieldset>
+      <legend>1. Which principal should a scheduled production job run as?</legend>
+      <label><input type="radio"> The engineer who wrote it</label>
+      <label><input type="radio" data-correct> A service principal</label>
+      <label><input type="radio"> The workspace-local admins group</label>
+      <p class="explain" hidden>Service principals are made for automation and do not leave the company.</p>
+    </fieldset>
+    <fieldset>
+      <legend>2. Which group cannot be granted Unity Catalog privileges?</legend>
+      <label><input type="radio"> account users</label>
+      <label><input type="radio"> An account group synced from your identity provider</label>
+      <label><input type="radio" data-correct> The workspace-local users group</label>
+      <p class="explain" hidden>Workspace-local groups are legacy and only exist in one workspace.</p>
+    </fieldset>
+    <fieldset>
+      <legend>3. How is a service principal named in a GRANT statement?</legend>
+      <label><input type="radio"> By its display name</label>
+      <label><input type="radio" data-correct> By its application ID, in backticks</label>
+      <label><input type="radio"> By the email of its creator</label>
+      <p class="explain" hidden>The application ID uniquely identifies it.</p>
+    </fieldset>
+    <fieldset>
+      <legend>4. In the demo, after removing sam from bakery-analysts, could sam still read the table?</legend>
+      <label><input type="radio" data-correct> Only if sam also had a direct grant</label>
+      <label><input type="radio"> Yes, always</label>
+      <label><input type="radio"> No, and the group lost access too</label>
+      <p class="explain" hidden>Access through the group goes with membership; a direct grant stays.</p>
+    </fieldset>
+  </div>
+</section>
+
+<section id="wrap">
+  <div class="sec-num">Wrap up</div>
+  <h2>Key takeaways</h2>
+  <ul>
+    <li>Principals: users (email), groups (name), service principals (application ID).</li>
+    <li>Only account groups, including <code>account users</code>, can hold Unity Catalog grants.</li>
+    <li>Grant to groups; run automation as service principals.</li>
+    <li>Use backticks for names with special characters.</li>
+  </ul>
+  <h3>Glossary terms used</h3>
+  <p><a href="../../glossary.html#principal">principal</a> · <a href="../../glossary.html#account-group">account group</a> · <a href="../../glossary.html#workspace-local-group">workspace-local group</a> · <a href="../../glossary.html#service-principal">service principal</a> · <a href="../../glossary.html#privilege">privilege</a></p>
+  <h3>Official docs</h3>
+  <ul>
+    <li><a href="https://docs.databricks.com/aws/en/sql/language-manual/sql-ref-principal">Principal (SQL reference)</a></li>
+    <li><a href="https://docs.databricks.com/aws/en/admin/users-groups/groups">Groups</a></li>
+    <li><a href="https://docs.databricks.com/aws/en/admin/users-groups/service-principals">Service principals</a></li>
+  </ul>
+  <p class="cap">Last verified: 17 November 2026</p>
+</section>
+
+</main>
+
+<script>
+(function () {
+  var C = window.Course, $ = function (id) { return document.getElementById(id); }, L = $('nLog');
+  var P = {
+    grp: { name: 'bakery-analysts', needTick: true, ok: true, kind: 'account group' },
+    user: { name: 'sam@example.com', needTick: true, ok: true, kind: 'user' },
+    sp: { name: '6f1c2b7e-0a4d-4c1e-9b8a-2d3e4f5a6b7c', needTick: true, ok: true, kind: 'service principal' },
+    local: { name: 'users', needTick: false, ok: false, kind: 'workspace-local group' },
+    all: { name: 'account users', needTick: true, ok: true, kind: 'account group' }
+  };
+  var PEOPLE = ['sam@example.com', 'lee@example.com', 'pat@example.com', 'etl-bot (SP)'];
+  var S;
+  function reset() { S = { grants: [], members: ['sam@example.com', 'lee@example.com', 'etl-bot (SP)'] }; }
+  function draw() {
+    $('nGrants').innerHTML = S.grants.length ? S.grants.map(function (g) { return '<div class="item"><span>' + g + '</span><span>SELECT</span></div>'; }).join('') : '<div class="item off">owner only</div>';
+    $('nMembers').innerHTML = S.members.map(function (m) { return '<div class="item">' + m + '</div>'; }).join('');
+  }
+  function canRead(person) {
+    return S.grants.some(function (g) {
+      if (g === 'account users') return true;
+      if (g === 'bakery-analysts') return S.members.indexOf(person) > -1;
+      if (g === '6f1c2b7e-0a4d-4c1e-9b8a-2d3e4f5a6b7c') return person === 'etl-bot (SP)';
+      return g === person;
+    });
+  }
+  $('nGrant').onclick = function () {
+    var p = P[$('nWho').value], tick = $('nTick').checked, sql = 'GRANT SELECT ON TABLE bakery.gold.daily_sales TO ' + (tick ? '`' + p.name + '`' : p.name);
+    C.log(L, 'skip', sql + ';');
+    if (p.needTick && !tick) { C.log(L, 'bad', 'Syntax error: "' + p.name + '" contains special characters or spaces, so it needs backticks.'); return; }
+    if (!p.ok) { C.log(L, 'bad', 'Error: ' + p.name + ' is a workspace-local group and cannot be granted Unity Catalog privileges. Use an account group, or `account users`.'); return; }
+    if (S.grants.indexOf(p.name) < 0) S.grants.push(p.name);
+    draw(); C.bump($('nGrants')); C.log(L, 'ok', 'Granted SELECT to the ' + p.kind + ' ' + p.name + '.');
+  };
+  $('nJoin').onclick = function () { if (S.members.indexOf('pat@example.com') < 0) S.members.push('pat@example.com'); draw(); C.log(L, 'ok', 'pat joined bakery-analysts. No grant was changed.'); };
+  $('nLeave').onclick = function () { S.members = S.members.filter(function (m) { return m !== 'sam@example.com'; }); draw(); C.log(L, 'skip', 'sam left bakery-analysts.'); };
+  $('nCheck').onclick = function () {
+    var yes = PEOPLE.filter(canRead), no = PEOPLE.filter(function (p) { return !canRead(p); });
+    C.log(L, yes.length ? 'ok' : 'bad', 'Can read: ' + (yes.join(', ') || 'nobody but the owner') + '. Cannot: ' + (no.join(', ') || 'nobody') + '.');
+  };
+  $('nReset').onclick = function () { reset(); draw(); L.innerHTML = ''; };
+  reset(); draw();
+})();
+</script>
+</body>
+</html>

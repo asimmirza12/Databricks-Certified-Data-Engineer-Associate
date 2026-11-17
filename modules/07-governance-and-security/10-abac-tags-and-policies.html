@@ -1,0 +1,260 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>07-10 ABAC: governed tags and policies · DE Associate course</title>
+<link rel="stylesheet" href="../../assets/course.css">
+<script src="../../assets/course.js"></script>
+</head>
+<body data-lesson="07-10">
+
+<aside class="disclaimer" aria-label="Disclaimer"><strong>Learning resource only.</strong> This is an independent, unofficial study guide made for learning purposes. It is not affiliated with, endorsed by or sponsored by Databricks. Databricks features change often, so always check the details in the <a href="https://docs.databricks.com">official Databricks documentation</a> and the official exam guide on databricks.com before relying on anything here. Databricks and related names are trademarks of their respective owners.</aside>
+
+<main class="wrap">
+
+<header class="hero">
+  <div class="eyebrow">Module 07 · Governance and Security · Lesson 10 of 11</div>
+  <h1>ABAC: governed tags and policies</h1>
+  <p class="lede">Masks and filters set one table at a time do not scale to hundreds of tables. Attribute-based access control flips it round: label the data with tags, write one policy that says what to do with anything carrying that label, and every matching table follows it.</p>
+  <dl class="where">
+    <div><dt>Module</dt><dd>07 Governance and Security (15% of the exam)</dd></div>
+    <div><dt>Exam objective</dt><dd>7.4 Understand ABAC: governed tags, policies attached high in the hierarchy, and how they apply row filters and column masks by tag.</dd></div>
+    <div><dt>Time to read</dt><dd>About 13 minutes</dd></div>
+    <div><dt>Before this</dt><dd><a href="08-column-masks.html">07-08 Column masks</a> and <a href="09-row-filters.html">07-09 Row filters</a></dd></div>
+  </dl>
+</header>
+
+<section id="idea">
+  <div class="sec-num">The idea</div>
+  <h2>Tag the data, write the rule once</h2>
+  <p><a href="../../glossary.html#abac">Attribute-based access control (ABAC)</a> decides access from attributes of the data, in practice its tags, instead of per-table settings.</p>
+  <p><strong><a href="../../glossary.html#governed-tag">Governed tags</a></strong> are tags defined once for the whole account, each with a list of allowed values, such as <code>pii</code> with values <code>email</code>, <code>phone</code>, <code>address</code>. Because the values are fixed, nobody can tag a column <code>pii = emial</code> by mistake. Tags on a catalog or schema flow down to its tables; column tags are set on each column.</p>
+  <p>Who can tag: managing governed tags has its own permissions (CREATE, MANAGE and ASSIGN on the tag). To put a governed tag on an object you need ASSIGN on the tag and APPLY TAG on the object.</p>
+  <p><strong><a href="../../glossary.html#abac-policy">Policies</a></strong> are attached to a catalog, schema or table and apply to every matching table below. A policy says:</p>
+  <ul>
+    <li>which function to apply: a ROW FILTER or a COLUMN MASK (the same kind of SQL UDF as in the last two lessons);</li>
+    <li>to whom: <code>TO</code> principals, with <code>EXCEPT</code> for exemptions;</li>
+    <li>to what: tables matching a <code>WHEN</code> condition and columns matching <code>MATCH COLUMNS</code>, using <code>has_tag('key')</code> or <code>has_tag_value('key', 'value')</code>.</li>
+  </ul>
+  <p>To create a policy you need MANAGE on (or ownership of) the object you attach it to, plus EXECUTE on the function.</p>
+  <div class="analogy">
+    <span class="tag">Everyday analogy</span>
+    <p><strong>Allergen stickers at the bakery.</strong> Instead of writing a separate warning for every cake, staff put an official "contains nuts" sticker on any cake with nuts (governed tag; only approved sticker types exist). One shop rule says "anything with a nuts sticker goes behind the counter" (policy). A new cake with the sticker follows the rule the moment it is labelled.</p>
+  </div>
+</section>
+
+<section id="how">
+  <div class="sec-num">How it works</div>
+  <h2>One policy, many tables</h2>
+  <div class="stage">
+    <svg viewBox="0 0 360 240" role="img" aria-label="A column mask policy is attached to schema bakery.silver. It matches every column tagged pii = email. Three tables each have one such column and all three are masked. A new table with a tagged column is masked automatically.">
+      <defs><path id="ab1" d="M180 55 C 180 90, 60 90, 60 130"/><path id="ab2" d="M180 55 V130"/><path id="ab3" d="M180 55 C 180 90, 300 90, 300 130"/></defs>
+      <rect class="box-acc" x="70" y="15" width="220" height="40" rx="7"/><text class="t-b" x="180" y="32" text-anchor="middle">policy on schema silver</text><text class="mono" x="180" y="48" text-anchor="middle">MASK has_tag_value('pii','email')</text>
+      <g class="wire"><use href="#ab1"/><use href="#ab2"/><use href="#ab3"/></g>
+      <rect class="box" x="10" y="130" width="100" height="45" rx="6"/><text class="mono" x="60" y="150" text-anchor="middle">customers</text><text class="t-m" x="60" y="166" text-anchor="middle">email: masked</text>
+      <rect class="box" x="130" y="130" width="100" height="45" rx="6"/><text class="mono" x="180" y="150" text-anchor="middle">orders</text><text class="t-m" x="180" y="166" text-anchor="middle">cust_email: masked</text>
+      <rect class="box" x="250" y="130" width="100" height="45" rx="6"/><text class="mono" x="300" y="150" text-anchor="middle">loyalty</text><text class="t-m" x="300" y="166" text-anchor="middle">contact: masked</text>
+      <text class="t-m" x="180" y="205" text-anchor="middle">each column carries the tag pii = email</text>
+      <text class="t-m" x="180" y="222" text-anchor="middle">new tagged tables are covered automatically</text>
+      <g class="mover">
+        <circle r="5" class="dot"><animateMotion dur="2.4s" repeatCount="indefinite"><mpath href="#ab1"/></animateMotion></circle>
+        <circle r="5" class="dot"><animateMotion dur="2.4s" begin="-0.8s" repeatCount="indefinite"><mpath href="#ab2"/></animateMotion></circle>
+        <circle r="5" class="dot"><animateMotion dur="2.4s" begin="-1.6s" repeatCount="indefinite"><mpath href="#ab3"/></animateMotion></circle>
+      </g>
+    </svg>
+    <p class="cap">The policy finds columns by tag, not by name, so <code>email</code>, <code>cust_email</code> and <code>contact</code> are all covered.</p>
+  </div>
+</section>
+
+<section id="demo">
+  <div class="sec-num">Try it</div>
+  <h2>Tag columns and let the policy work</h2>
+  <p>Tag some email columns with <code>pii = email</code>, create the policy on schema <code>silver</code>, then read as an analyst or an admin. Add a new table and see whether it is covered.</p>
+  <div class="stage">
+    <div class="ctrls">
+      <label class="tog"><input type="checkbox" id="bT1"> tag customers.email</label>
+      <label class="tog"><input type="checkbox" id="bT2"> tag orders.cust_email</label>
+      <label class="tog"><input type="checkbox" id="bT3"> tag loyalty.contact</label>
+      <button id="bPol" type="button">CREATE POLICY on schema silver</button>
+      <button id="bNew" type="button">Create table feedback (email tagged)</button>
+      <label>Reader <select id="bWho"><option value="analyst">pat (account users)</option><option value="admin">kim (data_admins, in EXCEPT)</option></select></label>
+      <button id="bRead" type="button" class="primary">Read the email columns</button>
+      <button id="bReset" type="button">Reset</button>
+    </div>
+    <div class="panes">
+      <div class="pane"><h4>Columns and tags</h4><div id="bCols"></div></div>
+      <div class="pane"><h4>What the reader sees</h4><div id="bOut"></div></div>
+    </div>
+    <div class="log" id="bLog" role="log" aria-label="What happened"></div>
+  </div>
+</section>
+
+<section id="code">
+  <div class="sec-num">Code</div>
+  <h2>Tag columns and create a policy</h2>
+<pre><code><span class="c-c">-- Tag the columns (the governed tag pii and its allowed values exist already)</span>
+ALTER TABLE bakery.silver.customers ALTER COLUMN email      SET TAGS ('pii' = 'email');
+ALTER TABLE bakery.silver.orders    ALTER COLUMN cust_email SET TAGS ('pii' = 'email');
+
+<span class="c-c">-- The mask function (no group checks needed: the policy decides who)</span>
+CREATE OR REPLACE FUNCTION bakery.gov.hide_email(email STRING)
+RETURNS STRING
+RETURN concat(left(email, 1), '***@', split(email, '@')[1]);
+
+<span class="c-c">-- One policy for the whole schema</span>
+CREATE POLICY mask_emails
+ON SCHEMA bakery.silver
+COMMENT 'Hide emails from everyone except data admins'
+COLUMN MASK bakery.gov.hide_email
+TO `account users` EXCEPT `data_admins`
+FOR TABLES
+MATCH COLUMNS has_tag_value('pii', 'email') AS e
+ON COLUMN e;
+
+<span class="c-c">-- See which policies apply</span>
+SHOW POLICIES ON SCHEMA bakery.silver;</code></pre>
+  <p class="note">Policies can also be created in Catalog Explorer (Policies tab). ABAC needs serverless compute, a SQL warehouse, or DBR 16.4+ with a supported access mode; older runtimes fail closed. Some ABAC parts (metastore-level policies, DENY policies, identity attributes) were in Beta when checked. Verify current status and syntax in the docs.</p>
+</section>
+
+<section id="whatif">
+  <div class="sec-num">What if I change this?</div>
+  <h2>Choices and their effects</h2>
+  <div class="tbl"><table class="whatif">
+    <tr><th>Change</th><th>Effect</th></tr>
+    <tr><td>Tag a new column <code>pii = email</code></td><td>It is masked immediately; no ALTER on the table's mask.</td></tr>
+    <tr><td>Remove the tag</td><td>The policy no longer matches that column; values show.</td></tr>
+    <tr><td>Attach the policy to the catalog instead</td><td>Every schema in the catalog is covered.</td></tr>
+    <tr><td>Add a group to EXCEPT</td><td>That group sees real values.</td></tr>
+    <tr><td>Use a value not in the governed tag's list</td><td>Rejected: governed tags only accept their allowed values.</td></tr>
+    <tr><td>Delete the mask function or the governed tag</td><td>Queries on matching tables fail (fail closed).</td></tr>
+  </table></div>
+</section>
+
+<section id="compare">
+  <div class="sec-num">Compare</div>
+  <h2>ABAC policies vs table-level masks and filters</h2>
+  <div class="tbl"><table>
+    <tr><th></th><th>Table-level (07-08, 07-09)</th><th>ABAC policy</th></tr>
+    <tr><td>Set on</td><td>Each table, with ALTER TABLE</td><td>Catalog, schema or table, once</td></tr>
+    <tr><td>Finds columns by</td><td>Name, per table</td><td>Tags</td></tr>
+    <tr><td>Who is affected</td><td>Logic inside the function</td><td>TO and EXCEPT in the policy</td></tr>
+    <tr><td>New tables</td><td>Need their own ALTER</td><td>Covered when tagged</td></tr>
+    <tr><td>Table owner can change it</td><td>Yes</td><td>Not if set higher up</td></tr>
+    <tr><td>Best for</td><td>A few special tables</td><td>The same rule across many tables</td></tr>
+  </table></div>
+</section>
+
+<section id="scenarios">
+  <div class="sec-num">Real life</div>
+  <h2>ABAC in practice</h2>
+  <div class="tbl"><table>
+    <tr><th>Scenario</th><th>What happens</th><th>Fix</th></tr>
+    <tr><td>200 tables have personal data in columns with different names</td><td>Per-table masks are slow to set and easy to miss</td><td>Tag the columns; one policy per kind of data</td></tr>
+    <tr><td>A new table appears with an untagged email column</td><td>The policy does not match it</td><td>Make tagging part of table creation (or use automated classification)</td></tr>
+    <tr><td>Someone tags a column <code>pii = Email</code></td><td>Rejected as not an allowed value</td><td>Use the governed value <code>email</code></td></tr>
+    <tr><td>The ETL service principal needs raw emails</td><td>It is masked like everyone else</td><td>Add it to EXCEPT</td></tr>
+  </table></div>
+</section>
+
+<section id="traps">
+  <div class="sec-num">Don't confuse these</div>
+  <h2>ABAC traps</h2>
+  <div class="grid2">
+    <div class="card trap"><span class="tag">Columns do not inherit</span><p>Table and schema tags flow down to tables; columns need their own tags.</p></div>
+    <div class="card trap"><span class="tag">Two permissions to tag</span><p>ASSIGN on the governed tag and APPLY TAG on the object.</p></div>
+    <div class="card trap"><span class="tag">TO and EXCEPT</span><p>Who is affected lives in the policy, not in group checks inside the function.</p></div>
+    <div class="card trap"><span class="tag">Fail closed</span><p>Missing tags or functions make queries fail rather than leak data.</p></div>
+  </div>
+</section>
+
+<section id="quiz">
+  <div class="sec-num">Check yourself</div>
+  <h2>Quiz</h2>
+  <div class="quiz">
+    <fieldset>
+      <legend>1. What makes a tag "governed"?</legend>
+      <label><input type="radio"> It is attached to a table, not a column</label>
+      <label><input type="radio" data-correct> It is defined at account level with a fixed list of allowed values and its own permissions</label>
+      <label><input type="radio"> It is created by a policy</label>
+      <p class="explain" hidden>Allowed values stop typos and keep tags consistent.</p>
+    </fieldset>
+    <fieldset>
+      <legend>2. Where can an ABAC policy be attached so it covers many tables?</legend>
+      <label><input type="radio"> Only on a single column</label>
+      <label><input type="radio" data-correct> On a catalog or schema, applying to matching tables below</label>
+      <label><input type="radio"> On a compute cluster</label>
+      <p class="explain" hidden>It can also be attached to one table.</p>
+    </fieldset>
+    <fieldset>
+      <legend>3. In a policy, how do you exempt the data admins?</legend>
+      <label><input type="radio" data-correct> EXCEPT `data_admins`</label>
+      <label><input type="radio"> DENY `data_admins`</label>
+      <label><input type="radio"> Grant them MANAGE</label>
+      <p class="explain" hidden>Principals in EXCEPT are not affected by the policy.</p>
+    </fieldset>
+    <fieldset>
+      <legend>4. In the demo, after creating the policy, what happened to the new feedback table?</legend>
+      <label><input type="radio"> Its email was visible</label>
+      <label><input type="radio" data-correct> Its tagged email column was masked without any extra statement</label>
+      <label><input type="radio"> It could not be created</label>
+      <p class="explain" hidden>The schema policy matches any column tagged pii = email.</p>
+    </fieldset>
+  </div>
+</section>
+
+<section id="wrap">
+  <div class="sec-num">Wrap up</div>
+  <h2>Key takeaways</h2>
+  <ul>
+    <li>ABAC applies filters and masks by tag, from policies on a catalog, schema or table.</li>
+    <li>Governed tags have fixed allowed values; tagging needs ASSIGN on the tag and APPLY TAG on the object.</li>
+    <li>Policies name the function, TO and EXCEPT principals, and WHEN / MATCH COLUMNS conditions with has_tag and has_tag_value.</li>
+    <li>New tagged tables are covered automatically; missing tags or functions fail closed.</li>
+  </ul>
+  <h3>Glossary terms used</h3>
+  <p><a href="../../glossary.html#abac">ABAC</a> · <a href="../../glossary.html#governed-tag">governed tag</a> · <a href="../../glossary.html#abac-policy">ABAC policy</a> · <a href="../../glossary.html#column-mask">column mask</a> · <a href="../../glossary.html#row-filter">row filter</a></p>
+  <h3>Official docs</h3>
+  <ul>
+    <li><a href="https://docs.databricks.com/aws/en/data-governance/unity-catalog/abac/">Attribute-based access control</a></li>
+    <li><a href="https://docs.databricks.com/aws/en/admin/governed-tags/">Governed tags</a></li>
+    <li><a href="https://docs.databricks.com/aws/en/data-governance/unity-catalog/abac/policies">Create and manage ABAC policies</a></li>
+    <li><a href="https://docs.databricks.com/aws/en/sql/language-manual/sql-ref-syntax-ddl-create-policy">CREATE POLICY</a></li>
+  </ul>
+  <p class="cap">Last verified: 17 November 2026</p>
+</section>
+
+</main>
+
+<script>
+(function () {
+  var C = window.Course, $ = function (id) { return document.getElementById(id); }, L = $('bLog');
+  var S;
+  function reset() { S = { policy: false, cols: [{ t: 'customers', c: 'email', v: 'ana@example.com', box: 'bT1' }, { t: 'orders', c: 'cust_email', v: 'ben@mail.example', box: 'bT2' }, { t: 'loyalty', c: 'contact', v: 'cai@example.com', box: 'bT3' }] }; ['bT1', 'bT2', 'bT3'].forEach(function (id) { $(id).checked = false; }); }
+  function tagged(col) { return col.box ? $(col.box).checked : true; }
+  function show(col) { var masked = S.policy && tagged(col) && $('bWho').value !== 'admin'; return masked ? col.v.charAt(0) + '***@' + col.v.split('@')[1] : col.v; }
+  function draw() {
+    $('bCols').innerHTML = S.cols.map(function (col) { return '<div class="item"><span>' + col.t + '.' + col.c + '</span><span>' + (tagged(col) ? 'pii = email' : 'no tag') + '</span></div>'; }).join('') + '<div class="item">policy mask_emails: ' + (S.policy ? 'on schema silver' : 'not created') + '</div>';
+    $('bOut').innerHTML = S.cols.map(function (col) { var v = show(col); return '<div class="item' + (v !== col.v ? ' hot' : '') + '"><span>' + col.t + '</span><span>' + v + '</span></div>'; }).join('');
+  }
+  ['bT1', 'bT2', 'bT3'].forEach(function (id) { $(id).onchange = function () { draw(); C.log(L, 'skip', (this.checked ? 'SET TAGS (\'pii\' = \'email\')' : 'UNSET TAGS (\'pii\')') + ' on ' + this.parentNode.textContent.replace('tag ', '').trim() + '.'); }; });
+  $('bPol').onclick = function () { S.policy = true; draw(); C.bump($('bOut')); C.log(L, 'ok', 'CREATE POLICY mask_emails ON SCHEMA bakery.silver: COLUMN MASK hide_email TO `account users` EXCEPT `data_admins`, MATCH COLUMNS has_tag_value(\'pii\', \'email\').'); };
+  $('bNew').onclick = function () {
+    if (S.cols.some(function (c) { return c.t === 'feedback'; })) { C.log(L, 'skip', 'feedback already exists.'); return; }
+    S.cols.push({ t: 'feedback', c: 'email', v: 'dee@example.com', box: null }); draw(); C.bump($('bCols'));
+    C.log(L, S.policy ? 'ok' : 'skip', 'Created bakery.silver.feedback with email tagged pii = email.' + (S.policy ? ' The policy covers it at once.' : ' No policy exists yet.'));
+  };
+  $('bRead').onclick = function () {
+    draw(); C.bump($('bOut'));
+    var m = S.cols.filter(function (c) { return show(c) !== c.v; }).length, who = $('bWho').value === 'admin' ? 'kim (in EXCEPT)' : 'pat';
+    C.log(L, m ? 'skip' : 'ok', who + ' read ' + S.cols.length + ' email columns: ' + m + ' masked, ' + (S.cols.length - m) + ' in clear.');
+    var untagged = S.cols.filter(function (c) { return !tagged(c); }).length;
+    if (S.policy && untagged && $('bWho').value !== 'admin') C.log(L, 'bad', untagged + ' email column(s) have no tag, so the policy cannot see them. Tag them.');
+  };
+  $('bWho').onchange = draw;
+  $('bReset').onclick = function () { reset(); draw(); L.innerHTML = ''; };
+  reset(); draw();
+})();
+</script>
+</body>
+</html>

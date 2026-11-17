@@ -25,8 +25,11 @@
   <!-- One <div id="term-id"> per term, kept in A to Z order. Lessons link to glossary.html#term-id.
        Format: <dt>Term</dt><dd>Plain definition, one to three short sentences. <span class="cap">First used in MM-LL.</span></dd> -->
   <dl class="gloss">
+    <div id="abac"><dt>Attribute-based access control (ABAC)</dt><dd>Controlling access by attributes of the data, mainly governed tags, through policies set high in the hierarchy instead of per table. <span class="cap">First used in 07-10.</span></dd></div>
+    <div id="abac-policy"><dt>ABAC policy</dt><dd>A rule attached to a catalog, schema or table that applies a row filter or column mask to matching tables and columns, chosen by tags, for chosen principals. <span class="cap">First used in 07-10.</span></dd></div>
     <div id="access-mode"><dt>Access mode</dt><dd>A classic compute setting that decides who can use it. Standard (formerly Shared) is for many users. Dedicated (formerly Single user) is for one user or group. <span class="cap">First used in 01-04.</span></dd></div>
     <div id="account"><dt>Account (Databricks account)</dt><dd>The top level of a company's Databricks setup. It contains the workspaces and is where users, groups and Unity Catalog are managed. <span class="cap">First used in 01-01.</span></dd></div>
+    <div id="account-group"><dt>Account group</dt><dd>A group defined for the whole Databricks account, often synced from the company's identity system. Account groups can be granted Unity Catalog privileges. <span class="cap">First used in 07-04.</span></dd></div>
     <div id="acid"><dt>ACID</dt><dd>Four guarantees of a reliable table: atomicity, consistency, isolation, durability. Together they mean changes are all-or-nothing and safe. <span class="cap">First used in 00-08.</span></dd></div>
     <div id="action"><dt>Action</dt><dd>A Spark step that asks for a result or writes data, such as <code>count</code> or <code>write</code>. It makes the whole plan run. <span class="cap">First used in 00-05.</span></dd></div>
     <div id="aggregate"><dt>Aggregate</dt><dd>To combine many rows into one summary value, such as a total, a count or an average. <span class="cap">First used in 00-10.</span></dd></div>
@@ -53,6 +56,7 @@
     <div id="bundle-variable"><dt>Bundle variable</dt><dd>A named placeholder in databricks.yml, used as ${var.name} and filled in when the bundle is deployed. <span class="cap">First used in 05-06.</span></dd></div>
     <div id="cast"><dt>Cast</dt><dd>Converting a value from one data type to another, for example text to a number. <span class="cap">First used in 03-03.</span></dd></div>
     <div id="catalog"><dt>Catalog</dt><dd>The first level of a data name in Unity Catalog. It contains schemas. <span class="cap">First used in 00-09.</span></dd></div>
+    <div id="catalog-explorer"><dt>Catalog Explorer</dt><dd>The Databricks UI for browsing Unity Catalog objects, with a Permissions tab to grant and revoke access. <span class="cap">First used in 07-06.</span></dd></div>
     <div id="cdc"><dt>Change data capture (CDC)</dt><dd>Reading a source database's own log of inserts, updates and deletes, and replaying them in the target. <span class="cap">First used in 02-01.</span></dd></div>
     <div id="check-constraint"><dt>CHECK constraint</dt><dd>A table constraint that refuses any write where a stated condition is not true. <span class="cap">First used in 03-16.</span></dd></div>
     <div id="checkpoint"><dt>Checkpoint</dt><dd>Two meanings. (1) In streaming: a saved bookmark of how far an incremental or streaming job has read, so the next run continues from there. (2) In a Delta transaction log: a Parquet file that sums up the table's state at one version, so readers need not replay every commit. <span class="cap">First used in 00-04.</span></dd></div>
@@ -64,6 +68,7 @@
     <div id="coalesce"><dt>coalesce</dt><dd>A function that returns the first of its arguments that is not NULL. <span class="cap">First used in 03-02.</span></dd></div>
     <div id="collect"><dt>collect()</dt><dd>A Spark action that copies every row of a DataFrame into the driver's memory. Risky on large data. <span class="cap">First used in 06-12.</span></dd></div>
     <div id="column"><dt>Column</dt><dd>One named fact that every row in a table has, such as price. All values in a column share a data type. <span class="cap">First used in 00-02.</span></dd></div>
+    <div id="column-mask"><dt>Column mask</dt><dd>A SQL function attached to a table column that decides which value each reader sees, for example a hidden version for most people. <span class="cap">First used in 07-08.</span></dd></div>
     <div id="columnar"><dt>Columnar</dt><dd>A way of storing data column by column, so a query can read only the columns it needs. <span class="cap">First used in 00-03.</span></dd></div>
     <div id="commit"><dt>Commit (Delta)</dt><dd>One numbered entry in a Delta table's transaction log, recording the actions of a single change. Each commit creates a new table version. <span class="cap">First used in 01-02.</span></dd></div>
     <div id="compression"><dt>Compression</dt><dd>Making data take up less space by storing repeated patterns more briefly. <span class="cap">First used in 00-03.</span></dd></div>
@@ -79,6 +84,7 @@
     <div id="copy-into"><dt>COPY INTO</dt><dd>A SQL command that loads files from a folder into a table and skips files it has already loaded. <span class="cap">First used in 02-04.</span></dd></div>
     <div id="cross-join"><dt>Cross join</dt><dd>A join with no key that pairs every row of one table with every row of the other. <span class="cap">First used in 03-05.</span></dd></div>
     <div id="csv"><dt>CSV</dt><dd>Comma-separated values. A plain-text format with one record per line and commas between values. It stores no data types. <span class="cap">First used in 00-03.</span></dd></div>
+    <div id="ctas"><dt>CTAS</dt><dd>CREATE TABLE ... AS SELECT: creating a table and filling it from a query in one statement. The table takes its columns from the query. <span class="cap">First used in 07-02.</span></dd></div>
     <div id="dag"><dt>DAG (directed acyclic graph)</dt><dd>A set of tasks joined by one-way dependencies, with no loops. The shape of a job's task graph. <span class="cap">First used in 04-03.</span></dd></div>
     <div id="dashboard-task"><dt>Dashboard task</dt><dd>A job task that refreshes a dashboard. <span class="cap">First used in 04-02.</span></dd></div>
     <div id="data-driven-trigger"><dt>Data-driven trigger</dt><dd>A trigger that starts a run when data arrives or changes, such as a file arrival or table update trigger. <span class="cap">First used in 04-11.</span></dd></div>
@@ -92,7 +98,9 @@
     <div id="dataframe"><dt>DataFrame</dt><dd>A table of rows and columns that you work with in Spark code. The data is held by the cluster, not by your own computer. <span class="cap">First used in 00-05.</span></dd></div>
     <div id="dbu"><dt>DBU (Databricks Unit)</dt><dd>A standard unit of processing power used for one hour. Databricks charges by DBUs used multiplied by a price per DBU. <span class="cap">First used in 01-05.</span></dd></div>
     <div id="deduplication"><dt>Deduplication</dt><dd>Removing repeated rows so that each thing is kept once. Whether rows are copies depends on the columns you compare. <span class="cap">First used in 03-10.</span></dd></div>
+    <div id="deep-clone"><dt>Deep clone</dt><dd>A full, independent copy of a Delta table's data and metadata, made with CREATE TABLE ... DEEP CLONE. Adding a LOCATION makes the copy an external table. <span class="cap">First used in 07-03.</span></dd></div>
     <div id="delta-lake"><dt>Delta Lake</dt><dd>An open-source table format: Parquet data files plus a transaction log. The default format for tables on Databricks. <span class="cap">First used in 00-08.</span></dd></div>
+    <div id="deny"><dt>DENY</dt><dd>A legacy statement for the hive_metastore catalog that blocks a privilege and beats any grant. It is not supported by Unity Catalog. <span class="cap">First used in 07-07.</span></dd></div>
     <div id="deployment-mode"><dt>Deployment mode</dt><dd>A target setting, development or production. Development prefixes names and pauses schedules; production does not and adds checks. <span class="cap">First used in 05-05.</span></dd></div>
     <div id="detached-head"><dt>Detached HEAD</dt><dd>A state where Git is not on any branch. Changes made there can be lost unless a branch is created first. <span class="cap">First used in 05-02.</span></dd></div>
     <div id="dimension-table"><dt>Dimension table</dt><dd>A table that describes the things a fact refers to, such as shops, products or dates. <span class="cap">First used in 03-15.</span></dd></div>
@@ -111,6 +119,7 @@
     <div id="external-table"><dt>External table</dt><dd>A table that points at files in a storage path you chose. Dropping the table leaves the files in place. <span class="cap">First used in 01-03.</span></dd></div>
     <div id="external-volume"><dt>External volume</dt><dd>A volume that points at an existing folder in cloud storage. Dropping it leaves the files in place. <span class="cap">First used in 02-02.</span></dd></div>
     <div id="fact-table"><dt>Fact table</dt><dd>A table of events, one row each, holding numbers to add up and keys to descriptive tables. <span class="cap">First used in 03-15.</span></dd></div>
+    <div id="fail-closed"><dt>Fail closed</dt><dd>Behaving safely when something is missing: returning an error or no data rather than unprotected data. <span class="cap">First used in 07-11.</span></dd></div>
     <div id="failure-rate"><dt>Failure rate</dt><dd>Failed runs divided by finished runs over a time window, such as the last 30 days. <span class="cap">First used in 06-03.</span></dd></div>
     <div id="file"><dt>File</dt><dd>A named lump of data in storage. Nothing checks what is inside it. <span class="cap">First used in 00-02.</span></dd></div>
     <div id="file-arrival-trigger"><dt>File arrival trigger</dt><dd>A job trigger that starts a run when new files appear in a watched external location or volume path. Settings include wait after last change and minimum time between triggers. <span class="cap">First used in 04-09.</span></dd></div>
@@ -123,7 +132,9 @@
     <div id="git-folder"><dt>Git folder</dt><dd>A repository cloned into a Databricks workspace folder. Formerly called a Databricks Repo. <span class="cap">First used in 05-02.</span></dd></div>
     <div id="gold"><dt>Gold</dt><dd>The layer that holds data shaped for one particular use, usually summaries for reports and dashboards. <span class="cap">First used in 00-10.</span></dd></div>
     <div id="governance"><dt>Governance</dt><dd>The rules and tools that control who can see or change which data, and that keep a record of it. <span class="cap">First used in 00-01.</span></dd></div>
+    <div id="governed-tag"><dt>Governed tag</dt><dd>An account-level tag with a fixed list of allowed values and its own permissions, used to label data for ABAC policies. <span class="cap">First used in 07-10.</span></dd></div>
     <div id="grain"><dt>Grain</dt><dd>What one row of a table represents, such as one sale line or one shop per day. <span class="cap">First used in 03-15.</span></dd></div>
+    <div id="grant"><dt>GRANT</dt><dd>The SQL statement that gives privileges on a securable to a principal: GRANT privileges ON object TO principal. <span class="cap">First used in 07-06.</span></dd></div>
     <div id="group-by"><dt>Group by</dt><dd>Sorting rows into groups that share a value, so that aggregates can be worked out for each group. <span class="cap">First used in 03-11.</span></dd></div>
     <div id="high-water-mark"><dt>High-water mark</dt><dd>The largest value of an ever-growing column, such as an ID or a last-updated time, that you have already loaded. The next load asks only for rows above it. <span class="cap">First used in 02-01.</span></dd></div>
     <div id="idempotent"><dt>Idempotent</dt><dd>Giving the same end result however many times it is run. An idempotent load can be retried safely. <span class="cap">First used in 02-04.</span></dd></div>
@@ -151,10 +162,12 @@
     <div id="left-join"><dt>Left join</dt><dd>A join that keeps every row from the left table, with NULLs where there is no match on the right. <span class="cap">First used in 03-04.</span></dd></div>
     <div id="lineage"><dt>Lineage</dt><dd>An automatic record of which tables and columns were used to build which others. <span class="cap">First used in 01-03.</span></dd></div>
     <div id="liquid-clustering"><dt>Liquid clustering</dt><dd>A Delta table layout that keeps rows with similar values of chosen keys in the same files, so queries can skip files. Keys can change without rewriting data. <span class="cap">First used in 06-08.</span></dd></div>
+    <div id="manage-privilege"><dt>MANAGE (privilege)</dt><dd>A privilege that lets someone who is not the owner grant and revoke, rename, drop and change the owner of an object. It does not give data access by itself. <span class="cap">First used in 07-05.</span></dd></div>
     <div id="managed-connector"><dt>Managed connector</dt><dd>A ready-made, fully managed ingestion pipeline for a specific application or database. You configure what to ingest and cannot change how. <span class="cap">First used in 02-03.</span></dd></div>
     <div id="managed-storage-location"><dt>Managed storage location</dt><dd>The storage path where Unity Catalog puts the files of managed tables and volumes. It can be set on a schema, a catalog or the metastore, and the most specific one wins. <span class="cap">First used in 01-03.</span></dd></div>
     <div id="managed-table"><dt>Managed table</dt><dd>A table whose files Unity Catalog places and looks after. Dropping the table removes the files too. The default kind. <span class="cap">First used in 01-03.</span></dd></div>
     <div id="managed-volume"><dt>Managed volume</dt><dd>A volume whose files Unity Catalog places and looks after. Dropping it removes the files. <span class="cap">First used in 02-02.</span></dd></div>
+    <div id="mapping-table"><dt>Mapping table</dt><dd>A small table listing who may see what (for example user and region), looked up by a row filter so access can change without code changes. <span class="cap">First used in 07-09.</span></dd></div>
     <div id="materialized-view"><dt>Materialized view</dt><dd>A table-like object that stores the results of a query and is refreshed to match its source. <span class="cap">First used in 03-14.</span></dd></div>
     <div id="matrix-view"><dt>Matrix view</dt><dd>The grid on a job's Runs tab. Each column is a run and each row a task; bar height shows duration and colour shows the result. <span class="cap">First used in 06-01.</span></dd></div>
     <div id="medallion-architecture"><dt>Medallion architecture</dt><dd>A pattern of organising tables in three layers of rising quality: bronze, silver and gold. <span class="cap">First used in 00-10.</span></dd></div>
@@ -181,6 +194,7 @@
     <div id="orc"><dt>ORC</dt><dd>A columnar binary file format similar to Parquet, mostly met in older Hadoop systems. <span class="cap">First used in 00-03.</span></dd></div>
     <div id="orchestration"><dt>Orchestration</dt><dd>Running the steps of a pipeline in the right order, at the right time, and retrying them when they fail. <span class="cap">First used in 00-01.</span></dd></div>
     <div id="override"><dt>Override</dt><dd>A value that replaces a default for one case, such as a target setting its own value for a variable. <span class="cap">First used in 05-06.</span></dd></div>
+    <div id="owner"><dt>Owner</dt><dd>The user, group or service principal that owns a securable. The owner can do everything on it, grant to others and drop it. <span class="cap">First used in 07-05.</span></dd></div>
     <div id="pagination"><dt>Pagination</dt><dd>Receiving a large result in pages and requesting each page in turn. <span class="cap">First used in 02-10.</span></dd></div>
     <div id="parquet"><dt>Parquet</dt><dd>A columnar, compressed file format that stores its own schema. Delta tables keep their data in Parquet files. <span class="cap">First used in 00-03.</span></dd></div>
     <div id="partition"><dt>Partition</dt><dd>One chunk of a dataset that Spark works on as a unit. One executor handles one partition at a time. <span class="cap">First used in 00-05.</span></dd></div>
@@ -192,7 +206,9 @@
     <div id="predictive-optimization"><dt>Predictive optimization</dt><dd>A Databricks feature that runs OPTIMIZE, VACUUM and ANALYZE automatically on Unity Catalog managed tables when it expects a benefit. <span class="cap">First used in 06-09.</span></dd></div>
     <div id="prefix"><dt>Prefix</dt><dd>The beginning of an object key, used like a folder path to select a group of objects. <span class="cap">First used in 00-06.</span></dd></div>
     <div id="primary-key"><dt>Primary key</dt><dd>A column or set of columns that is meant to identify each row. On Unity Catalog tables it is informational and not enforced. <span class="cap">First used in 03-16.</span></dd></div>
+    <div id="principal"><dt>Principal</dt><dd>Anything that can be given a privilege: a user, a group or a service principal. <span class="cap">First used in 07-04.</span></dd></div>
     <div id="privilege"><dt>Privilege</dt><dd>A permission to do one kind of thing to one object, such as <code>SELECT</code> on a table. Given with <code>GRANT</code>, removed with <code>REVOKE</code>. <span class="cap">First used in 00-09.</span></dd></div>
+    <div id="privilege-inheritance"><dt>Privilege inheritance</dt><dd>The rule that a privilege granted on a catalog or schema also applies to every object inside it, including objects created later. <span class="cap">First used in 07-05.</span></dd></div>
     <div id="promotion"><dt>Promotion</dt><dd>Moving the same code from one environment to the next, for example from dev to test to prod. <span class="cap">First used in 05-05.</span></dd></div>
     <div id="pull-request"><dt>Pull request</dt><dd>A request to review a branch and merge it into another, usually main. Created on the Git host. <span class="cap">First used in 05-01.</span></dd></div>
     <div id="push"><dt>Push</dt><dd>Sending local commits to the remote branch. <span class="cap">First used in 05-03.</span></dd></div>
@@ -208,7 +224,9 @@
     <div id="resource-reference"><dt>Resource reference</dt><dd>A placeholder such as ${resources.pipelines.sales.id} that points at another resource in the same bundle and becomes its real value at deploy. <span class="cap">First used in 05-07.</span></dd></div>
     <div id="rest-api"><dt>REST API</dt><dd>A common way for programs to request data from a web address. The answer usually comes back as JSON. <span class="cap">First used in 02-10.</span></dd></div>
     <div id="retry"><dt>Retry</dt><dd>An automatic second or later attempt at a failed task, within a limit set by max_retries. <span class="cap">First used in 04-04.</span></dd></div>
+    <div id="revoke"><dt>REVOKE</dt><dd>The SQL statement that takes privileges away: REVOKE privileges ON object FROM principal. <span class="cap">First used in 07-06.</span></dd></div>
     <div id="row"><dt>Row</dt><dd>One record in a table: one order, one customer, one event. <span class="cap">First used in 00-02.</span></dd></div>
+    <div id="row-filter"><dt>Row filter</dt><dd>A SQL function returning TRUE or FALSE, attached to a table, that decides which rows each reader can see. <span class="cap">First used in 07-09.</span></dd></div>
     <div id="run"><dt>Run</dt><dd>One execution of a job, with a record of the status and timing of each task. <span class="cap">First used in 04-01.</span></dd></div>
     <div id="run-if"><dt>Run if</dt><dd>The rule that decides whether a task runs, based on how its upstream tasks finished. The default is All succeeded. <span class="cap">First used in 04-03.</span></dd></div>
     <div id="salting"><dt>Salting</dt><dd>Adding a random number to a hot key so its rows spread across several partitions, then combining the results. <span class="cap">First used in 06-06.</span></dd></div>
@@ -249,6 +267,7 @@
     <div id="structured-streaming"><dt>Structured Streaming</dt><dd>The part of Apache Spark that processes data which keeps arriving, using the same DataFrame code as batch. <span class="cap">First used in 00-04.</span></dd></div>
     <div id="system-tables"><dt>System tables</dt><dd>Tables in the built-in <code>system</code> catalog that record how the platform is used: audit events, lineage, billing and more. <span class="cap">First used in 01-03.</span></dd></div>
     <div id="table"><dt>Table</dt><dd>Data arranged in rows and columns, with a schema that every row must fit. <span class="cap">First used in 00-02.</span></dd></div>
+    <div id="table-acl"><dt>Table access control (legacy)</dt><dd>The older permission system for the Hive metastore, which included DENY. Replaced by Unity Catalog. <span class="cap">First used in 07-07.</span></dd></div>
     <div id="table-update-trigger"><dt>Table update trigger</dt><dd>A job trigger that starts a run when named Unity Catalog tables change. Settings include any or all condition, wait after last change and minimum time between triggers. <span class="cap">First used in 04-10.</span></dd></div>
     <div id="target"><dt>Target</dt><dd>A named entry under targets in databricks.yml that says where a bundle deploys and which settings change there. <span class="cap">First used in 05-05.</span></dd></div>
     <div id="task"><dt>Task</dt><dd>One step inside a job, such as one notebook, one query or one pipeline. <span class="cap">First used in 04-01.</span></dd></div>
@@ -264,10 +283,13 @@
     <div id="transformation"><dt>Transformation (pipeline stage)</dt><dd>Changing data to make it useful: fixing errors, removing duplicates, combining tables, adding things up. <span class="cap">First used in 00-01.</span></dd></div>
     <div id="transformation-spark"><dt>Transformation (Spark)</dt><dd>A single lazy step in Spark, such as <code>filter</code> or <code>select</code>. It describes a new DataFrame and runs nothing by itself. <span class="cap">First used in 00-05.</span></dd></div>
     <div id="trigger"><dt>Trigger</dt><dd>The setting that says when a job or stream should run or look for new data. For a stream, examples are <code>availableNow</code> and <code>processingTime</code>. <span class="cap">First used in 00-04.</span></dd></div>
+    <div id="udf"><dt>User-defined function (UDF)</dt><dd>A function you write yourself, for example with CREATE FUNCTION in SQL, and call like a built-in function. <span class="cap">First used in 07-08.</span></dd></div>
+    <div id="undrop"><dt>UNDROP TABLE</dt><dd>A command that restores a dropped table within its recovery period (7 days by default for managed tables), with its columns, properties and privileges. <span class="cap">First used in 07-01.</span></dd></div>
     <div id="union"><dt>Union</dt><dd>Stacking the rows of two tables that have the same kind of columns. UNION ALL keeps duplicates; UNION removes them. <span class="cap">First used in 03-06.</span></dd></div>
     <div id="unity-catalog"><dt>Unity Catalog</dt><dd>The part of Databricks that keeps one index of all data and checks every access against the permissions that were granted. <span class="cap">First used in 00-09.</span></dd></div>
     <div id="unstructured-data"><dt>Unstructured data</dt><dd>Data with no rows or columns at all, such as images, audio and PDF documents. <span class="cap">First used in 00-02.</span></dd></div>
     <div id="upstream-failed"><dt>Upstream failed</dt><dd>A task status meaning the task did not run because a task it depends on failed. <span class="cap">First used in 06-02.</span></dd></div>
+    <div id="usage-privilege"><dt>Usage privilege</dt><dd>USE CATALOG or USE SCHEMA: permission to reach objects inside a catalog or schema. They give no data access by themselves. <span class="cap">First used in 07-05.</span></dd></div>
     <div id="vacuum"><dt>VACUUM</dt><dd>The command that permanently deletes data files a Delta table no longer uses, once they are older than the retention period. <span class="cap">First used in 00-08.</span></dd></div>
     <div id="variant"><dt>VARIANT</dt><dd>A column type that stores a whole semi-structured value of any shape, with no schema needed up front. <span class="cap">First used in 02-11.</span></dd></div>
     <div id="view"><dt>View</dt><dd>A saved query that you can read like a table. It holds no data of its own. <span class="cap">First used in 00-09.</span></dd></div>
@@ -278,6 +300,7 @@
     <div id="workload"><dt>Workload</dt><dd>A piece of work that needs compute, such as a dashboard, a scheduled job or a session of exploring data. <span class="cap">First used in 01-06.</span></dd></div>
     <div id="workload-identity-federation"><dt>Workload identity federation</dt><dd>A way for an automated job to prove who it is with a short-lived token from its CI service, so no long-lived password or token is stored. <span class="cap">First used in 05-10.</span></dd></div>
     <div id="workspace"><dt>Workspace</dt><dd>The Databricks website you log in to. It holds notebooks, jobs and settings, organised in folders. <span class="cap">First used in 00-07.</span></dd></div>
+    <div id="workspace-local-group"><dt>Workspace-local group</dt><dd>A legacy group that exists in one workspace only, such as the built-in users group. It cannot be granted Unity Catalog privileges. <span class="cap">First used in 07-04.</span></dd></div>
     <div id="workspace-storage"><dt>Workspace storage</dt><dd>A storage bucket in your cloud account that holds a classic workspace's own housekeeping files, such as job results and logs. It is separate from your table data. <span class="cap">First used in 01-01.</span></dd></div>
     <div id="yaml"><dt>YAML</dt><dd>A plain-text format for settings that uses indentation and name: value pairs. Bundle configuration is written in YAML. <span class="cap">First used in 05-04.</span></dd></div>
     <div id="z-order"><dt>Z-order</dt><dd>An older way to place related data in the same Delta files, using OPTIMIZE ... ZORDER BY. Liquid clustering replaces it for new tables. <span class="cap">First used in 06-08.</span></dd></div>

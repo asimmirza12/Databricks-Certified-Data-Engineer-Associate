@@ -1,0 +1,266 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>07-05 The security hierarchy and privilege inheritance · DE Associate course</title>
+<link rel="stylesheet" href="../../assets/course.css">
+<script src="../../assets/course.js"></script>
+</head>
+<body data-lesson="07-05">
+
+<aside class="disclaimer" aria-label="Disclaimer"><strong>Learning resource only.</strong> This is an independent, unofficial study guide made for learning purposes. It is not affiliated with, endorsed by or sponsored by Databricks. Databricks features change often, so always check the details in the <a href="https://docs.databricks.com">official Databricks documentation</a> and the official exam guide on databricks.com before relying on anything here. Databricks and related names are trademarks of their respective owners.</aside>
+
+<main class="wrap">
+
+<header class="hero">
+  <div class="eyebrow">Module 07 · Governance and Security · Lesson 5 of 11</div>
+  <h1>The security hierarchy and privilege inheritance</h1>
+  <p class="lede">Unity Catalog objects sit inside each other like folders. A privilege granted on a container flows down to everything inside it, including things created later. But reaching a table also needs permission to open each container on the way.</p>
+  <dl class="where">
+    <div><dt>Module</dt><dd>07 Governance and Security (15% of the exam)</dd></div>
+    <div><dt>Exam objective</dt><dd>7.2 Grant access at the right level, knowing how privileges flow down the object hierarchy and what each level requires.</dd></div>
+    <div><dt>Time to read</dt><dd>About 13 minutes</dd></div>
+    <div><dt>Before this</dt><dd><a href="../01-databricks-platform/03-unity-catalog-object-model.html">01-03 Unity Catalog object model</a> and <a href="04-principals.html">07-04 Principals</a></dd></div>
+  </dl>
+</header>
+
+<section id="idea">
+  <div class="sec-num">The idea</div>
+  <h2>Grants flow down; usage opens the doors</h2>
+  <p>Every object you can grant on is a <a href="../../glossary.html#securable">securable</a>. They nest: metastore, then catalog, then schema, then tables, views, volumes, functions and models. Some securables sit beside this tree, such as external locations, storage credentials and connections.</p>
+  <p><a href="../../glossary.html#privilege-inheritance">Privilege inheritance</a>: a privilege granted on a catalog applies to every schema in it and every table in those schemas, now and in future. A grant on a schema applies to all its objects. (Grants on the metastore itself do not flow down.)</p>
+  <p>To touch anything inside a container you also need the <a href="../../glossary.html#usage-privilege">usage privileges</a>: <code>USE CATALOG</code> on the catalog and <code>USE SCHEMA</code> on the schema. They give no data access by themselves; they just let you through. So reading a table needs three things: USE CATALOG, USE SCHEMA and SELECT.</p>
+  <p>Some special privileges:</p>
+  <ul>
+    <li><strong><a href="../../glossary.html#owner">Owner</a></strong>: every object has one (a user, group or service principal). The owner can do everything on it, grant to others, and drop it.</li>
+    <li><strong><a href="../../glossary.html#manage-privilege">MANAGE</a></strong>: lets someone who is not the owner grant and revoke, rename, drop and change the owner. It does not by itself give data access.</li>
+    <li><strong>BROWSE</strong>: see that objects exist and read their metadata, without usage privileges or data access. Often granted on a catalog to <code>account users</code>.</li>
+    <li><strong>ALL PRIVILEGES</strong>: every privilege that applies to the object (for a table: SELECT, MODIFY, APPLY TAG), but not MANAGE.</li>
+  </ul>
+  <div class="analogy">
+    <span class="tag">Everyday analogy</span>
+    <p><strong>The bakery building.</strong> A key to the whole building (catalog grant) opens every room and every cupboard inside, even ones added next year. But to reach a cupboard you still need to be allowed through the front door (USE CATALOG) and the room door (USE SCHEMA). A cupboard key alone does not get you into the building.</p>
+  </div>
+</section>
+
+<section id="how">
+  <div class="sec-num">How it works</div>
+  <h2>The tree and the path to a table</h2>
+  <div class="stage">
+    <svg viewBox="0 0 360 240" role="img" aria-label="Metastore at the top, catalog bakery below, schemas silver and gold below that, tables beneath each schema. A SELECT granted on schema gold flows down to all gold tables. The path to a table needs USE CATALOG on bakery and USE SCHEMA on gold.">
+      <defs><path id="sh1" d="M180 40 V70 M180 100 V120 L260 140"/><path id="sh2" d="M260 165 C 260 185, 230 185, 230 200"/><path id="sh3" d="M260 165 C 260 185, 300 185, 300 200"/></defs>
+      <g class="wire"><path d="M180 40 V70"/><path d="M180 100 V120 H100 V140"/><path d="M180 120 H260 V140"/><path d="M100 165 V200"/><use href="#sh2"/><use href="#sh3"/></g>
+      <rect class="box-soft" x="120" y="10" width="120" height="30" rx="6"/><text class="t-m" x="180" y="30" text-anchor="middle">metastore</text>
+      <rect class="box" x="120" y="70" width="120" height="30" rx="6"/><text class="mono" x="180" y="90" text-anchor="middle">catalog bakery</text>
+      <rect class="box" x="50" y="140" width="100" height="25" rx="6"/><text class="mono" x="100" y="157" text-anchor="middle">silver</text>
+      <rect class="box-acc" x="210" y="140" width="100" height="25" rx="6"/><text class="mono" x="260" y="157" text-anchor="middle">gold: SELECT</text>
+      <rect class="box-soft" x="60" y="200" width="80" height="25" rx="5"/><text class="mono" x="100" y="217" text-anchor="middle">sales</text>
+      <rect class="box-acc" x="195" y="200" width="70" height="25" rx="5"/><text class="mono" x="230" y="217" text-anchor="middle">daily</text>
+      <rect class="box-acc" x="275" y="200" width="70" height="25" rx="5"/><text class="mono" x="310" y="217" text-anchor="middle">stores</text>
+      <text class="t-m" x="250" y="90">USE CATALOG</text>
+      <text class="t-m" x="318" y="132" text-anchor="middle">USE SCHEMA</text>
+      <g class="mover">
+        <circle r="5" class="dot-ok"><animateMotion dur="2s" repeatCount="indefinite"><mpath href="#sh2"/></animateMotion></circle>
+        <circle r="5" class="dot-ok"><animateMotion dur="2s" begin="-1s" repeatCount="indefinite"><mpath href="#sh3"/></animateMotion></circle>
+      </g>
+    </svg>
+    <p class="cap">SELECT on gold reaches every gold table. USE CATALOG and USE SCHEMA open the path to them.</p>
+  </div>
+</section>
+
+<section id="demo">
+  <div class="sec-num">Try it</div>
+  <h2>Grant at different levels</h2>
+  <p>The <code>bakery-analysts</code> group starts with nothing. Grant privileges at different levels, create a new table, and test what an analyst can query.</p>
+  <div class="stage">
+    <div class="ctrls">
+      <button id="hUC" type="button">USE CATALOG on bakery</button>
+      <button id="hUS" type="button">USE SCHEMA on gold</button>
+      <button id="hSelS" type="button">SELECT on schema gold</button>
+      <button id="hSelT" type="button">SELECT on table gold.daily</button>
+      <button id="hSelC" type="button">SELECT on catalog bakery</button>
+      <button id="hNew" type="button">Owner creates gold.forecast</button>
+      <label>Query <select id="hQ"></select></label>
+      <button id="hRun" type="button" class="primary">Analyst runs SELECT</button>
+      <button id="hReset" type="button">Reset</button>
+    </div>
+    <div class="panes">
+      <div class="pane"><h4>Grants to bakery-analysts</h4><div id="hGrants"></div></div>
+      <div class="pane"><h4>Effective on the chosen table</h4><div id="hEff"></div></div>
+    </div>
+    <div class="log" id="hLog" role="log" aria-label="What happened"></div>
+  </div>
+</section>
+
+<section id="code">
+  <div class="sec-num">Code</div>
+  <h2>Granting at the right level</h2>
+<pre><code><span class="c-c">-- Let analysts read every table in gold, including future ones</span>
+GRANT USE CATALOG ON CATALOG bakery      TO `bakery-analysts`;
+GRANT USE SCHEMA  ON SCHEMA  bakery.gold TO `bakery-analysts`;
+GRANT SELECT      ON SCHEMA  bakery.gold TO `bakery-analysts`;
+
+<span class="c-c">-- Let everyone discover what exists, without reading data</span>
+GRANT BROWSE ON CATALOG bakery TO `account users`;
+
+<span class="c-c">-- Let the data admins manage permissions on the whole catalog</span>
+GRANT MANAGE ON CATALOG bakery TO `data_admins`;
+
+<span class="c-c">-- Make a group the owner, so nothing depends on one person</span>
+ALTER SCHEMA bakery.gold OWNER TO `data_admins`;
+
+<span class="c-c">-- See what is granted, including inherited privileges</span>
+SHOW GRANTS `bakery-analysts` ON TABLE bakery.gold.daily;</code></pre>
+</section>
+
+<section id="whatif">
+  <div class="sec-num">What if I change this?</div>
+  <h2>Choices and their effects</h2>
+  <div class="tbl"><table class="whatif">
+    <tr><th>Change</th><th>Effect</th></tr>
+    <tr><td>SELECT on the table, no USE SCHEMA</td><td>Still denied: the path is closed.</td></tr>
+    <tr><td>SELECT on the schema instead of each table</td><td>Covers all current and future tables in it.</td></tr>
+    <tr><td>SELECT on the catalog</td><td>Covers every table in every schema: often too broad.</td></tr>
+    <tr><td>ALL PRIVILEGES on a table</td><td>SELECT, MODIFY and APPLY TAG; not MANAGE.</td></tr>
+    <tr><td>MANAGE without SELECT</td><td>Can grant and drop, but cannot read the data (though a MANAGE holder can grant themselves SELECT).</td></tr>
+    <tr><td>BROWSE on the catalog</td><td>Users see object names and metadata, but cannot query.</td></tr>
+  </table></div>
+</section>
+
+<section id="compare">
+  <div class="sec-num">Compare</div>
+  <h2>Common privileges</h2>
+  <div class="tbl"><table>
+    <tr><th>Privilege</th><th>Granted on</th><th>Lets you</th></tr>
+    <tr><td>USE CATALOG / USE SCHEMA</td><td>Catalog / schema</td><td>Reach objects inside (no data access by itself)</td></tr>
+    <tr><td>SELECT</td><td>Table, view (or a container above)</td><td>Read data</td></tr>
+    <tr><td>MODIFY</td><td>Table (or above)</td><td>Insert, update, delete</td></tr>
+    <tr><td>CREATE TABLE / CREATE SCHEMA</td><td>Schema / catalog</td><td>Create objects inside</td></tr>
+    <tr><td>EXECUTE</td><td>Function or model</td><td>Call it</td></tr>
+    <tr><td>READ VOLUME / WRITE VOLUME</td><td>Volume</td><td>Read or change files</td></tr>
+    <tr><td>BROWSE</td><td>Catalog</td><td>See metadata only</td></tr>
+    <tr><td>MANAGE</td><td>Any securable</td><td>Grant, revoke, rename, drop, change owner</td></tr>
+  </table></div>
+</section>
+
+<section id="scenarios">
+  <div class="sec-num">Real life</div>
+  <h2>Inheritance in practice</h2>
+  <div class="tbl"><table>
+    <tr><th>Scenario</th><th>What happens</th><th>Fix</th></tr>
+    <tr><td>"I have SELECT but get permission denied"</td><td>USE CATALOG or USE SCHEMA is missing</td><td>Grant the usage privileges on the containers</td></tr>
+    <tr><td>Every new gold table needs a new grant</td><td>Grants were made per table</td><td>Grant SELECT on the schema once</td></tr>
+    <tr><td>Analysts can read raw bronze data they should not</td><td>SELECT was granted on the whole catalog</td><td>Revoke it; grant on gold only</td></tr>
+    <tr><td>Nobody can change permissions while the owner is on leave</td><td>One person owns everything</td><td>Make a group the owner, or grant MANAGE</td></tr>
+  </table></div>
+</section>
+
+<section id="traps">
+  <div class="sec-num">Don't confuse these</div>
+  <h2>Hierarchy traps</h2>
+  <div class="grid2">
+    <div class="card trap"><span class="tag">Three things to read</span><p>USE CATALOG + USE SCHEMA + SELECT.</p></div>
+    <div class="card trap"><span class="tag">Future objects</span><p>Grants on a container cover objects created later too.</p></div>
+    <div class="card trap"><span class="tag">MANAGE is not data access</span><p>It controls permissions, not reading.</p></div>
+    <div class="card trap"><span class="tag">ALL PRIVILEGES</span><p>Does not include MANAGE.</p></div>
+  </div>
+</section>
+
+<section id="quiz">
+  <div class="sec-num">Check yourself</div>
+  <h2>Quiz</h2>
+  <div class="quiz">
+    <fieldset>
+      <legend>1. A user has SELECT on bakery.gold.daily but gets permission denied. What is most likely missing?</legend>
+      <label><input type="radio"> MODIFY on the table</label>
+      <label><input type="radio" data-correct> USE CATALOG on bakery or USE SCHEMA on gold</label>
+      <label><input type="radio"> ALL PRIVILEGES</label>
+      <p class="explain" hidden>The path to the table must be open as well.</p>
+    </fieldset>
+    <fieldset>
+      <legend>2. You grant SELECT on schema bakery.gold. A new table is created there next week. Can the grantee read it?</legend>
+      <label><input type="radio" data-correct> Yes, schema grants cover future tables</label>
+      <label><input type="radio"> No, you must grant on the new table</label>
+      <label><input type="radio"> Only if they own it</label>
+      <p class="explain" hidden>Inheritance applies to current and future child objects.</p>
+    </fieldset>
+    <fieldset>
+      <legend>3. Which privilege lets someone see what tables exist without reading any data?</legend>
+      <label><input type="radio"> SELECT</label>
+      <label><input type="radio" data-correct> BROWSE</label>
+      <label><input type="radio"> MODIFY</label>
+      <p class="explain" hidden>BROWSE shows metadata without usage privileges or data access.</p>
+    </fieldset>
+    <fieldset>
+      <legend>4. In the demo, what happened when the owner created gold.forecast after you granted SELECT on schema gold?</legend>
+      <label><input type="radio"> The analyst was denied</label>
+      <label><input type="radio" data-correct> The analyst could read it straight away</label>
+      <label><input type="radio"> The grant was removed</label>
+      <p class="explain" hidden>The schema grant flows down to new tables automatically.</p>
+    </fieldset>
+  </div>
+</section>
+
+<section id="wrap">
+  <div class="sec-num">Wrap up</div>
+  <h2>Key takeaways</h2>
+  <ul>
+    <li>Metastore, catalog, schema, then tables, views, volumes, functions.</li>
+    <li>Grants on a container flow down to current and future children.</li>
+    <li>Reading needs USE CATALOG + USE SCHEMA + SELECT.</li>
+    <li>Owners and MANAGE holders control permissions; BROWSE shows metadata only.</li>
+  </ul>
+  <h3>Glossary terms used</h3>
+  <p><a href="../../glossary.html#securable">securable</a> · <a href="../../glossary.html#privilege-inheritance">privilege inheritance</a> · <a href="../../glossary.html#usage-privilege">usage privilege</a> · <a href="../../glossary.html#owner">owner</a> · <a href="../../glossary.html#manage-privilege">MANAGE</a> · <a href="../../glossary.html#privilege">privilege</a></p>
+  <h3>Official docs</h3>
+  <ul>
+    <li><a href="https://docs.databricks.com/aws/en/data-governance/unity-catalog/access-control/permissions-concepts">Unity Catalog permissions concepts</a></li>
+    <li><a href="https://docs.databricks.com/aws/en/data-governance/unity-catalog/access-control/privileges-reference">Privileges reference</a></li>
+  </ul>
+  <p class="cap">Last verified: 17 November 2026</p>
+</section>
+
+</main>
+
+<script>
+(function () {
+  var C = window.Course, $ = function (id) { return document.getElementById(id); }, L = $('hLog');
+  var S;
+  function reset() { S = { g: {}, tables: ['silver.sales', 'gold.daily', 'gold.stores'] }; fillQ(); }
+  function fillQ() { $('hQ').innerHTML = S.tables.map(function (t) { return '<option>' + t + '</option>'; }).join(''); }
+  function eff(t) {
+    var sch = t.split('.')[0];
+    return {
+      uc: !!S.g['USE CATALOG bakery'],
+      us: !!S.g['USE SCHEMA ' + sch],
+      sel: S.g['SELECT catalog bakery'] ? 'from catalog bakery' : S.g['SELECT schema ' + sch] ? 'from schema ' + sch : S.g['SELECT table ' + t] ? 'on the table' : ''
+    };
+  }
+  function draw() {
+    var k = Object.keys(S.g);
+    $('hGrants').innerHTML = k.length ? k.map(function (x) { return '<div class="item">' + x + '</div>'; }).join('') : '<div class="item off">no grants</div>';
+    var t = $('hQ').value, e = eff(t);
+    $('hEff').innerHTML = '<div class="item"><span>USE CATALOG bakery</span><span>' + (e.uc ? 'yes' : 'no') + '</span></div><div class="item"><span>USE SCHEMA ' + t.split('.')[0] + '</span><span>' + (e.us ? 'yes' : 'no') + '</span></div><div class="item"><span>SELECT</span><span>' + (e.sel || 'no') + '</span></div>';
+  }
+  function grant(key, msg) { S.g[key] = 1; draw(); C.bump($('hGrants')); C.log(L, 'ok', 'GRANT ' + msg + ' TO `bakery-analysts`.'); }
+  $('hUC').onclick = function () { grant('USE CATALOG bakery', 'USE CATALOG ON CATALOG bakery'); };
+  $('hUS').onclick = function () { grant('USE SCHEMA gold', 'USE SCHEMA ON SCHEMA bakery.gold'); };
+  $('hSelS').onclick = function () { grant('SELECT schema gold', 'SELECT ON SCHEMA bakery.gold'); };
+  $('hSelT').onclick = function () { grant('SELECT table gold.daily', 'SELECT ON TABLE bakery.gold.daily'); };
+  $('hSelC').onclick = function () { grant('SELECT catalog bakery', 'SELECT ON CATALOG bakery'); C.log(L, 'skip', 'Careful: this covers every table in every schema, including bronze and silver.'); };
+  $('hNew').onclick = function () { if (S.tables.indexOf('gold.forecast') < 0) { S.tables.push('gold.forecast'); fillQ(); $('hQ').value = 'gold.forecast'; } draw(); C.log(L, 'skip', 'The owner created bakery.gold.forecast. No new grants were made.'); };
+  $('hQ').onchange = draw;
+  $('hRun').onclick = function () {
+    var t = $('hQ').value, e = eff(t), sch = t.split('.')[0], miss = [];
+    if (!e.uc) miss.push('USE CATALOG on bakery'); if (!e.us) miss.push('USE SCHEMA on ' + sch); if (!e.sel) miss.push('SELECT');
+    draw();
+    if (miss.length) C.log(L, 'bad', 'SELECT * FROM bakery.' + t + ': PERMISSION_DENIED. Missing: ' + miss.join(', ') + '.');
+    else C.log(L, 'ok', 'SELECT * FROM bakery.' + t + ': works (SELECT ' + e.sel + ').');
+  };
+  $('hReset').onclick = function () { reset(); draw(); L.innerHTML = ''; };
+  reset(); draw();
+})();
+</script>
+</body>
+</html>

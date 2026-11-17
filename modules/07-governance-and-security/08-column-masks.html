@@ -1,0 +1,248 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>07-08 Column masks · DE Associate course</title>
+<link rel="stylesheet" href="../../assets/course.css">
+<script src="../../assets/course.js"></script>
+</head>
+<body data-lesson="07-08">
+
+<aside class="disclaimer" aria-label="Disclaimer"><strong>Learning resource only.</strong> This is an independent, unofficial study guide made for learning purposes. It is not affiliated with, endorsed by or sponsored by Databricks. Databricks features change often, so always check the details in the <a href="https://docs.databricks.com">official Databricks documentation</a> and the official exam guide on databricks.com before relying on anything here. Databricks and related names are trademarks of their respective owners.</aside>
+
+<main class="wrap">
+
+<header class="hero">
+  <div class="eyebrow">Module 07 · Governance and Security · Lesson 8 of 11</div>
+  <h1>Column masks</h1>
+  <p class="lede">Sometimes everyone may query a table, but not everyone may see every value in it. A column mask rewrites one column's values on the fly, so the support team sees full email addresses and everyone else sees a hidden version, from the same table.</p>
+  <dl class="where">
+    <div><dt>Module</dt><dd>07 Governance and Security (15% of the exam)</dd></div>
+    <div><dt>Exam objective</dt><dd>7.3 Understand column masks that show different values of a column to different groups.</dd></div>
+    <div><dt>Time to read</dt><dd>About 12 minutes</dd></div>
+    <div><dt>Before this</dt><dd><a href="06-grant-and-revoke.html">07-06 GRANT and REVOKE</a></dd></div>
+  </dl>
+</header>
+
+<section id="idea">
+  <div class="sec-num">The idea</div>
+  <h2>A function decides what each person sees</h2>
+  <p>A <a href="../../glossary.html#column-mask">column mask</a> is a SQL <a href="../../glossary.html#udf">user-defined function (UDF)</a> attached to one column of a table. Every time anyone reads that column, Databricks calls the function with the real value, and the reader gets whatever the function returns. The table itself is not changed.</p>
+  <p>Inside the function you usually check who is asking with <code>is_account_group_member('group')</code>. If the reader is in an allowed group, return the real value; otherwise return a hidden version, such as <code>'***'</code>, the last four digits, or NULL.</p>
+  <p>Rules to know:</p>
+  <ul>
+    <li>The function's first parameter receives the column value, and it must return the same type (or one that can be cast to it). Extra inputs can come from other columns with <code>USING COLUMNS</code>.</li>
+    <li>One mask per column. A table can have masks on several columns.</li>
+    <li>Apply with <code>ALTER TABLE ... ALTER COLUMN ... SET MASK</code>; remove with <code>DROP MASK</code>.</li>
+    <li>To set or remove a mask you must own the table, or hold both MANAGE and SELECT on it, and have EXECUTE on the function.</li>
+    <li>Nobody is exempt by default, not even the table owner. Exemptions come only from the logic in the function.</li>
+    <li>Readers need standard access mode compute (DBR 12.2 LTS+), a SQL warehouse, serverless, or dedicated compute on DBR 15.4 LTS+. Older runtimes fail safely and return no data.</li>
+  </ul>
+  <div class="analogy">
+    <span class="tag">Everyday analogy</span>
+    <p><strong>The bakery's customer card file.</strong> Everyone can look up a customer, but the phone number is covered by a sticky note unless you work on the delivery desk. The note is not on the card itself; a clerk adds it as they hand the card over, depending on who is asking. That clerk is the mask function.</p>
+  </div>
+</section>
+
+<section id="how">
+  <div class="sec-num">How it works</div>
+  <h2>Same table, different values per reader</h2>
+  <div class="stage">
+    <svg viewBox="0 0 360 230" role="img" aria-label="The customers table holds a real email. When a support agent reads it, the mask function returns the full email. When a marketing analyst reads it, the function returns a hidden version.">
+      <defs><path id="cm1" d="M140 90 C 200 90, 200 50, 245 50"/><path id="cm2" d="M140 120 C 200 120, 200 170, 245 170"/></defs>
+      <rect class="box" x="10" y="80" width="130" height="50" rx="7"/><text class="t-b" x="75" y="100" text-anchor="middle">customers.email</text><text class="mono" x="75" y="118" text-anchor="middle">ana@example.com</text>
+      <g class="wire"><use href="#cm1"/><use href="#cm2"/></g>
+      <rect class="box-soft" x="150" y="90" width="80" height="30" rx="6"/><text class="t-m" x="190" y="110" text-anchor="middle">mask fn</text>
+      <rect class="box-acc" x="245" y="30" width="110" height="40" rx="6"/><text class="t-m" x="300" y="46" text-anchor="middle">support agent</text><text class="mono" x="300" y="61" text-anchor="middle">ana@example.com</text>
+      <rect class="box-soft" x="245" y="150" width="110" height="40" rx="6"/><text class="t-m" x="300" y="166" text-anchor="middle">marketing</text><text class="mono" x="300" y="181" text-anchor="middle">a***@example.com</text>
+      <g class="mover">
+        <circle r="5" class="dot-ok"><animateMotion dur="2.4s" repeatCount="indefinite"><mpath href="#cm1"/></animateMotion></circle>
+        <circle r="5" class="dot"><animateMotion dur="2.4s" begin="-1.2s" repeatCount="indefinite"><mpath href="#cm2"/></animateMotion></circle>
+      </g>
+    </svg>
+    <p class="cap">The stored value never changes; only what each reader receives.</p>
+  </div>
+</section>
+
+<section id="demo">
+  <div class="sec-num">Try it</div>
+  <h2>Mask the customer table</h2>
+  <p>Pick a mask for <code>email</code> and for <code>phone</code>, then read the table as different people. Notice that the table owner is masked too unless the function lets them through.</p>
+  <div class="stage">
+    <div class="ctrls">
+      <label>Reader <select id="mWho"><option value="support">lee (support)</option><option value="marketing">pat (marketing)</option><option value="owner">sam (table owner, no group)</option><option value="admin">kim (data_admins)</option></select></label>
+      <label>email mask <select id="mEmail"><option value="none">none</option><option value="partial">support sees all, others a***@domain</option><option value="null">support sees all, others NULL</option></select></label>
+      <label>phone mask <select id="mPhone"><option value="none">none</option><option value="last4">support and admins see all, others last 4</option></select></label>
+      <button id="mRead" type="button" class="primary">SELECT * FROM customers</button>
+      <button id="mReset" type="button">Clear log</button>
+    </div>
+    <div class="panes">
+      <div class="pane"><h4>What the reader sees</h4><div id="mOut"></div></div>
+      <div class="pane"><h4>Masks on the table</h4><div id="mDef"></div></div>
+    </div>
+    <div class="log" id="mLog" role="log" aria-label="What happened"></div>
+  </div>
+</section>
+
+<section id="code">
+  <div class="sec-num">Code</div>
+  <h2>Create a mask function and attach it</h2>
+<pre><code><span class="c-c">-- 1. The function: same input and output type as the column</span>
+CREATE OR REPLACE FUNCTION bakery.gov.mask_email(email STRING)
+RETURNS STRING
+RETURN CASE
+  WHEN is_account_group_member('support') THEN email
+  ELSE concat(left(email, 1), '***@', split(email, '@')[1])
+END;
+
+<span class="c-c">-- 2. Attach it to the column</span>
+ALTER TABLE bakery.silver.customers ALTER COLUMN email SET MASK bakery.gov.mask_email;
+
+<span class="c-c">-- A mask that also reads another column: show the full phone if the customer opted in</span>
+CREATE OR REPLACE FUNCTION bakery.gov.mask_phone(phone STRING, opted_in BOOLEAN)
+RETURNS STRING
+RETURN IF(opted_in OR is_account_group_member('support'), phone, concat('***', right(phone, 4)));
+
+ALTER TABLE bakery.silver.customers
+  ALTER COLUMN phone SET MASK bakery.gov.mask_phone USING COLUMNS (opted_in);
+
+<span class="c-c">-- 3. Remove a mask</span>
+ALTER TABLE bakery.silver.customers ALTER COLUMN email DROP MASK;</code></pre>
+  <p class="note">Group names such as <code>support</code> are made up. Drop a mask from every table before dropping its function, or those tables become unreadable.</p>
+</section>
+
+<section id="whatif">
+  <div class="sec-num">What if I change this?</div>
+  <h2>Choices and their effects</h2>
+  <div class="tbl"><table class="whatif">
+    <tr><th>Change</th><th>Effect</th></tr>
+    <tr><td>Return NULL instead of a partial value</td><td>Hides everything; joins and counts on the column change too.</td></tr>
+    <tr><td>Use <code>USING COLUMNS</code></td><td>The decision can depend on other columns in the same row.</td></tr>
+    <tr><td>Forget to exempt the owner or admins</td><td>They see masked values too.</td></tr>
+    <tr><td>Drop the function while a mask uses it</td><td>Queries on the table fail.</td></tr>
+    <tr><td>Read from an old runtime or unsupported compute</td><td>Fails safely: no data returned.</td></tr>
+    <tr><td>Add a second mask to the same column</td><td>Not allowed; one mask per column.</td></tr>
+  </table></div>
+</section>
+
+<section id="compare">
+  <div class="sec-num">Compare</div>
+  <h2>Ways to hide a column</h2>
+  <div class="tbl"><table>
+    <tr><th>Method</th><th>One table, many audiences</th><th>Upkeep</th></tr>
+    <tr><td>Column mask</td><td>Yes</td><td>One function per kind of value; attach per column</td></tr>
+    <tr><td>A separate view without the column</td><td>Need one view per audience</td><td>Views multiply; people may still query the base table</td></tr>
+    <tr><td>Copy of the table without the column</td><td>Need one copy per audience</td><td>Data duplicated and drifts out of date</td></tr>
+    <tr><td>ABAC column mask policy (lesson 07-10)</td><td>Yes</td><td>One policy covers every tagged column across many tables</td></tr>
+  </table></div>
+</section>
+
+<section id="scenarios">
+  <div class="sec-num">Real life</div>
+  <h2>Masks in practice</h2>
+  <div class="tbl"><table>
+    <tr><th>Scenario</th><th>What happens</th><th>Fix</th></tr>
+    <tr><td>Marketing must count customers by email domain, not see emails</td><td>Full emails are visible</td><td>Mask to <code>a***@domain</code>, keeping the domain</td></tr>
+    <tr><td>The owner complains they see masked values</td><td>Masks apply to everyone</td><td>Add the owner's group to the function's allowed list</td></tr>
+    <tr><td>After a cleanup, the customers table errors on every query</td><td>Someone dropped the mask function</td><td>Recreate the function or DROP MASK first</td></tr>
+    <tr><td>Twenty tables have an email column</td><td>Twenty ALTER statements to keep in sync</td><td>Tag the columns and use an ABAC policy</td></tr>
+  </table></div>
+</section>
+
+<section id="traps">
+  <div class="sec-num">Don't confuse these</div>
+  <h2>Mask traps</h2>
+  <div class="grid2">
+    <div class="card trap"><span class="tag">Mask vs filter</span><p>A mask changes values in a column; a row filter removes whole rows.</p></div>
+    <div class="card trap"><span class="tag">Owners are masked</span><p>Only the function's logic exempts anyone.</p></div>
+    <div class="card trap"><span class="tag">Same type</span><p>The function must return the column's type.</p></div>
+    <div class="card trap"><span class="tag">is_account_group_member</span><p>Checks account groups; recommended over is_member.</p></div>
+  </div>
+</section>
+
+<section id="quiz">
+  <div class="sec-num">Check yourself</div>
+  <h2>Quiz</h2>
+  <div class="quiz">
+    <fieldset>
+      <legend>1. What is a column mask?</legend>
+      <label><input type="radio"> A copy of the table without the column</label>
+      <label><input type="radio" data-correct> A SQL function attached to a column that decides which value each reader gets</label>
+      <label><input type="radio"> A privilege like SELECT</label>
+      <p class="explain" hidden>The stored data does not change.</p>
+    </fieldset>
+    <fieldset>
+      <legend>2. Which statement attaches a mask?</legend>
+      <label><input type="radio"> GRANT MASK ON COLUMN ...</label>
+      <label><input type="radio" data-correct> ALTER TABLE t ALTER COLUMN c SET MASK fn</label>
+      <label><input type="radio"> CREATE MASK c ON t</label>
+      <p class="explain" hidden>DROP MASK removes it.</p>
+    </fieldset>
+    <fieldset>
+      <legend>3. Does a column mask apply to the table owner?</legend>
+      <label><input type="radio"> No, owners always see real values</label>
+      <label><input type="radio" data-correct> Yes, unless the function's logic lets them through</label>
+      <label><input type="radio"> Only on serverless</label>
+      <p class="explain" hidden>There is no built-in owner exemption.</p>
+    </fieldset>
+    <fieldset>
+      <legend>4. In the demo, with the phone mask on, what did kim from data_admins see in phone?</legend>
+      <label><input type="radio"> Only the last 4 digits</label>
+      <label><input type="radio" data-correct> The full number</label>
+      <label><input type="radio"> NULL</label>
+      <p class="explain" hidden>The function allows support and admins to see the full value.</p>
+    </fieldset>
+  </div>
+</section>
+
+<section id="wrap">
+  <div class="sec-num">Wrap up</div>
+  <h2>Key takeaways</h2>
+  <ul>
+    <li>A column mask is a SQL UDF that returns the value each reader is allowed to see.</li>
+    <li>SET MASK to attach, DROP MASK to remove; one per column; same return type.</li>
+    <li>is_account_group_member() inside the function decides who sees what; nobody is exempt by default.</li>
+  </ul>
+  <h3>Glossary terms used</h3>
+  <p><a href="../../glossary.html#column-mask">column mask</a> · <a href="../../glossary.html#udf">UDF</a></p>
+  <h3>Official docs</h3>
+  <ul>
+    <li><a href="https://docs.databricks.com/aws/en/tables/row-and-column-filters">Row filters and column masks</a></li>
+    <li><a href="https://docs.databricks.com/aws/en/data-governance/unity-catalog/filters-and-masks/manually-apply">Apply filters and masks to a table</a></li>
+    <li><a href="https://docs.databricks.com/aws/en/sql/language-manual/functions/is_account_group_member">is_account_group_member</a></li>
+  </ul>
+  <p class="cap">Last verified: 17 November 2026</p>
+</section>
+
+</main>
+
+<script>
+(function () {
+  var C = window.Course, $ = function (id) { return document.getElementById(id); }, L = $('mLog');
+  var ROWS = [['Ana', 'ana@example.com', '0161 555 0142'], ['Ben', 'ben@mail.example', '0161 555 0199'], ['Cai', 'cai@example.com', '0161 555 0177']];
+  var GROUPS = { support: ['support'], marketing: ['marketing'], owner: [], admin: ['data_admins'] };
+  function member(g) { return GROUPS[$('mWho').value].indexOf(g) > -1; }
+  function email(v) {
+    var m = $('mEmail').value; if (m === 'none' || member('support')) return v;
+    return m === 'null' ? 'NULL' : v.charAt(0) + '***@' + v.split('@')[1];
+  }
+  function phone(v) { return $('mPhone').value === 'none' || member('support') || member('data_admins') ? v : '***' + v.slice(-4); }
+  function draw() {
+    $('mOut').innerHTML = ROWS.map(function (r) { return '<div class="item"><span>' + r[0] + '</span><span>' + email(r[1]) + ' · ' + phone(r[2]) + '</span></div>'; }).join('');
+    $('mDef').innerHTML = '<div class="item">email: ' + ($('mEmail').value === 'none' ? 'no mask' : 'mask_email') + '</div><div class="item">phone: ' + ($('mPhone').value === 'none' ? 'no mask' : 'mask_phone') + '</div>';
+  }
+  $('mRead').onclick = function () {
+    draw(); C.bump($('mOut'));
+    var who = $('mWho').options[$('mWho').selectedIndex].text, e = email(ROWS[0][1]), p = phone(ROWS[0][2]);
+    var hidden = (e !== ROWS[0][1] ? 1 : 0) + (p !== ROWS[0][2] ? 1 : 0);
+    C.log(L, hidden ? 'skip' : 'ok', who + ' read customers: email shows "' + e + '", phone shows "' + p + '". ' + (hidden ? hidden + ' column(s) masked for this reader.' : 'Nothing masked for this reader.'));
+    if ($('mWho').value === 'owner' && hidden) C.log(L, 'bad', 'The owner is masked too: owning the table does not bypass the function.');
+  };
+  ['mWho', 'mEmail', 'mPhone'].forEach(function (id) { $(id).onchange = draw; });
+  $('mReset').onclick = function () { L.innerHTML = ''; };
+  draw();
+})();
+</script>
+</body>
+</html>

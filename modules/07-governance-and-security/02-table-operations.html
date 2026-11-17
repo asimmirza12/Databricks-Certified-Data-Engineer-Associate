@@ -1,0 +1,262 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>07-02 Creating, changing and dropping tables · DE Associate course</title>
+<link rel="stylesheet" href="../../assets/course.css">
+<script src="../../assets/course.js"></script>
+</head>
+<body data-lesson="07-02">
+
+<aside class="disclaimer" aria-label="Disclaimer"><strong>Learning resource only.</strong> This is an independent, unofficial study guide made for learning purposes. It is not affiliated with, endorsed by or sponsored by Databricks. Databricks features change often, so always check the details in the <a href="https://docs.databricks.com">official Databricks documentation</a> and the official exam guide on databricks.com before relying on anything here. Databricks and related names are trademarks of their respective owners.</aside>
+
+<main class="wrap">
+
+<header class="hero">
+  <div class="eyebrow">Module 07 · Governance and Security · Lesson 2 of 11</div>
+  <h1>Creating, changing and dropping tables</h1>
+  <p class="lede">A handful of SQL statements cover a table's whole life: create it, fill it, change its shape, rename it, hand it to another owner, and finally drop it. One choice matters more than it looks: replacing a table versus dropping and recreating it.</p>
+  <dl class="where">
+    <div><dt>Module</dt><dd>07 Governance and Security (15% of the exam)</dd></div>
+    <div><dt>Exam objective</dt><dd>7.1 Create, change and drop managed and external tables in Unity Catalog.</dd></div>
+    <div><dt>Time to read</dt><dd>About 12 minutes</dd></div>
+    <div><dt>Before this</dt><dd><a href="01-managed-vs-external-tables.html">07-01 Managed vs external tables</a></dd></div>
+  </dl>
+</header>
+
+<section id="idea">
+  <div class="sec-num">The idea</div>
+  <h2>The table life cycle in SQL</h2>
+  <ul>
+    <li><strong>Create</strong>: <code>CREATE TABLE</code> with a column list, or <a href="../../glossary.html#ctas">CTAS</a> (<code>CREATE TABLE ... AS SELECT</code>) to create and fill it from a query in one step. Add <code>IF NOT EXISTS</code> to skip quietly when it already exists.</li>
+    <li><strong>Change</strong>: <code>ALTER TABLE</code> adds or renames columns, renames the table (within the same catalog), sets table properties, and changes the owner.</li>
+    <li><strong>Replace</strong>: <code>CREATE OR REPLACE TABLE</code> swaps the table's contents and shape in one step. On Delta tables it keeps the table's history, its <a href="../../glossary.html#privilege">privileges</a>, and any row filters and column masks.</li>
+    <li><strong>Drop</strong>: <code>DROP TABLE</code> removes it (lesson 07-01 covers what happens to the files).</li>
+  </ul>
+  <p>Databricks recommends <code>CREATE OR REPLACE</code> over <code>DROP</code> then <code>CREATE</code>. Dropping first throws away the history and the grants, so everyone loses access until someone grants it again, and queries running in between fail.</p>
+  <p>Each statement needs the right privilege: CREATE TABLE on the schema to create, MODIFY to change columns or properties, and ownership or MANAGE to drop, rename or change the owner (plus USE CATALOG and USE SCHEMA to reach the table at all).</p>
+  <div class="analogy">
+    <span class="tag">Everyday analogy</span>
+    <p><strong>Changing the bakery's menu board.</strong> Replacing the board's contents keeps the frame, its spot on the wall and the list of people allowed to edit it (CREATE OR REPLACE). Taking the whole board down and putting up a new one leaves a blank wall for a while and nobody has the keys to it yet (DROP then CREATE).</p>
+  </div>
+</section>
+
+<section id="how">
+  <div class="sec-num">How it works</div>
+  <h2>Replace keeps history and grants</h2>
+  <div class="stage">
+    <svg viewBox="0 0 360 230" role="img" aria-label="Top path: CREATE OR REPLACE keeps the same table with its history versions and grants, adding a new version. Bottom path: DROP then CREATE leaves a gap with no table, then a new table with no history and no grants.">
+      <defs><path id="tr1" d="M20 60 H340"/><path id="tr2" d="M20 165 H340"/></defs>
+      <g class="wire"><use href="#tr1"/><use href="#tr2"/></g>
+      <text class="t-b" x="20" y="30">CREATE OR REPLACE</text>
+      <rect class="box" x="30" y="45" width="70" height="30" rx="5"/><text class="mono" x="65" y="65" text-anchor="middle">v1</text>
+      <rect class="box" x="140" y="45" width="70" height="30" rx="5"/><text class="mono" x="175" y="65" text-anchor="middle">v2</text>
+      <rect class="box-acc" x="250" y="45" width="90" height="30" rx="5"/><text class="mono" x="295" y="65" text-anchor="middle">v3 replaced</text>
+      <text class="t-m" x="180" y="98" text-anchor="middle">same table, grants kept, history kept</text>
+      <text class="t-b" x="20" y="135">DROP then CREATE</text>
+      <rect class="box" x="30" y="150" width="70" height="30" rx="5"/><text class="mono" x="65" y="170" text-anchor="middle">v1 v2</text>
+      <rect class="box-soft" x="135" y="150" width="80" height="30" rx="5"/><text class="t-m" x="175" y="170" text-anchor="middle">no table</text>
+      <rect class="box-acc" x="250" y="150" width="90" height="30" rx="5"/><text class="mono" x="295" y="170" text-anchor="middle">new v0</text>
+      <text class="t-m" x="180" y="205" text-anchor="middle">queries fail in the gap; grants and history lost</text>
+      <g class="mover">
+        <circle r="5" class="dot"><animateMotion dur="3s" repeatCount="indefinite"><mpath href="#tr1"/></animateMotion></circle>
+        <circle r="5" class="dot"><animateMotion dur="3s" begin="-1.5s" repeatCount="indefinite"><mpath href="#tr2"/></animateMotion></circle>
+      </g>
+    </svg>
+    <p class="cap">Readers of the replaced table never see a missing table.</p>
+  </div>
+</section>
+
+<section id="demo">
+  <div class="sec-num">Try it</div>
+  <h2>Run table statements</h2>
+  <p>The analysts group already has SELECT on <code>bakery.gold.daily_sales</code>. Change it in different ways and watch its columns, history and grants. Then compare replacing with dropping and recreating.</p>
+  <div class="stage">
+    <div class="ctrls">
+      <button id="aAdd" type="button">ADD COLUMN region</button>
+      <button id="aRen" type="button">RENAME COLUMN amount TO revenue</button>
+      <button id="aProp" type="button">SET TBLPROPERTIES</button>
+      <button id="aOwn" type="button">OWNER TO data_admins</button>
+      <button id="aRep" type="button" class="primary">CREATE OR REPLACE</button>
+      <button id="aDrop" type="button">DROP, then CREATE</button>
+      <button id="aSel" type="button">Analyst runs SELECT</button>
+      <button id="aReset" type="button">Reset</button>
+    </div>
+    <div class="panes">
+      <div class="pane"><h4>DESCRIBE TABLE EXTENDED</h4><div id="aDesc"></div></div>
+      <div class="pane"><h4>History and grants</h4><div id="aHist"></div></div>
+    </div>
+    <div class="log" id="aLog" role="log" aria-label="What happened"></div>
+  </div>
+</section>
+
+<section id="code">
+  <div class="sec-num">Code</div>
+  <h2>The statements</h2>
+<pre><code><span class="c-c">-- Create and fill in one step (CTAS). Managed, because there is no LOCATION.</span>
+CREATE TABLE IF NOT EXISTS bakery.gold.daily_sales AS
+SELECT store_id, sale_date, SUM(amount) AS amount
+FROM bakery.silver.sales
+GROUP BY store_id, sale_date;
+
+<span class="c-c">-- Change the shape</span>
+ALTER TABLE bakery.gold.daily_sales ADD COLUMN region STRING;
+ALTER TABLE bakery.gold.daily_sales RENAME COLUMN amount TO revenue;   <span class="c-c">-- needs column mapping on Delta; verify in the docs</span>
+
+<span class="c-c">-- Properties, name and owner</span>
+ALTER TABLE bakery.gold.daily_sales SET TBLPROPERTIES ('quality' = 'gold');
+ALTER TABLE bakery.gold.daily_sales RENAME TO bakery.gold.store_daily_sales;  <span class="c-c">-- same catalog only</span>
+ALTER TABLE bakery.gold.store_daily_sales SET OWNER TO `data_admins`;
+
+<span class="c-c">-- Rebuild the contents without losing history or grants</span>
+CREATE OR REPLACE TABLE bakery.gold.store_daily_sales AS
+SELECT store_id, sale_date, SUM(amount) AS revenue
+FROM bakery.silver.sales
+GROUP BY store_id, sale_date;
+
+<span class="c-c">-- Remove it</span>
+DROP TABLE IF EXISTS bakery.gold.store_daily_sales;</code></pre>
+  <p class="note">On Delta tables, a new column cannot be given a DEFAULT in the ADD COLUMN itself; set it afterwards with ALTER COLUMN ... SET DEFAULT. Check the ALTER TABLE reference for each clause's rules.</p>
+</section>
+
+<section id="whatif">
+  <div class="sec-num">What if I change this?</div>
+  <h2>Choices and their effects</h2>
+  <div class="tbl"><table class="whatif">
+    <tr><th>Change</th><th>Effect</th></tr>
+    <tr><td><code>IF NOT EXISTS</code></td><td>No error if the table exists; the statement does nothing.</td></tr>
+    <tr><td><code>CREATE OR REPLACE</code></td><td>New contents and shape, same table: history, grants, filters and masks kept.</td></tr>
+    <tr><td>DROP then CREATE</td><td>History and grants lost; a gap where queries fail.</td></tr>
+    <tr><td>RENAME TO another catalog</td><td>Not allowed in Unity Catalog; stays in the same catalog.</td></tr>
+    <tr><td>SET OWNER TO a group</td><td>The group gets full control; good so tables do not depend on one person.</td></tr>
+    <tr><td>ADD COLUMN on a big table</td><td>Fast: existing rows read the new column as NULL without a rewrite.</td></tr>
+  </table></div>
+</section>
+
+<section id="compare">
+  <div class="sec-num">Compare</div>
+  <h2>Statement and privilege needed</h2>
+  <div class="tbl"><table>
+    <tr><th>Statement</th><th>Privilege (plus USE CATALOG and USE SCHEMA)</th></tr>
+    <tr><td>CREATE TABLE / CTAS</td><td>CREATE TABLE on the schema (CTAS also needs SELECT on the source)</td></tr>
+    <tr><td>ALTER TABLE ADD/RENAME COLUMN, SET TBLPROPERTIES</td><td>MODIFY on the table</td></tr>
+    <tr><td>ALTER TABLE SET OWNER, RENAME TO</td><td>Owner, or MANAGE on the table</td></tr>
+    <tr><td>CREATE OR REPLACE</td><td>Owner or MANAGE on the existing table, plus CREATE TABLE (verify in the docs)</td></tr>
+    <tr><td>DROP TABLE</td><td>Owner, or MANAGE on the table (owners of the schema or catalog also can)</td></tr>
+  </table></div>
+</section>
+
+<section id="scenarios">
+  <div class="sec-num">Real life</div>
+  <h2>Table changes in practice</h2>
+  <div class="tbl"><table>
+    <tr><th>Scenario</th><th>What happens</th><th>Fix</th></tr>
+    <tr><td>Nightly job drops and recreates the gold table</td><td>Analysts lose access every night</td><td>Use CREATE OR REPLACE</td></tr>
+    <tr><td>The person who owns key tables leaves</td><td>Changes need an admin</td><td>SET OWNER TO a group</td></tr>
+    <tr><td>Rerunning a setup notebook fails on CREATE TABLE</td><td>The table already exists</td><td>IF NOT EXISTS</td></tr>
+    <tr><td>A report needs a new region column</td><td>Rebuilding the table seems needed</td><td>ALTER TABLE ADD COLUMN, then fill it</td></tr>
+  </table></div>
+</section>
+
+<section id="traps">
+  <div class="sec-num">Don't confuse these</div>
+  <h2>Table statement traps</h2>
+  <div class="grid2">
+    <div class="card trap"><span class="tag">REPLACE vs DROP</span><p>REPLACE keeps history and grants. DROP then CREATE loses both.</p></div>
+    <div class="card trap"><span class="tag">MODIFY vs ownership</span><p>MODIFY changes data and columns. Dropping or changing owner needs owner or MANAGE.</p></div>
+    <div class="card trap"><span class="tag">CTAS shape</span><p>CTAS takes column names and types from the query.</p></div>
+    <div class="card trap"><span class="tag">Rename scope</span><p>A table can be renamed within its catalog, not moved to another.</p></div>
+  </div>
+</section>
+
+<section id="quiz">
+  <div class="sec-num">Check yourself</div>
+  <h2>Quiz</h2>
+  <div class="quiz">
+    <fieldset>
+      <legend>1. A job rebuilds a gold table every night. How should it do this so analysts keep access?</legend>
+      <label><input type="radio"> DROP TABLE, then CREATE TABLE</label>
+      <label><input type="radio" data-correct> CREATE OR REPLACE TABLE</label>
+      <label><input type="radio"> ALTER TABLE ... RENAME</label>
+      <p class="explain" hidden>Replace keeps grants and history; drop throws them away.</p>
+    </fieldset>
+    <fieldset>
+      <legend>2. Which privilege lets you add a column to a table you do not own?</legend>
+      <label><input type="radio"> SELECT</label>
+      <label><input type="radio" data-correct> MODIFY</label>
+      <label><input type="radio"> CREATE SCHEMA</label>
+      <p class="explain" hidden>Column changes and table properties need MODIFY on the table.</p>
+    </fieldset>
+    <fieldset>
+      <legend>3. What does CTAS do?</legend>
+      <label><input type="radio" data-correct> Creates a table and fills it from a query in one statement</label>
+      <label><input type="radio"> Copies a table's grants</label>
+      <label><input type="radio"> Converts a table to external</label>
+      <p class="explain" hidden>CREATE TABLE ... AS SELECT.</p>
+    </fieldset>
+    <fieldset>
+      <legend>4. In the demo, after DROP then CREATE, what happened when the analyst ran SELECT?</legend>
+      <label><input type="radio"> It worked as before</label>
+      <label><input type="radio" data-correct> Permission denied: the old grant was lost with the dropped table</label>
+      <label><input type="radio"> It showed the old history</label>
+      <p class="explain" hidden>A new table starts with no grants except its owner's.</p>
+    </fieldset>
+  </div>
+</section>
+
+<section id="wrap">
+  <div class="sec-num">Wrap up</div>
+  <h2>Key takeaways</h2>
+  <ul>
+    <li>CREATE TABLE (or CTAS), ALTER TABLE, CREATE OR REPLACE, DROP TABLE cover the life cycle.</li>
+    <li>Prefer CREATE OR REPLACE: history, grants, filters and masks stay.</li>
+    <li>MODIFY for column and property changes; owner or MANAGE for drop, rename and owner changes.</li>
+  </ul>
+  <h3>Glossary terms used</h3>
+  <p><a href="../../glossary.html#ctas">CTAS</a> · <a href="../../glossary.html#privilege">privilege</a> · <a href="../../glossary.html#managed-table">managed table</a></p>
+  <h3>Official docs</h3>
+  <ul>
+    <li><a href="https://docs.databricks.com/aws/en/sql/language-manual/sql-ref-syntax-ddl-create-table">CREATE TABLE</a></li>
+    <li><a href="https://docs.databricks.com/aws/en/sql/language-manual/sql-ref-syntax-ddl-alter-table">ALTER TABLE</a></li>
+    <li><a href="https://docs.databricks.com/aws/en/sql/language-manual/sql-ref-syntax-ddl-drop-table">DROP TABLE</a></li>
+  </ul>
+  <p class="cap">Last verified: 17 November 2026</p>
+</section>
+
+</main>
+
+<script>
+(function () {
+  var C = window.Course, $ = function (id) { return document.getElementById(id); }, L = $('aLog');
+  var T;
+  function reset() { T = { cols: ['store_id INT', 'sale_date DATE', 'amount DECIMAL'], props: {}, owner: 'sam@example.com', ver: 1, grants: ['bakery-analysts: SELECT'], exists: true }; }
+  function draw() {
+    $('aDesc').innerHTML = T.exists ? T.cols.map(function (c) { return '<div class="item">' + c + '</div>'; }).join('') + '<div class="item">Owner: ' + T.owner + '</div><div class="item">Type: MANAGED</div>' + (Object.keys(T.props).length ? '<div class="item">Properties: quality=gold</div>' : '') : '<div class="item off">table does not exist</div>';
+    $('aHist').innerHTML = '<div class="item">history: versions 0 to ' + (T.ver - 1) + '</div>' + (T.grants.length ? T.grants.map(function (g) { return '<div class="item">' + g + '</div>'; }).join('') : '<div class="item hot">no grants (owner only)</div>');
+  }
+  function change(msg) { if (!T.exists) { C.log(L, 'bad', 'Table does not exist.'); return false; } T.ver++; C.log(L, 'ok', msg + ' New version ' + (T.ver - 1) + '.'); draw(); C.bump($('aDesc')); return true; }
+  $('aAdd').onclick = function () { if (T.cols.some(function (c) { return c.indexOf('region') === 0; })) { C.log(L, 'skip', 'region already exists.'); return; } if (T.exists) T.cols.push('region STRING'); change('ADD COLUMN region STRING: existing rows read NULL, no rewrite.'); };
+  $('aRen').onclick = function () { var i = T.cols.indexOf('amount DECIMAL'); if (i < 0) { C.log(L, 'skip', 'No column called amount.'); return; } T.cols[i] = 'revenue DECIMAL'; change('RENAME COLUMN amount TO revenue.'); };
+  $('aProp').onclick = function () { T.props.quality = 'gold'; change("SET TBLPROPERTIES ('quality' = 'gold')."); };
+  $('aOwn').onclick = function () { T.owner = 'data_admins (group)'; change('SET OWNER TO data_admins: the group now has full control.'); };
+  $('aRep').onclick = function () {
+    if (!T.exists) { T.exists = true; T.ver = 1; draw(); C.log(L, 'ok', 'CREATE OR REPLACE created a new table (it did not exist).'); return; }
+    T.cols = ['store_id INT', 'sale_date DATE', 'revenue DECIMAL']; T.ver++; draw(); C.bump($('aHist'));
+    C.log(L, 'ok', 'CREATE OR REPLACE: new contents and columns, same table. History kept (now ' + T.ver + ' versions), grants kept: ' + (T.grants.join(', ') || 'none') + '.');
+  };
+  $('aDrop').onclick = function () {
+    T.exists = false; draw(); C.log(L, 'bad', 'DROP TABLE: queries against the table fail now.');
+    T.exists = true; T.ver = 1; T.grants = []; T.owner = 'sam@example.com'; T.props = {}; T.cols = ['store_id INT', 'sale_date DATE', 'revenue DECIMAL']; draw(); C.bump($('aHist'));
+    C.log(L, 'bad', 'CREATE TABLE: a brand new table. History starts again at version 0, and the analysts\' grant is gone.');
+  };
+  $('aSel').onclick = function () {
+    if (!T.exists) { C.log(L, 'bad', 'SELECT: table not found.'); return; }
+    T.grants.some(function (g) { return g.indexOf('bakery-analysts') === 0; }) ? C.log(L, 'ok', 'Analyst SELECT: works.') : C.log(L, 'bad', 'Analyst SELECT: PERMISSION_DENIED. Someone must GRANT SELECT again.');
+  };
+  $('aReset').onclick = function () { reset(); draw(); L.innerHTML = ''; };
+  reset(); draw();
+})();
+</script>
+</body>
+</html>

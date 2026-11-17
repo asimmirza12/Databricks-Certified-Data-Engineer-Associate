@@ -198,14 +198,14 @@ Objectives:
 
 | Status | Lesson | File | Objective | Prerequisites |
 |---|---|---|---|---|
-| [ ] | 07-01 Managed vs external tables | `01-managed-vs-external-tables.html` | 7.1 | 00-09, 01-03 |
-| [ ] | 07-02 Creating, changing and dropping tables | `02-table-operations.html` | 7.1 | 07-01 |
-| [ ] | 07-03 Converting between managed and external | `03-converting-tables.html` | 7.1 | 07-02 |
-| [ ] | 07-04 Principals: users, groups, service principals | `04-principals.html` | 7.2 | 00-09 |
-| [ ] | 07-05 The security hierarchy and privilege inheritance | `05-securable-hierarchy.html` | 7.2 | 01-03, 07-04 |
-| [ ] | 07-06 GRANT and REVOKE in SQL and the UI | `06-grant-and-revoke.html` | 7.2 | 07-05 |
-| [ ] | 07-07 DENY: what it does and where it applies | `07-deny.html` | 7.2 | 07-06 |
-| [ ] | 07-08 Column masks | `08-column-masks.html` | 7.3 | 07-06 |
-| [ ] | 07-09 Row filters | `09-row-filters.html` | 7.3 | 07-08 |
-| [ ] | 07-10 ABAC: governed tags and policies | `10-abac-tags-and-policies.html` | 7.4 | 07-08, 07-09 |
-| [ ] | 07-11 ABAC in practice: central row filters and column masks | `11-abac-in-practice.html` | 7.4 | 07-10 |
+| [x] | 07-01 Managed vs external tables | `01-managed-vs-external-tables.html` | 7.1 | 00-09, 01-03 |
+| [x] | 07-02 Creating, changing and dropping tables | `02-table-operations.html` | 7.1 | 07-01 |
+| [x] | 07-03 Converting between managed and external | `03-converting-tables.html` | 7.1 | 07-02 |
+| [x] | 07-04 Principals: users, groups, service principals | `04-principals.html` | 7.2 | 00-09 |
+| [x] | 07-05 The security hierarchy and privilege inheritance | `05-securable-hierarchy.html` | 7.2 | 01-03, 07-04 |
+| [x] | 07-06 GRANT and REVOKE in SQL and the UI | `06-grant-and-revoke.html` | 7.2 | 07-05 |
+| [x] | 07-07 DENY: what it does and where it applies | `07-deny.html` | 7.2 | 07-06 |
+| [x] | 07-08 Column masks | `08-column-masks.html` | 7.3 | 07-06 |
+| [x] | 07-09 Row filters | `09-row-filters.html` | 7.3 | 07-08 |
+| [x] | 07-10 ABAC: governed tags and policies | `10-abac-tags-and-policies.html` | 7.4 | 07-08, 07-09 |
+| [x] | 07-11 ABAC in practice: central row filters and column masks | `11-abac-in-practice.html` | 7.4 | 07-10 |
