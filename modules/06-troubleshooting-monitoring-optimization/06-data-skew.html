@@ -30,10 +30,15 @@
   <h2>One task does most of the work</h2>
   <p>After a <a href="../../glossary.html#shuffle">shuffle</a>, all rows with the same key go to the same <a href="../../glossary.html#partition">partition</a>. If one key is huge, its partition is huge too. That uneven spread is <a href="../../glossary.html#data-skew">data skew</a>. In the bakery example, the flagship store sells ten times more than any other, so the task for its partition takes ten times longer.</p>
   <p>How to spot it in the <a href="../../glossary.html#spark-ui">Spark UI</a>: open the slow stage and read its Summary Metrics. Compare the Max task duration with the 75th percentile. The Databricks guide says that if Max is 50% or more above the 75th percentile, the stage may be skewed. You can also sort the task list by duration and see one or two tasks far above the rest.</p>
+  <p>First ask <strong>where</strong> the skew is, because the fix depends on it:</p>
+  <ul>
+    <li><strong>In a join</strong>: AQE can fix it for you automatically.</li>
+    <li><strong>In a groupBy aggregation</strong>: AQE's skew handling does not apply. It only works on joins. You fix this one yourself, usually with salting.</li>
+  </ul>
   <p>Usual fixes:</p>
   <ul>
-    <li><a href="../../glossary.html#aqe">AQE</a> skew join handling, on by default. During a join it splits a partition that is much bigger than the others into smaller pieces.</li>
-    <li><a href="../../glossary.html#salting">Salting</a>: add a random number to the hot key so its rows spread over several partitions, then combine the results.</li>
+    <li><a href="../../glossary.html#aqe">AQE</a> skew join handling, on by default. During a join it splits a partition that is much bigger than the others into smaller pieces. Joins only.</li>
+    <li><a href="../../glossary.html#salting">Salting</a>: add a random number to the hot key so its rows spread over several partitions, then combine the results. For a join, copy the small side once per salt value. For a groupBy, aggregate in two stages: first by key and salt, then by key alone.</li>
     <li>Remove rows that cannot match anyway, such as NULL join keys in an inner join.</li>
     <li>If the skew comes from how the table is laid out, <a href="08-liquid-clustering.html">liquid clustering</a> can help. For skewed output files, the REBALANCE hint can help.</li>
   </ul>
@@ -66,11 +71,12 @@
 
 <section id="demo">
   <div class="sec-num">Try it</div>
-  <h2>Skew a join, then fix it</h2>
-  <p>The stage joins 8 GB of sales with stores, over 8 shuffle partitions. Make the flagship store bigger, then turn on AQE skew handling or salting. Durations assume one second per 64 MB.</p>
+  <h2>Skew a stage, then fix it</h2>
+  <p>The stage handles 8 GB of sales over 8 shuffle partitions, either joining them with stores or grouping them by store. Make the flagship store bigger, then try AQE skew handling and salting on each operation. Durations assume one second per 64 MB.</p>
   <div class="stage">
     <div class="ctrls">
       <label>Flagship store share <input type="range" id="kHot" min="12" max="80" value="12"> <span id="kHotV">12</span>%</label>
+      <label>Operation <select id="kOp"><option value="join">join sales with stores</option><option value="group">groupBy store_id</option></select></label>
       <label class="tog"><input type="checkbox" id="kAqe"> AQE skew join</label>
       <label>Salt buckets <select id="kSalt"><option value="1">none</option><option value="4">4</option><option value="8">8</option></select></label>
       <button id="kGo" type="button" class="primary">Run stage</button>
@@ -102,13 +108,22 @@ salted_stores = stores.withColumn("salt", F.explode(F.sequence(F.lit(0), F.lit(S
 
 <span class="c-c"># 3. Join on the key AND the salt, so store 1's rows spread over 8 partitions</span>
 joined = salted_sales.join(salted_stores, ["store_id", "salt"]).drop("salt")</code></pre>
+<pre><code><span class="c-c"># Skew in a groupBy: AQE will not split it, so salt and aggregate in two stages</span>
+partial = (sales
+    .withColumn("salt", (F.rand() * SALT).cast("int"))
+    .groupBy("store_id", "salt")                       <span class="c-c"># stage 1: store 1 is split 8 ways</span>
+    .agg(F.sum("amount").alias("part_amount")))
+
+totals = (partial
+    .groupBy("store_id")                               <span class="c-c"># stage 2: at most 8 small rows per store</span>
+    .agg(F.sum("part_amount").alias("amount")))</code></pre>
 <pre><code><span class="c-c">-- Check how uneven the keys are before you tune anything</span>
 SELECT store_id, COUNT(*) AS rows
 FROM bakery.silver.sales
 GROUP BY store_id
 ORDER BY rows DESC
 LIMIT 10;</code></pre>
-  <p class="note">AQE skew join is controlled by <code>spark.sql.adaptive.skewJoin.enabled</code> (default true). A partition counts as skewed when it is more than 5 times the median partition size and larger than 256 MB. It works for shuffle joins, not broadcast joins. Older skew hints are retired. Verify current defaults on the AQE page.</p>
+  <p class="note">AQE skew join is controlled by <code>spark.sql.adaptive.skewJoin.enabled</code> (default true). A partition counts as skewed when it is more than 5 times the median partition size and larger than 256 MB. It works for shuffle joins, not broadcast joins, and not for groupBy aggregations. Older skew hints are retired. For simple sums, Spark often adds up rows before the shuffle, which softens skew; confirm in the Spark UI that the stage really is skewed before you salt. Verify current defaults on the AQE page.</p>
 </section>
 
 <section id="whatif">
@@ -120,6 +135,7 @@ LIMIT 10;</code></pre>
     <tr><td>Add more executors</td><td>Barely helps: one task still runs on one core.</td></tr>
     <tr><td>Add more shuffle partitions</td><td>Barely helps: all rows of one key still go to one partition.</td></tr>
     <tr><td>AQE skew join on</td><td>Big partitions in a shuffle join are split into smaller tasks automatically.</td></tr>
+    <tr><td>AQE skew join on, but the skew is in a groupBy</td><td>No change: AQE's skew handling only covers joins. Salt the key and aggregate in two stages.</td></tr>
     <tr><td>Salting</td><td>Spreads one key across several partitions; costs copying the other side.</td></tr>
     <tr><td>Lower the AQE skew thresholds</td><td>Smaller partitions are also treated as skewed and split.</td></tr>
   </table></div>
@@ -130,7 +146,7 @@ LIMIT 10;</code></pre>
   <h2>Skew fixes</h2>
   <div class="tbl"><table>
     <tr><th>Fix</th><th>Effort</th><th>Works for</th></tr>
-    <tr><td>AQE skew join</td><td>None, on by default</td><td>Shuffle joins</td></tr>
+    <tr><td>AQE skew join</td><td>None, on by default</td><td>Shuffle joins only (not groupBy, not broadcast joins)</td></tr>
     <tr><td>Salting</td><td>Code change</td><td>Joins and aggregations with a known hot key</td></tr>
     <tr><td>Filter useless rows (e.g. NULL keys)</td><td>Small code change</td><td>Hot keys that should not match anything</td></tr>
     <tr><td>Broadcast the small side</td><td>Hint or setting</td><td>Joins where one table is small: no shuffle, so no skewed partition</td></tr>
@@ -156,7 +172,7 @@ LIMIT 10;</code></pre>
   <div class="grid2">
     <div class="card trap"><span class="tag">Max vs 75th percentile</span><p>Compare the slowest task with the 75th percentile, not with the average.</p></div>
     <div class="card trap"><span class="tag">Skew vs slow stage</span><p>If every task is slow, it is not skew. Look at I/O, spill or the code.</p></div>
-    <div class="card trap"><span class="tag">AQE is for joins</span><p>Its skew handling splits partitions in shuffle joins only.</p></div>
+    <div class="card trap"><span class="tag">AQE is for joins</span><p>Its skew handling splits partitions in shuffle joins only. A skewed groupBy stays skewed until you salt it.</p></div>
     <div class="card trap"><span class="tag">More machines</span><p>Do not fix skew; they only help when work is spread evenly.</p></div>
   </div>
 </section>
@@ -193,6 +209,13 @@ LIMIT 10;</code></pre>
       <label><input type="radio"> Moved the flagship rows to the driver</label>
       <p class="explain" hidden>The partition was over 5 times the median and over 256 MB, so AQE split it.</p>
     </fieldset>
+    <fieldset>
+      <legend>5. A nightly groupBy("store_id") has one task running 20 minutes while the rest finish in seconds. AQE is on. What fixes it?</legend>
+      <label><input type="radio"> Nothing; AQE splits skewed groupBy partitions automatically</label>
+      <label><input type="radio" data-correct> Salt store_id, aggregate by store_id and salt, then aggregate again by store_id</label>
+      <label><input type="radio"> Move the job to serverless compute</label>
+      <p class="explain" hidden>AQE's skew handling only covers joins. A skewed aggregation needs salting in two stages.</p>
+    </fieldset>
   </div>
 </section>
 
@@ -202,7 +225,8 @@ LIMIT 10;</code></pre>
   <ul>
     <li>Skew: one key has far more rows, so one task runs far longer.</li>
     <li>Spot it: Max task duration 50% or more above the 75th percentile.</li>
-    <li>Fixes: AQE skew join (default on, shuffle joins), salting, filtering useless keys, broadcasting a small side.</li>
+    <li>Skew in a join: AQE skew join (default on) usually fixes it. Skew in a groupBy: AQE does not help; salt and aggregate in two stages.</li>
+    <li>Other fixes: filtering useless keys, broadcasting a small side.</li>
     <li>More machines or more partitions do not fix skew.</li>
   </ul>
   <h3>Glossary terms used</h3>
@@ -225,12 +249,13 @@ LIMIT 10;</code></pre>
   function median(a) { var s = a.slice().sort(function (x, y) { return x - y; }), m = s.length >> 1; return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2; }
   function pct(a, p) { var s = a.slice().sort(function (x, y) { return x - y; }); return s[Math.min(s.length - 1, Math.ceil(p * s.length) - 1)]; }
   $('kGo').onclick = function () {
-    var hot = +$('kHot').value / 100, salt = +$('kSalt').value, aqe = $('kAqe').checked;
+    var hot = +$('kHot').value / 100, salt = +$('kSalt').value, aqe = $('kAqe').checked, grp = $('kOp').value === 'group';
     var hotMB = TOTAL * hot, rest = (TOTAL - hotMB) / (P - 1);
     var parts = []; for (var i = 0; i < P; i++) parts.push(i === 0 ? 0 : rest); // partition 1 holds only the flagship
     if (salt > 1) { for (var j = 0; j < salt; j++) parts[j % P] += hotMB / salt; } else parts[0] += hotMB;
     var notes = [];
-    if (aqe) {
+    if (aqe && grp) C.log(L, 'bad', 'AQE skew join is on, but this stage is a groupBy aggregation. AQE\'s skew handling only splits partitions in joins, so nothing was split.');
+    if (aqe && !grp) {
       var med = median(parts), split = [];
       parts.forEach(function (mb, i) {
         if (mb > 5 * med && mb > 256) { var n = Math.ceil(mb / med); for (var k = 0; k < n; k++) split.push(mb / n); notes.push('partition ' + (i + 1) + ' (' + Math.round(mb) + ' MB) split into ' + n + ' tasks'); }
@@ -239,14 +264,14 @@ LIMIT 10;</code></pre>
       parts = split;
     }
     var secs = parts.map(function (mb) { return Math.max(1, Math.round(mb / 64)); });
-    var max = Math.max.apply(null, secs), p75 = pct(secs, 0.75), skewed = max >= p75 * 1.5;
+    var max = Math.max.apply(null, secs), p75 = pct(secs, 0.75), skewed = max >= p75 * 1.5, extra = grp && salt > 1 ? 1 : 0; // extra: the tiny stage-2 aggregation
     $('kTasks').innerHTML = secs.slice(0, 12).map(function (s, i) { return '<div class="item' + (s === max && skewed ? ' hot' : '') + '"><span>task ' + (i + 1) + '</span><span>' + s + ' s ' + new Array(Math.min(30, Math.ceil(s / 4)) + 1).join('#') + '</span></div>'; }).join('') + (secs.length > 12 ? '<div class="item off">and ' + (secs.length - 12) + ' more tasks</div>' : '');
-    $('kSum').innerHTML = '<div class="item">tasks: ' + secs.length + '</div><div class="item">75th percentile: ' + p75 + ' s</div><div class="item">Max: ' + max + ' s</div><div class="big">stage ' + max + ' s</div>';
+    $('kSum').innerHTML = '<div class="item">tasks: ' + secs.length + '</div><div class="item">75th percentile: ' + p75 + ' s</div><div class="item">Max: ' + max + ' s</div><div class="big">stage ' + (max + extra) + ' s</div>';
     C.bump($('kSum'));
     if (notes.length) C.log(L, 'ok', 'AQE skew join: ' + notes.join('; ') + '.');
-    else if (aqe) C.log(L, 'skip', 'AQE checked the partitions: none was over 5x the median and 256 MB, so nothing was split.');
-    if (salt > 1) C.log(L, 'ok', 'Salting spread the flagship store over ' + salt + ' partitions (the stores side was copied ' + salt + ' times).');
-    C.log(L, skewed ? 'bad' : 'ok', 'Max ' + max + ' s vs 75th percentile ' + p75 + ' s: ' + (skewed ? 'Max is ' + Math.round((max / p75 - 1) * 100) + '% higher. Skewed.' : 'within 50%. No skew.') + ' Stage took ' + max + ' s.');
+    else if (aqe && !grp) C.log(L, 'skip', 'AQE checked the partitions: none was over 5x the median and 256 MB, so nothing was split.');
+    if (salt > 1) C.log(L, 'ok', grp ? 'Salting: stage 1 aggregated by store_id and salt, spreading the flagship over ' + salt + ' partitions. Stage 2 then combined at most ' + salt + ' small rows per store (about 1 s).' : 'Salting spread the flagship store over ' + salt + ' partitions (the stores side was copied ' + salt + ' times).');
+    C.log(L, skewed ? 'bad' : 'ok', 'Max ' + max + ' s vs 75th percentile ' + p75 + ' s: ' + (skewed ? 'Max is ' + Math.round((max / p75 - 1) * 100) + '% higher. Skewed.' : 'within 50%. No skew.') + ' Stage took ' + (max + extra) + ' s' + (extra ? ', including the small second aggregation.' : '.'));
   };
   $('kReset').onclick = function () { L.innerHTML = ''; };
 })();
