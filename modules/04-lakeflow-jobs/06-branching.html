@@ -39,6 +39,12 @@
     <li><code>GREATER_THAN</code>, <code>GREATER_THAN_OR_EQUAL</code></li>
     <li><code>LESS_THAN</code>, <code>LESS_THAN_OR_EQUAL</code></li>
   </ul>
+  <p>The operators do not all compare the same way, and this catches people out:</p>
+  <ul>
+    <li><code>EQUAL_TO</code> and <code>NOT_EQUAL</code> compare the two values <strong>as text</strong>. So <code>12.0</code> equal to <code>12</code> is <strong>false</strong>: the characters differ.</li>
+    <li>The greater-than and less-than operators compare <strong>as numbers</strong>. So <code>12.0</code> greater than or equal to <code>12</code> is <strong>true</strong>.</li>
+    <li>A task value that is not a number or text is turned into text first. A boolean becomes <code>"true"</code> or <code>"false"</code>.</li>
+  </ul>
   <p>Downstream tasks are attached to the true or false outcome. Only the tasks on the chosen path run.</p>
   <div class="analogy">
     <span class="tag">Everyday analogy</span>
@@ -74,18 +80,19 @@
 <section id="demo">
   <div class="sec-num">Try it</div>
   <h2>Choose the path</h2>
-  <p>Set the number of bad records and the condition. The condition task decides, and only the matching path runs. Then try the same record count with a different operator.</p>
+  <p>Set the number of bad records and the condition. The condition task decides, and only the matching path runs. Then try <code>12.0</code> against <code>12</code> with EQUAL_TO, and again with GREATER_THAN_OR_EQUAL.</p>
   <div class="stage">
     <div class="ctrls">
-      <label class="tog">bad_records: <select id="bVal"><option value="0">0</option><option value="2" selected>2</option><option value="50">50</option></select></label>
+      <label class="tog">bad_records: <select id="bVal"><option value="0">0</option><option value="2" selected>2</option><option value="12">12</option><option value="12.0">12.0</option><option value="50">50</option></select></label>
       <label class="tog">Operator: <select id="bOp">
         <option value="GREATER_THAN">GREATER_THAN</option>
         <option value="GREATER_THAN_OR_EQUAL">GREATER_THAN_OR_EQUAL</option>
         <option value="EQUAL_TO">EQUAL_TO</option>
         <option value="NOT_EQUAL">NOT_EQUAL</option>
         <option value="LESS_THAN">LESS_THAN</option>
+        <option value="LESS_THAN_OR_EQUAL">LESS_THAN_OR_EQUAL</option>
       </select></label>
-      <label class="tog">Right operand: <select id="bRight"><option value="0">0</option><option value="10">10</option></select></label>
+      <label class="tog">Right operand: <select id="bRight"><option value="0">0</option><option value="10">10</option><option value="12">12</option></select></label>
       <button id="dRun" type="button" class="primary">Evaluate</button>
       <button id="dReset" type="button">Clear</button>
     </div>
@@ -130,7 +137,8 @@
     <tr><th>Change</th><th>Effect</th></tr>
     <tr><td><code>GREATER_THAN</code> to <code>GREATER_THAN_OR_EQUAL</code>, with the right side 0</td><td>A count of exactly 0 now takes the true path. Check which boundary you mean.</td></tr>
     <tr><td>Swap the true and false paths</td><td>Publishing and quarantine trade places. A quiet, serious error.</td></tr>
-    <tr><td>Set the right operand to a value that is not a number</td><td>The comparison fails, and the condition task fails with it.</td></tr>
+    <tr><td>Left value <code>12.0</code>, <code>EQUAL_TO</code>, right value <code>12</code></td><td>False: EQUAL_TO compares text, and "12.0" is not "12". Write both sides the same way, or test with GREATER_THAN_OR_EQUAL and LESS_THAN_OR_EQUAL.</td></tr>
+    <tr><td>The task value is a boolean</td><td>It becomes the text "true" or "false". Compare it with EQUAL_TO and the right operand "true".</td></tr>
     <tr><td>Remove the depends_on on the condition task</td><td>It may read the value before the count has been set.</td></tr>
     <tr><td>Use run-if At least one failed instead of a condition</td><td>The branch now depends on failure, not on a count. Good for errors, not for data quality thresholds.</td></tr>
     <tr><td>Make one path depend on both true and false outcomes</td><td>The task waits for a path that never runs, and may be marked as unable to run.</td></tr>
@@ -169,6 +177,7 @@
     <div class="card trap"><span class="tag">If/else vs run-if</span><p>If/else tests a value. Run-if tests how tasks finished. Choose by what you are branching on.</p></div>
     <div class="card trap"><span class="tag">GREATER_THAN vs GREATER_THAN_OR_EQUAL</span><p>They differ exactly at the boundary value. Read the operator carefully.</p></div>
     <div class="card trap"><span class="tag">Branching vs looping</span><p>A branch chooses one path. A loop repeats a task (lesson 04-07).</p></div>
+    <div class="card trap"><span class="tag">EQUAL_TO compares text</span><p>12.0 EQUAL_TO 12 is false. The greater-than and less-than operators compare numbers, so 12.0 GREATER_THAN_OR_EQUAL 12 is true.</p></div>
   </div>
 </section>
 
@@ -204,6 +213,13 @@
       <label><input type="radio"> Deleted from the run</label>
       <p class="explain" hidden>A path not taken is skipped. It is not counted as a failure.</p>
     </fieldset>
+    <fieldset>
+      <legend>5. A task value is 12.0. The condition is EQUAL_TO 12. What is the result?</legend>
+      <label><input type="radio"> True, because the numbers are equal</label>
+      <label><input type="radio" data-correct> False, because EQUAL_TO compares the values as text</label>
+      <label><input type="radio"> The condition task fails</label>
+      <p class="explain" hidden>EQUAL_TO and NOT_EQUAL compare text, so "12.0" and "12" differ. The greater-than and less-than operators compare numbers.</p>
+    </fieldset>
   </div>
 </section>
 
@@ -214,6 +230,7 @@
     <li>An If/else condition task compares two operands and sends the run down a true or false path.</li>
     <li>Only one path runs. The other is skipped, not failed.</li>
     <li>Run-if rules branch by how tasks finished. If/else branches by a value.</li>
+    <li>EQUAL_TO and NOT_EQUAL compare text; greater-than and less-than compare numbers.</li>
     <li>Make sure the value the condition reads is always set.</li>
   </ul>
   <h3>Glossary terms used</h3>
@@ -223,7 +240,7 @@
     <li><a href="https://docs.databricks.com/aws/en/jobs/tasks/if-else">Add branching logic with the If/else task</a></li>
     <li><a href="https://docs.databricks.com/aws/en/jobs/control-flow">Control the flow of tasks within Lakeflow Jobs</a></li>
   </ul>
-  <p class="cap">Last verified: 16 November 2026</p>
+  <p class="cap">Last verified: 17 November 2026</p>
 </section>
 
 </main>
@@ -231,16 +248,18 @@
 <script>
 (function () {
   var C = window.Course, $ = function (id) { return document.getElementById(id); }, L = $('dLog');
-  var OPS = { GREATER_THAN: function (a, b) { return a > b; }, GREATER_THAN_OR_EQUAL: function (a, b) { return a >= b; }, EQUAL_TO: function (a, b) { return a === b; }, NOT_EQUAL: function (a, b) { return a !== b; }, LESS_THAN: function (a, b) { return a < b; } };
+  // EQUAL_TO and NOT_EQUAL compare the raw text; the others compare as numbers (as Lakeflow Jobs does)
+  var OPS = { GREATER_THAN: function (a, b) { return +a > +b; }, GREATER_THAN_OR_EQUAL: function (a, b) { return +a >= +b; }, EQUAL_TO: function (a, b) { return a === b; }, NOT_EQUAL: function (a, b) { return a !== b; }, LESS_THAN: function (a, b) { return +a < +b; }, LESS_THAN_OR_EQUAL: function (a, b) { return +a <= +b; } };
   function run() {
-    var a = +$('bVal').value, b = +$('bRight').value, op = $('bOp').value, t = OPS[op](a, b);
+    var a = $('bVal').value, b = $('bRight').value, op = $('bOp').value, t = OPS[op](a, b), asText = op === 'EQUAL_TO' || op === 'NOT_EQUAL';
     $('bRes').textContent = t ? 'true' : 'false';
-    $('bExpr').textContent = 'bad_records ' + op + ' ' + b + ' with bad_records = ' + a;
+    $('bExpr').textContent = 'bad_records ' + op + ' ' + b + ' with bad_records = ' + a + (asText ? ' (compared as text: "' + a + '" vs "' + b + '")' : ' (compared as numbers)');
     $('bPaths').innerHTML = C.table([
       { path: 'true: quarantine', status: t ? 'Ran' : 'Skipped' },
       { path: 'false: publish_gold', status: t ? 'Skipped' : 'Ran' }
     ]);
     C.log(L, 'ok', 'bad_records ' + a + ' ' + op + ' ' + b + ' is ' + (t ? 'true: quarantine ran, publish skipped.' : 'false: publish ran, quarantine skipped.'));
+    if (asText && +a === +b && a !== b) C.log(L, 'bad', 'Same number, different text: "' + a + '" is not "' + b + '", so ' + op + ' gives ' + (t ? 'true' : 'false') + '. Use GREATER_THAN_OR_EQUAL and LESS_THAN_OR_EQUAL for numbers.');
     C.bump($('bRes'));
   }
   $('dRun').onclick = run;

@@ -35,6 +35,12 @@
     <li><code>min_retry_interval_millis</code>: the minimum wait, in milliseconds, between the start of a failed attempt and the next attempt. The default is zero, which retries straight away.</li>
     <li><code>retry_on_timeout</code>: whether a task that hit its time limit should be retried. The default is false.</li>
   </ul>
+  <p>What happens if you set no retry policy at all depends on how the job runs:</p>
+  <ul>
+    <li><strong>Most jobs</strong> (for example on classic job compute): no retries. A failed task stays failed.</li>
+    <li><strong>Serverless jobs</strong>: auto-optimization is on by default and retries failed tasks for you. For a task that must run at most once, turn it off in the task's Retry Policy dialog.</li>
+    <li><strong>Continuous jobs</strong>: failures are retried automatically, with the wait growing after each failure (exponential backoff).</li>
+  </ul>
   <p>Retries only help with failures that will go away. A typo in a table name fails the same way every time, and retrying it wastes time and compute. Retries are for the temporary kind.</p>
   <div class="analogy">
     <span class="tag">Everyday analogy</span>
@@ -77,6 +83,7 @@
         <option value="typo">Wrong table name (fails every time)</option>
         <option value="slow">Times out (fails each time, while the time limit is short)</option>
       </select></label>
+      <label class="tog">Compute: <select id="rCmp"><option value="classic">classic job compute</option><option value="serverless">serverless (auto-optimization on)</option></select></label>
       <label class="tog">max_retries: <select id="rMax"><option>0</option><option selected>2</option><option>5</option></select></label>
       <label class="tog">min_retry_interval: <select id="rWait"><option value="0">0 s</option><option value="60" selected>60 s</option><option value="600">10 min</option></select></label>
       <label class="tog"><input type="checkbox" id="rTo"> retry_on_timeout</label>
@@ -88,7 +95,7 @@
       <div class="pane"><h4>Outcome</h4><div class="big" id="pRes">-</div><p class="cap" id="pWhy"></p></div>
     </div>
     <div class="log" id="dLog" role="log" aria-label="What happened"></div>
-    <p class="cap">Model: a blip or busy source succeeds on a later attempt. A typo never succeeds. A timeout is retried only if retry_on_timeout is set.</p>
+    <p class="cap">Model: a blip or busy source succeeds on a later attempt. A typo never succeeds. A timeout is retried only if retry_on_timeout is set. On serverless with no retry policy, Databricks decides how many automatic retries to make; this model uses 2.</p>
   </div>
 </section>
 
@@ -122,7 +129,9 @@
     <tr><td>Interval raised to ten minutes</td><td>Each retry waits longer. Gives a busy source time to recover, but delays the whole night's work.</td></tr>
     <tr><td><code>retry_on_timeout</code> set to true</td><td>A task that hit its time limit is tried again. Useful if slowness is occasional; harmful if the task is always too slow.</td></tr>
     <tr><td>A retried task writes to a table with append</td><td>Each attempt that wrote rows before failing leaves duplicates behind. Make the write safe to repeat.</td></tr>
-    <tr><td>Retries on a continuous job</td><td>Not supported. Retry policies do not apply to continuous jobs.</td></tr>
+    <tr><td>Job runs continuously</td><td>Failures are retried automatically with a growing wait (exponential backoff). Check the continuous jobs docs for how to tune it.</td></tr>
+    <tr><td>A task that must not run twice, on serverless, with no retry policy</td><td>Auto-optimization may retry it. Turn auto-optimization off in the task's Retry Policy dialog.</td></tr>
+    <tr><td>No retry policy, classic job compute</td><td>No retries: the first failure is final.</td></tr>
   </table></div>
 </section>
 
@@ -162,6 +171,7 @@
     <div class="card trap"><span class="tag">Retry vs repair</span><p>A retry happens by itself, inside the run. A repair is a person rerunning failed tasks after the run ended.</p></div>
     <div class="card trap"><span class="tag">Interval vs timeout</span><p>The interval is the wait between attempts. The timeout is the longest one attempt may run.</p></div>
     <div class="card trap"><span class="tag">Max retries vs attempts</span><p>Max retries of 2 means up to three attempts in all: the first, plus two retries.</p></div>
+    <div class="card trap"><span class="tag">The default depends on the job</span><p>No policy means no retries for most jobs, automatic retries on serverless (auto-optimization), and exponential backoff for continuous jobs.</p></div>
     <div class="card trap"><span class="tag">Retry is not a fix</span><p>A retry hides a temporary fault. It does not repair a bug. Find out why the first attempt failed.</p></div>
   </div>
 </section>
@@ -198,6 +208,13 @@
       <label><input type="radio"> It would double the cost of every job</label>
       <p class="explain" hidden>Retrying a task that always runs past its limit does not make it finish.</p>
     </fieldset>
+    <fieldset>
+      <legend>5. A job on classic job compute has no retry policy. A task fails. What happens?</legend>
+      <label><input type="radio" data-correct> Nothing more: the task is not retried</label>
+      <label><input type="radio"> It is retried three times by default</label>
+      <label><input type="radio"> It is retried with exponential backoff</label>
+      <p class="explain" hidden>Most jobs do not retry unless you add a policy. Serverless auto-optimization and continuous jobs are the exceptions.</p>
+    </fieldset>
   </div>
 </section>
 
@@ -209,16 +226,17 @@
     <li><code>max_retries</code> counts retries, so the total attempts is one more.</li>
     <li><code>retry_on_timeout</code> is off by default.</li>
     <li>A retry reruns the whole task, so make the task's writes safe to repeat.</li>
-    <li>Retry policies do not apply to continuous jobs.</li>
+    <li>With no policy: most jobs do not retry, serverless jobs retry through auto-optimization, continuous jobs back off and retry.</li>
   </ul>
   <h3>Glossary terms used</h3>
   <p><a href="../../glossary.html#retry">retry</a> · <a href="../../glossary.html#task">task</a> · <a href="../../glossary.html#run">run</a> · <a href="../../glossary.html#idempotent">idempotent</a></p>
   <h3>Official docs</h3>
   <ul>
     <li><a href="https://docs.databricks.com/aws/en/jobs/configure-task">Configure and edit tasks in Lakeflow Jobs</a></li>
+    <li><a href="https://docs.databricks.com/aws/en/jobs/run-serverless-jobs">Run jobs on serverless compute (auto-optimization)</a></li>
     <li><a href="https://docs.databricks.com/aws/en/reference/jobs-2.0-api">Jobs API reference</a></li>
   </ul>
-  <p class="cap">Last verified: 16 November 2026</p>
+  <p class="cap">Last verified: 17 November 2026</p>
 </section>
 
 </main>
@@ -229,7 +247,8 @@
   /* Each failure: how many attempts fail before one works (Infinity = never), and whether it is a timeout. */
   var KIND = { net: { fails: 2, timeout: false, text: 'brief network blip' }, busy: { fails: 1, timeout: false, text: 'busy source' }, typo: { fails: Infinity, timeout: false, text: 'wrong table name' }, slow: { fails: Infinity, timeout: true, text: 'times out' } };
   function run() {
-    var k = KIND[$('rKind').value], max = +$('rMax').value, wait = +$('rWait').value, toRetry = $('rTo').checked, rows = [], n = 0, ok = false, mins = 0;
+    var sv = $('rCmp').value === 'serverless', set = +$('rMax').value, auto = sv && set === 0;
+    var k = KIND[$('rKind').value], max = auto ? 2 : set, wait = +$('rWait').value, toRetry = $('rTo').checked, rows = [], n = 0, ok = false, mins = 0;
     while (n <= max) {
       n++;
       var failsHere = k.fails === Infinity || n <= k.fails;
@@ -248,7 +267,9 @@
       : k.fails === Infinity ? 'It failed on every attempt. Retries cannot fix a wrong name.'
       : 'Ran out of retries before it worked.';
     $('pWhy').textContent = why;
-    C.log(L, ok ? 'ok' : 'bad', $('rKind').selectedOptions[0].text + ', max_retries ' + max + ': ' + (ok ? 'recovered' : 'failed') + '. ' + why);
+    if (auto) C.log(L, 'skip', 'Serverless with no retry policy: auto-optimization retried the task for you (this model allows 2 retries).');
+    else if (!sv && set === 0) C.log(L, 'skip', 'Classic job compute with no retry policy: no retries.');
+    C.log(L, ok ? 'ok' : 'bad', $('rKind').selectedOptions[0].text + ', max_retries ' + set + (auto ? ' (serverless auto retries)' : '') + ': ' + (ok ? 'recovered' : 'failed') + '. ' + why);
     C.bump($('pRes'));
   }
   $('dRun').onclick = run;
