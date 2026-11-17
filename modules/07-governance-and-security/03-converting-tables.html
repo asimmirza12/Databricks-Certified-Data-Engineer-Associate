@@ -31,7 +31,7 @@
   <p><strong>External to managed</strong>: <code>ALTER TABLE ... SET MANAGED</code>. Databricks copies the data into managed storage, then switches the table over. The table keeps its name, history and grants, so queries and permissions keep working. Requirements from the docs:</p>
   <ul>
     <li>The table must be Delta.</li>
-    <li>Run it on Databricks Runtime 17.3 LTS or above, or serverless compute.</li>
+    <li>Use serverless compute, or classic compute on Databricks Runtime 17.3 LTS or newer.</li>
     <li>You must own the table or hold MANAGE on it.</li>
     <li>Writers pause briefly during the switch (about a minute for small tables, a few minutes for very large ones). Readers on recent runtimes see no downtime.</li>
     <li>Stop scheduled OPTIMIZE jobs on the table while it converts.</li>

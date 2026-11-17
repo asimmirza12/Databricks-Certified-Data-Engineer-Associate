@@ -28,7 +28,7 @@
 <section id="idea">
   <div class="sec-num">The idea</div>
   <h2>A hard "no", but only in the legacy catalog</h2>
-  <p><strong>In the legacy Hive metastore</strong> (the <code>hive_metastore</code> catalog, using the older <a href="../../glossary.html#table-acl">table access control</a>), <a href="../../glossary.html#deny">DENY</a> blocks a privilege for a principal. A DENY beats any GRANT, direct or through a group. Denying on a schema or catalog also denies on everything below it. To undo a DENY, you REVOKE the same privilege.</p>
+  <p><strong>In the legacy Hive metastore</strong> (the <code>hive_metastore</code> catalog, using the older <a href="../../glossary.html#table-acl">table access control</a>), <a href="../../glossary.html#deny">DENY</a> blocks a privilege for a principal. A DENY beats any GRANT, direct or through a group. Denying on a schema or catalog also denies on everything below it. Taking a DENY back off is done with REVOKE, naming the same privilege.</p>
   <p><strong>In Unity Catalog</strong>, the DENY statement is not supported. Unity Catalog permissions are additive: a principal can do something if any grant (on the object, a parent, or through any group) allows it. There is no general "deny SELECT". To stop someone reading a table you:</p>
   <ul>
     <li>Revoke the grant where it was made, or remove them from the group that has it.</li>
@@ -104,10 +104,10 @@ GRANT  SELECT ON SCHEMA  bakery.gold TO `bakery-analysts`;
 ALTER TABLE bakery.gold.daily SET ROW FILTER bakery.gov.region_filter ON (region);
 
 <span class="c-c">-- 3. Beta: stop people changing permissions on sensitive objects</span>
-CREATE POLICY no_regrant ON CATALOG bakery
-  TO `account users` EXCEPT `data_admins`
+CREATE POLICY keep_payroll_locked ON SCHEMA bakery.hr
+  TO `bakery-engineers` EXCEPT `bakery_governance`
   DENY MANAGE ACCESS CONTROL
-  FOR TABLES WHEN has_tag('sensitive');</code></pre>
+  FOR TABLES WHEN has_tag_value('confidentiality', 'payroll');</code></pre>
   <p class="note">ABAC DENY policies were in Beta when this lesson was written and need recent runtimes; check the docs before relying on them. SHOW GRANTS does not list them; use SHOW EFFECTIVE POLICIES.</p>
 </section>
 

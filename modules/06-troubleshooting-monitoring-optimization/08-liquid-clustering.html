@@ -124,7 +124,7 @@ ALTER TABLE bakery.silver.sales CLUSTER BY NONE;</code></pre>
       .write.clusterBy("store_id")
       .mode("overwrite")
       .saveAsTable("bakery.silver.sales"))</code></pre>
-  <p class="note">Liquid clustering is generally available on Databricks Runtime 15.4 LTS and above, and OPTIMIZE FULL needs 16.0 or above. Check version details and allowed column types in the docs.</p>
+  <p class="note">You need Databricks Runtime 15.4 LTS or newer for liquid clustering to be generally available, and 16.0 or newer for OPTIMIZE FULL. Check version details and allowed column types in the docs.</p>
 </section>
 
 <section id="whatif">

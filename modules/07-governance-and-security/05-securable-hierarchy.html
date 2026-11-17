@@ -29,8 +29,8 @@
   <div class="sec-num">The idea</div>
   <h2>Grants flow down; usage opens the doors</h2>
   <p>Every object you can grant on is a <a href="../../glossary.html#securable">securable</a>. They nest: metastore, then catalog, then schema, then tables, views, volumes, functions and models. Some securables sit beside this tree, such as external locations, storage credentials and connections.</p>
-  <p><a href="../../glossary.html#privilege-inheritance">Privilege inheritance</a>: a privilege granted on a catalog applies to every schema in it and every table in those schemas, now and in future. A grant on a schema applies to all its objects. (Grants on the metastore itself do not flow down.)</p>
-  <p>To touch anything inside a container you also need the <a href="../../glossary.html#usage-privilege">usage privileges</a>: <code>USE CATALOG</code> on the catalog and <code>USE SCHEMA</code> on the schema. They give no data access by themselves; they just let you through. So reading a table needs three things: USE CATALOG, USE SCHEMA and SELECT.</p>
+  <p><a href="../../glossary.html#privilege-inheritance">Privilege inheritance</a>: give a group SELECT on the <code>bakery</code> catalog and it can read every table in every schema there, including tables made next month. A grant on a schema applies to all its objects. (Grants on the metastore itself do not flow down.)</p>
+  <p>To touch anything inside a container you also need the <a href="../../glossary.html#usage-privilege">usage privileges</a>: <code>USE CATALOG</code> for the catalog you are entering and <code>USE SCHEMA</code> for the schema inside it. They give no data access by themselves; they just let you through. So reading a table needs three things: USE CATALOG, USE SCHEMA and SELECT.</p>
   <p>Some special privileges:</p>
   <ul>
     <li><strong><a href="../../glossary.html#owner">Owner</a></strong>: every object has one (a user, group or service principal). The owner can do everything on it, grant to others, and drop it.</li>

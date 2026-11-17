@@ -30,7 +30,7 @@
   <h2>Tag the data, write the rule once</h2>
   <p><a href="../../glossary.html#abac">Attribute-based access control (ABAC)</a> decides access from attributes of the data, in practice its tags, instead of per-table settings.</p>
   <p><strong><a href="../../glossary.html#governed-tag">Governed tags</a></strong> are tags defined once for the whole account, each with a list of allowed values, such as <code>pii</code> with values <code>email</code>, <code>phone</code>, <code>address</code>. Because the values are fixed, nobody can tag a column <code>pii = emial</code> by mistake. Tags on a catalog or schema flow down to its tables; column tags are set on each column.</p>
-  <p>Who can tag: managing governed tags has its own permissions (CREATE, MANAGE and ASSIGN on the tag). To put a governed tag on an object you need ASSIGN on the tag and APPLY TAG on the object.</p>
+  <p>Who can tag: managing governed tags has its own permissions (CREATE, MANAGE and ASSIGN on the tag). Labelling a table or column with a governed tag takes two permissions at once: ASSIGN, which you hold on the tag itself, and APPLY TAG, which you hold on the table or column.</p>
   <p><strong><a href="../../glossary.html#abac-policy">Policies</a></strong> are attached to a catalog, schema or table and apply to every matching table below. A policy says:</p>
   <ul>
     <li>which function to apply: a ROW FILTER or a COLUMN MASK (the same kind of SQL UDF as in the last two lessons);</li>
@@ -162,7 +162,7 @@ SHOW POLICIES ON SCHEMA bakery.silver;</code></pre>
   <h2>ABAC traps</h2>
   <div class="grid2">
     <div class="card trap"><span class="tag">Columns do not inherit</span><p>Table and schema tags flow down to tables; columns need their own tags.</p></div>
-    <div class="card trap"><span class="tag">Two permissions to tag</span><p>ASSIGN on the governed tag and APPLY TAG on the object.</p></div>
+    <div class="card trap"><span class="tag">Two permissions to tag</span><p>You need the tag's ASSIGN permission and the object's APPLY TAG privilege together.</p></div>
     <div class="card trap"><span class="tag">TO and EXCEPT</span><p>Who is affected lives in the policy, not in group checks inside the function.</p></div>
     <div class="card trap"><span class="tag">Fail closed</span><p>Missing tags or functions make queries fail rather than leak data.</p></div>
   </div>
@@ -208,7 +208,7 @@ SHOW POLICIES ON SCHEMA bakery.silver;</code></pre>
   <h2>Key takeaways</h2>
   <ul>
     <li>ABAC applies filters and masks by tag, from policies on a catalog, schema or table.</li>
-    <li>Governed tags have fixed allowed values; tagging needs ASSIGN on the tag and APPLY TAG on the object.</li>
+    <li>Governed tags have fixed allowed values; tagging takes the tag's ASSIGN permission plus APPLY TAG on what you label.</li>
     <li>Policies name the function, TO and EXCEPT principals, and WHEN / MATCH COLUMNS conditions with has_tag and has_tag_value.</li>
     <li>New tagged tables are covered automatically; missing tags or functions fail closed.</li>
   </ul>

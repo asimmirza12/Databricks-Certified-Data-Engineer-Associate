@@ -110,7 +110,7 @@ DESCRIBE TABLE EXTENDED bakery.silver.sales;
 <span class="c-c">-- Dropped a managed table by mistake? List and restore within the recovery period</span>
 SHOW TABLES DROPPED IN bakery.silver;
 UNDROP TABLE bakery.silver.sales;</code></pre>
-  <p class="note">To create either kind you need USE CATALOG, USE SCHEMA and CREATE TABLE. External tables also need CREATE EXTERNAL TABLE on the external location. The recovery period can be changed per catalog or schema (Public Preview); check the docs for current limits.</p>
+  <p class="note">To create either kind you need USE CATALOG, USE SCHEMA and CREATE TABLE. For an external table, add CREATE EXTERNAL TABLE, granted on the external location that covers its path. The recovery period can be changed per catalog or schema (Public Preview); check the docs for current limits.</p>
 </section>
 
 <section id="whatif">
@@ -120,7 +120,7 @@ UNDROP TABLE bakery.silver.sales;</code></pre>
     <tr><th>Change</th><th>Effect</th></tr>
     <tr><td>Leave out <code>LOCATION</code></td><td>Managed table in the schema's managed storage.</td></tr>
     <tr><td>Add <code>LOCATION</code></td><td>External table at that path.</td></tr>
-    <tr><td>DROP a managed table</td><td>Gone from the catalog; files deleted after the recovery period (7 days by default, purge can take longer).</td></tr>
+    <tr><td>DROP a managed table</td><td>Gone from the catalog; files kept for a 7 day recovery window by default, then removed (the clean-up can run later than day 7).</td></tr>
     <tr><td>DROP an external table</td><td>Gone from the catalog; files untouched.</td></tr>
     <tr><td>UNDROP within the recovery period</td><td>Table, columns, properties and privileges come back. Primary and foreign key constraints must be re-added.</td></tr>
     <tr><td>UNDROP after the recovery period</td><td>Not possible for a managed table; the files were purged.</td></tr>
@@ -205,7 +205,7 @@ UNDROP TABLE bakery.silver.sales;</code></pre>
   <ul>
     <li>Managed: Unity Catalog stores and cleans up the files. Default and recommended.</li>
     <li>External: you give a LOCATION inside an external location; you own the files.</li>
-    <li>DROP managed: files purged after the recovery period (7 days by default); UNDROP works inside it.</li>
+    <li>DROP managed: files are kept for a recovery window, 7 days unless changed, then purged; UNDROP only works inside that window.</li>
     <li>DROP external: only metadata is removed.</li>
   </ul>
   <h3>Glossary terms used</h3>
