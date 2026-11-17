@@ -1,0 +1,253 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>06-03 Tracking run times and failure rates · DE Associate course</title>
+<link rel="stylesheet" href="../../assets/course.css">
+<script src="../../assets/course.js"></script>
+</head>
+<body data-lesson="06-03">
+
+<aside class="disclaimer" aria-label="Disclaimer"><strong>Learning resource only.</strong> This is an independent, unofficial study guide made for learning purposes. It is not affiliated with, endorsed by or sponsored by Databricks. Databricks features change often, so always check the details in the <a href="https://docs.databricks.com">official Databricks documentation</a> and the official exam guide on databricks.com before relying on anything here. Databricks and related names are trademarks of their respective owners.</aside>
+
+<main class="wrap">
+
+<header class="hero">
+  <div class="eyebrow">Module 06 · Troubleshooting, Monitoring and Optimization · Lesson 3 of 12</div>
+  <h1>Tracking run times and failure rates</h1>
+  <p class="lede">One bad run is an incident. A job that fails one night in four, or gets a little slower every week, is a trend. This lesson turns run history into two health numbers you can watch.</p>
+  <dl class="where">
+    <div><dt>Module</dt><dd>06 Troubleshooting, Monitoring and Optimization (10% of the exam)</dd></div>
+    <div><dt>Exam objective</dt><dd>6.2 Judge a pipeline's health in the Jobs UI by watching how long runs take and how often they fail.</dd></div>
+    <div><dt>Time to read</dt><dd>About 12 minutes</dd></div>
+    <div><dt>Before this</dt><dd><a href="02-job-statuses-and-task-graph.html">06-02 Job statuses and finding upstream blockers</a></dd></div>
+  </dl>
+</header>
+
+<section id="idea">
+  <div class="sec-num">The idea</div>
+  <h2>Two numbers tell you if a job is healthy</h2>
+  <p>The first number is <strong>how long runs take</strong>. Look at the typical run (the average or the median) and at the slow end, such as the 90th percentile (p90): the time that 9 out of 10 runs finish within. A rising p90 often warns you before the average moves.</p>
+  <p>The second number is the <a href="../../glossary.html#failure-rate">failure rate</a>: failed runs divided by finished runs over a time window, such as the last 7 or 30 days. A job that fails now and then and succeeds on retry is called flaky. Its failure rate shows it even when today's run is green.</p>
+  <p>Where to get them:</p>
+  <ul>
+    <li><strong>The job's Runs tab.</strong> The matrix view shows each run's duration as bar height and its result as colour, so you can see a trend at a glance.</li>
+    <li><strong>The Runs page under Jobs &amp; Pipelines.</strong> It shows a graph of finished runs over the last 48 hours and a table of the most common error types.</li>
+    <li><strong>The jobs <a href="../../glossary.html#system-tables">system tables</a></strong>, for exact numbers across many jobs and longer periods.</li>
+  </ul>
+  <div class="analogy">
+    <span class="tag">Everyday analogy</span>
+    <p><strong>The bakery's oven log.</strong> One burnt tray is bad luck. But if the log shows 4 burnt trays out of the last 20 and bake times creeping up, the oven needs a service. The log is the run history; "4 out of 20" is the failure rate; creeping bake times are the rising p90.</p>
+  </div>
+</section>
+
+<section id="how">
+  <div class="sec-num">How it works</div>
+  <h2>From runs to numbers</h2>
+  <div class="stage">
+    <svg viewBox="0 0 360 220" role="img" aria-label="Rows from the run timeline system table flow into a box that groups slices by run. That feeds two results: failure rate and duration p90.">
+      <defs><path id="fr1" d="M80 110 H170"/><path id="fr2" d="M240 110 C 260 110, 260 60, 285 60"/><path id="fr3" d="M240 110 C 260 110, 260 165, 285 165"/></defs>
+      <g class="wire"><use href="#fr1"/><use href="#fr2"/><use href="#fr3"/></g>
+      <g class="mover">
+        <circle r="5" class="dot"><animateMotion dur="2.4s" repeatCount="indefinite"><mpath href="#fr1"/></animateMotion></circle>
+        <circle r="5" class="dot-ok"><animateMotion dur="2.4s" begin="-1.2s" repeatCount="indefinite"><mpath href="#fr2"/></animateMotion></circle>
+        <circle r="5" class="dot-ok"><animateMotion dur="2.4s" begin="-0.6s" repeatCount="indefinite"><mpath href="#fr3"/></animateMotion></circle>
+      </g>
+      <rect class="box-soft" x="10" y="80" width="70" height="60" rx="7"/><text class="t-m" x="45" y="105" text-anchor="middle">run</text><text class="t-m" x="45" y="121" text-anchor="middle">slices</text>
+      <rect class="box" x="170" y="85" width="70" height="50" rx="7"/><text class="t-m" x="205" y="106" text-anchor="middle">one row</text><text class="t-m" x="205" y="122" text-anchor="middle">per run</text>
+      <rect class="box-acc" x="285" y="40" width="70" height="40" rx="7"/><text class="t-b" x="320" y="64" text-anchor="middle">fail %</text>
+      <rect class="box-acc" x="285" y="145" width="70" height="40" rx="7"/><text class="t-b" x="320" y="169" text-anchor="middle">p90</text>
+    </svg>
+    <p class="cap">Long runs are stored as several hourly slices. Add them up per run first, then count and measure.</p>
+  </div>
+</section>
+
+<section id="demo">
+  <div class="sec-num">Try it</div>
+  <h2>Measure a job's health</h2>
+  <p>This is 30 days of nightly runs for <code>bakery_sales</code>. Change the window, make the last week flaky, or let the slow end creep up. Then try reading the wrong duration column.</p>
+  <div class="stage">
+    <div class="ctrls">
+      <label>Window <select id="hWin"><option value="7">last 7 days</option><option value="30" selected>last 30 days</option></select></label>
+      <label class="tog"><input type="checkbox" id="hFlaky"> Last 7 days are flaky</label>
+      <label class="tog"><input type="checkbox" id="hSlow"> Slow runs creep up</label>
+      <label class="tog"><input type="checkbox" id="hCol"> Use run_duration_seconds column</label>
+      <button id="hGo" type="button" class="primary">Calculate</button>
+      <button id="hReset" type="button">Clear log</button>
+    </div>
+    <div class="panes">
+      <div class="pane"><h4>Runs in window (newest first)</h4><div id="hRuns"></div></div>
+      <div class="pane"><h4>Health</h4><div id="hOut"></div></div>
+    </div>
+    <div class="log" id="hLog" role="log" aria-label="What happened"></div>
+  </div>
+</section>
+
+<section id="code">
+  <div class="sec-num">Code</div>
+  <h2>Failure rate and p90 per job in SQL</h2>
+<pre><code><span class="c-c">-- Health of every job over the last 30 days</span>
+WITH runs AS (
+  SELECT job_id,
+         run_id,
+         SUM(timestampdiff(SECOND, period_start_time, period_end_time)) AS seconds,
+         MAX_BY(result_state, period_end_time) AS result_state   <span class="c-c">-- final state is on the last slice</span>
+  FROM system.lakeflow.job_run_timeline
+  WHERE period_start_time &gt;= current_date() - INTERVAL 30 DAYS
+  GROUP BY job_id, run_id
+)
+SELECT job_id,
+       COUNT(*)                                                  AS finished_runs,
+       COUNT_IF(result_state IN ('FAILED', 'ERROR', 'TIMED_OUT')) AS bad_runs,
+       round(100 * COUNT_IF(result_state IN ('FAILED', 'ERROR', 'TIMED_OUT')) / COUNT(*), 1)
+                                                                 AS failure_rate_pct,
+       round(avg(seconds) / 60, 1)                               AS avg_minutes,
+       round(percentile(seconds, 0.9) / 60, 1)                   AS p90_minutes
+FROM runs
+WHERE result_state IS NOT NULL            <span class="c-c">-- skip runs still in progress</span>
+GROUP BY job_id
+ORDER BY failure_rate_pct DESC;</code></pre>
+  <p class="note">Join to <code>system.lakeflow.jobs</code> on <code>job_id</code> to show job names. For multi-task jobs the docs warn that the <code>run_duration_seconds</code> column can be 0, so compute duration from the start and end times as above. Verify the column details on the system table page.</p>
+</section>
+
+<section id="whatif">
+  <div class="sec-num">What if I change this?</div>
+  <h2>Choices and their effects</h2>
+  <div class="tbl"><table class="whatif">
+    <tr><th>Change</th><th>Effect</th></tr>
+    <tr><td>Window from 30 days to 7</td><td>Shows recent problems quickly, but a few runs swing the numbers a lot.</td></tr>
+    <tr><td>Count TIMED_OUT as a failure</td><td>Your rate includes runs that were stopped for taking too long, which is usually what you want.</td></tr>
+    <tr><td>Watch p90 as well as the average</td><td>You see the slow tail growing before the typical run changes.</td></tr>
+    <tr><td>Read <code>run_duration_seconds</code> for a multi-task job</td><td>You may get zeros. Use the start and end times instead.</td></tr>
+    <tr><td>Do not add hourly slices together</td><td>Long runs look short and are counted several times.</td></tr>
+    <tr><td>Rely on job-level failure notifications only</td><td>A task that fails and then passes on retry does not send a job failure notification. Add task notifications if you need to know.</td></tr>
+  </table></div>
+</section>
+
+<section id="compare">
+  <div class="sec-num">Compare</div>
+  <h2>Ways to keep an eye on health</h2>
+  <div class="grid3">
+    <div class="card"><h3>Runs tab</h3><p>One job, about 60 days. Quick visual trends of duration and result.</p></div>
+    <div class="card"><h3>Runs page</h3><p>All jobs, last 48 hours. Finished runs graph and top error types.</p></div>
+    <div class="card"><h3>Notifications</h3><p>Tells you about each failure or duration warning as it happens.</p></div>
+    <div class="card"><h3>System tables</h3><p>All jobs, about 395 days. Exact rates and percentiles with SQL, ready for a dashboard.</p></div>
+  </div>
+</section>
+
+<section id="scenarios">
+  <div class="sec-num">Real life</div>
+  <h2>Health numbers in practice</h2>
+  <div class="tbl"><table>
+    <tr><th>Scenario</th><th>What happens</th><th>Fix</th></tr>
+    <tr><td>Failure rate jumps from 0% to 25% this week</td><td>Something changed: data, code or a source system</td><td>Check the Top error types and the first failed run after the change</td></tr>
+    <tr><td>Average steady, p90 doubling</td><td>Some nights are much slower than others</td><td>Open the slow runs and compare their task timelines</td></tr>
+    <tr><td>Today is green, but the job failed 3 nights out of 10</td><td>It is flaky</td><td>Find the root cause instead of relying on retries</td></tr>
+    <tr><td>A team wants one page for all jobs</td><td>Clicking each job is slow</td><td>Build a dashboard on the jobs system tables</td></tr>
+  </table></div>
+</section>
+
+<section id="traps">
+  <div class="sec-num">Don't confuse these</div>
+  <h2>Measurement traps</h2>
+  <div class="grid2">
+    <div class="card trap"><span class="tag">Canceled vs CANCELLED</span><p>The UI says Canceled; the jobs system tables store CANCELLED.</p></div>
+    <div class="card trap"><span class="tag">Average vs p90</span><p>The average shows the typical run; p90 shows the slow end.</p></div>
+    <div class="card trap"><span class="tag">Unfinished runs</span><p>Runs still in progress have no result yet. Leave them out of the rate.</p></div>
+    <div class="card trap"><span class="tag">Green is not healthy</span><p>A job can be green today and still have a high failure rate.</p></div>
+  </div>
+</section>
+
+<section id="quiz">
+  <div class="sec-num">Check yourself</div>
+  <h2>Quiz</h2>
+  <div class="quiz">
+    <fieldset>
+      <legend>1. A job had 20 finished runs last month and 5 failed. What is its failure rate?</legend>
+      <label><input type="radio"> 5%</label>
+      <label><input type="radio" data-correct> 25%</label>
+      <label><input type="radio"> 75%</label>
+      <p class="explain" hidden>5 divided by 20 is 0.25, which is 25%.</p>
+    </fieldset>
+    <fieldset>
+      <legend>2. Why add up the rows per run_id before measuring durations?</legend>
+      <label><input type="radio" data-correct> Runs longer than an hour are stored as several slices</label>
+      <label><input type="radio"> Each task has its own run_id</label>
+      <label><input type="radio"> It makes the query faster</label>
+      <p class="explain" hidden>Without adding them, a 3 hour run looks like three 1 hour runs.</p>
+    </fieldset>
+    <fieldset>
+      <legend>3. The average duration is steady but p90 doubled. What does that mean?</legend>
+      <label><input type="radio"> Every run got slower</label>
+      <label><input type="radio" data-correct> Some runs are now much slower than the rest</label>
+      <label><input type="radio"> The job is failing more</label>
+      <p class="explain" hidden>p90 watches the slow end, so it moves when a few runs get much slower.</p>
+    </fieldset>
+    <fieldset>
+      <legend>4. In the demo, what happened when you used the run_duration_seconds column?</legend>
+      <label><input type="radio"> Durations doubled</label>
+      <label><input type="radio" data-correct> Durations showed 0 for this multi-task job</label>
+      <label><input type="radio"> The failure rate changed</label>
+      <p class="explain" hidden>For multi-task jobs compute duration from start and end times.</p>
+    </fieldset>
+  </div>
+</section>
+
+<section id="wrap">
+  <div class="sec-num">Wrap up</div>
+  <h2>Key takeaways</h2>
+  <ul>
+    <li>Watch two numbers: duration (typical and p90) and failure rate over a window.</li>
+    <li>The Runs tab and Runs page give quick visuals; system tables give exact numbers.</li>
+    <li>Add hourly slices per run, and leave unfinished runs out.</li>
+    <li>A green run today does not mean the job is healthy.</li>
+  </ul>
+  <h3>Glossary terms used</h3>
+  <p><a href="../../glossary.html#failure-rate">failure rate</a> · <a href="../../glossary.html#system-tables">system tables</a> · <a href="../../glossary.html#matrix-view">matrix view</a> · <a href="../../glossary.html#run">run</a></p>
+  <h3>Official docs</h3>
+  <ul>
+    <li><a href="https://docs.databricks.com/aws/en/jobs/monitor">Monitoring and observability for Lakeflow Jobs</a></li>
+    <li><a href="https://docs.databricks.com/aws/en/admin/system-tables/jobs">Jobs system table reference</a></li>
+    <li><a href="https://docs.databricks.com/aws/en/jobs/notifications">Job notifications</a></li>
+  </ul>
+  <p class="cap">Last verified: 17 November 2026</p>
+</section>
+
+</main>
+
+<script>
+(function () {
+  var C = window.Course, $ = function (id) { return document.getElementById(id); }, L = $('hLog');
+  function runs() {
+    var out = [], seed = 7;
+    function rnd() { seed = (seed * 9301 + 49297) % 233280; return seed / 233280; }
+    for (var d = 30; d >= 1; d--) {
+      var min = 20 + Math.round(rnd() * 6), state = rnd() < 0.05 ? 'FAILED' : 'SUCCEEDED';
+      if ($('hSlow').checked && d <= 10 && d % 3 === 0) min += 25;
+      if ($('hFlaky').checked && d <= 7 && d % 3 !== 1) state = rnd() < 0.5 ? 'FAILED' : state;
+      out.push({ day: d, min: min, state: state });
+    }
+    return out;
+  }
+  function pct(a, p) { var s = a.slice().sort(function (x, y) { return x - y; }); return s.length ? s[Math.min(s.length - 1, Math.ceil(p * s.length) - 1)] : 0; }
+  function calc() {
+    var w = +$('hWin').value, rs = runs().filter(function (r) { return r.day <= w; });
+    var bad = rs.filter(function (r) { return r.state !== 'SUCCEEDED'; }).length, useCol = $('hCol').checked;
+    var mins = rs.map(function (r) { return useCol ? 0 : r.min; });
+    var avg = Math.round(mins.reduce(function (a, b) { return a + b; }, 0) / rs.length * 10) / 10, p90 = pct(mins, 0.9), rate = Math.round(bad / rs.length * 1000) / 10;
+    $('hRuns').innerHTML = rs.slice().reverse().slice(0, 10).map(function (r) { return '<div class="item"><span>day -' + r.day + '  ' + r.min + ' min</span><span class="chip ' + (r.state === 'SUCCEEDED' ? 'ok' : 'bad') + '">' + r.state + '</span></div>'; }).join('') + (rs.length > 10 ? '<div class="item off">and ' + (rs.length - 10) + ' older runs</div>' : '');
+    $('hOut').innerHTML = '<div class="big">' + rate + '%</div><div class="item">failure rate: ' + bad + ' of ' + rs.length + ' runs</div><div class="item">average: ' + avg + ' min</div><div class="item">p90: ' + p90 + ' min</div>';
+    C.bump($('hOut'));
+    C.log(L, rate > 10 ? 'bad' : 'ok', 'Last ' + w + ' days: ' + rs.length + ' runs, ' + bad + ' failed, failure rate ' + rate + '%.');
+    if (useCol) C.log(L, 'bad', 'run_duration_seconds is 0 for this multi-task job, so every duration reads 0. Compute it from period_start_time and period_end_time.');
+    else C.log(L, p90 > avg * 1.5 ? 'bad' : 'ok', 'Average ' + avg + ' min, p90 ' + p90 + ' min' + (p90 > avg * 1.5 ? ': the slow end is far from the typical run. Open the slowest runs.' : '.'));
+  }
+  $('hGo').onclick = calc;
+  ['hWin', 'hFlaky', 'hSlow', 'hCol'].forEach(function (id) { $(id).onchange = calc; });
+  $('hReset').onclick = function () { L.innerHTML = ''; };
+  calc(); L.innerHTML = '';
+})();
+</script>
+</body>
+</html>

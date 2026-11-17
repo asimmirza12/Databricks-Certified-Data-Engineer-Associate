@@ -40,6 +40,7 @@ h3{font-size:1.15rem;font-weight:700;margin-top:6px}
 p{margin:0;max-width:68ch}
 ul,ol{margin:0;padding-left:20px;max-width:68ch}
 code,.mono{font-family:var(--f-mono);font-size:.86em}
+p code,li code{overflow-wrap:anywhere} /* long setting names must not widen the page on phones */
 :not(pre)>code{background:var(--code-bg);padding:1px 5px;border-radius:4px}
 pre{background:var(--code-bg);border:1px solid var(--line);border-radius:8px;padding:14px 16px;overflow-x:auto;margin:0;font-size:.85rem;line-height:1.55}
 pre code{font-size:inherit}

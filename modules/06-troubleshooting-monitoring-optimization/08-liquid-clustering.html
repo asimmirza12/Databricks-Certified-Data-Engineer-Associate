@@ -1,0 +1,289 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>06-08 Liquid clustering · DE Associate course</title>
+<link rel="stylesheet" href="../../assets/course.css">
+<script src="../../assets/course.js"></script>
+</head>
+<body data-lesson="06-08">
+
+<aside class="disclaimer" aria-label="Disclaimer"><strong>Learning resource only.</strong> This is an independent, unofficial study guide made for learning purposes. It is not affiliated with, endorsed by or sponsored by Databricks. Databricks features change often, so always check the details in the <a href="https://docs.databricks.com">official Databricks documentation</a> and the official exam guide on databricks.com before relying on anything here. Databricks and related names are trademarks of their respective owners.</aside>
+
+<main class="wrap">
+
+<header class="hero">
+  <div class="eyebrow">Module 06 · Troubleshooting, Monitoring and Optimization · Lesson 8 of 12</div>
+  <h1>Liquid clustering</h1>
+  <p class="lede">A query that asks for one store's sales should not have to open every file in the table. Liquid clustering keeps rows with similar values together, so Spark can skip the files it does not need.</p>
+  <dl class="where">
+    <div><dt>Module</dt><dd>06 Troubleshooting, Monitoring and Optimization (10% of the exam)</dd></div>
+    <div><dt>Exam objective</dt><dd>6.4 Know what liquid clustering does, how to turn it on and change it, and when it helps.</dd></div>
+    <div><dt>Time to read</dt><dd>About 13 minutes</dd></div>
+    <div><dt>Before this</dt><dd><a href="../01-databricks-platform/02-delta-lake-in-depth.html">01-02 Delta Lake in depth</a></dd></div>
+  </dl>
+</header>
+
+<section id="idea">
+  <div class="sec-num">The idea</div>
+  <h2>Keep similar rows in the same files</h2>
+  <p>A <a href="../../glossary.html#delta-lake">Delta</a> table is stored as many data files. For each file, Delta records the smallest and largest value of its columns. When a query filters on a column, Spark checks those ranges and skips files that cannot contain a match. This is called data skipping. It only works well if each file covers a narrow range.</p>
+  <p><a href="../../glossary.html#liquid-clustering">Liquid clustering</a> arranges the rows by one or more <a href="../../glossary.html#clustering-key">clustering keys</a>, so each file holds a narrow slice of key values. Queries that filter on those keys read far fewer files.</p>
+  <p>The main facts:</p>
+  <ul>
+    <li>Turn it on with <code>CLUSTER BY (columns)</code> when you create a table, or <code>ALTER TABLE ... CLUSTER BY</code> on an existing unpartitioned table. Up to four keys.</li>
+    <li>Pick the columns your queries filter on most.</li>
+    <li>You can change the keys later without rewriting existing data. New clustering uses the new keys.</li>
+    <li>Clustering happens when <a href="../../glossary.html#optimize">OPTIMIZE</a> runs (plain OPTIMIZE is incremental). <code>OPTIMIZE ... FULL</code> reclusters everything, useful after first enabling it or changing keys. <a href="09-predictive-optimization.html">Predictive optimization</a> can run OPTIMIZE for you.</li>
+    <li><code>CLUSTER BY AUTO</code> lets Databricks choose and change the keys from your query history, on Unity Catalog managed tables with predictive optimization.</li>
+    <li>It replaces partitioning and <a href="../../glossary.html#z-order">Z-ordering</a>, and cannot be combined with them. Databricks recommends it for all new tables.</li>
+  </ul>
+  <div class="analogy">
+    <span class="tag">Everyday analogy</span>
+    <p><strong>The bakery's receipt boxes.</strong> If receipts are thrown into boxes in random order, finding store 12's receipts means opening every box. If each box holds a narrow range of stores, with the range written on the lid, you open one or two boxes. Liquid clustering is the sorting; the labels on the lids are the file statistics. And you can re-sort by date later without emptying every box at once.</p>
+  </div>
+</section>
+
+<section id="how">
+  <div class="sec-num">How it works</div>
+  <h2>Wide ranges vs narrow ranges</h2>
+  <div class="stage">
+    <svg viewBox="0 0 360 230" role="img" aria-label="Left: four unclustered files each covering stores 1 to 60, so a query for store 12 reads all four. Right: four clustered files covering stores 1 to 15, 16 to 30, 31 to 45 and 46 to 60, so the query reads one.">
+      <defs><path id="lc1" d="M180 20 V205"/></defs>
+      <text class="t-b" x="85" y="22" text-anchor="middle">not clustered</text>
+      <text class="t-b" x="275" y="22" text-anchor="middle">CLUSTER BY store_id</text>
+      <rect class="box-acc" x="20" y="40" width="130" height="30" rx="5"/><text class="mono" x="85" y="60" text-anchor="middle">stores 1-60</text>
+      <rect class="box-acc" x="20" y="80" width="130" height="30" rx="5"/><text class="mono" x="85" y="100" text-anchor="middle">stores 1-60</text>
+      <rect class="box-acc" x="20" y="120" width="130" height="30" rx="5"/><text class="mono" x="85" y="140" text-anchor="middle">stores 1-60</text>
+      <rect class="box-acc" x="20" y="160" width="130" height="30" rx="5"/><text class="mono" x="85" y="180" text-anchor="middle">stores 1-60</text>
+      <rect class="box-acc" x="210" y="40" width="130" height="30" rx="5"/><text class="mono" x="275" y="60" text-anchor="middle">stores 1-15</text>
+      <rect class="box-soft" x="210" y="80" width="130" height="30" rx="5"/><text class="mono" x="275" y="100" text-anchor="middle">stores 16-30</text>
+      <rect class="box-soft" x="210" y="120" width="130" height="30" rx="5"/><text class="mono" x="275" y="140" text-anchor="middle">stores 31-45</text>
+      <rect class="box-soft" x="210" y="160" width="130" height="30" rx="5"/><text class="mono" x="275" y="180" text-anchor="middle">stores 46-60</text>
+      <text class="t-m" x="85" y="214" text-anchor="middle">store 12: read 4 files</text>
+      <text class="t-m" x="275" y="214" text-anchor="middle">store 12: read 1 file</text>
+      <g class="wire"><path d="M180 30 V200" stroke-dasharray="4 4"/></g>
+      <g class="mover"><circle r="5" class="dot"><animateMotion dur="3s" repeatCount="indefinite"><mpath href="#lc1"/></animateMotion></circle></g>
+    </svg>
+    <p class="cap">Highlighted files are the ones the query has to open.</p>
+  </div>
+</section>
+
+<section id="demo">
+  <div class="sec-num">Try it</div>
+  <h2>Cluster a table and watch files get skipped</h2>
+  <p>The <code>sales</code> table starts with 8 unclustered files. Run commands in different orders: set a key, OPTIMIZE, append data, change the key, OPTIMIZE FULL. The query filters on one store.</p>
+  <div class="stage">
+    <div class="ctrls">
+      <button id="lStore" type="button">CLUSTER BY (store_id)</button>
+      <button id="lDate" type="button">CLUSTER BY (sale_date)</button>
+      <button id="lNone" type="button">CLUSTER BY NONE</button>
+      <button id="lOpt" type="button">OPTIMIZE</button>
+      <button id="lFull" type="button">OPTIMIZE FULL</button>
+      <button id="lApp" type="button">Append 4 small files</button>
+      <label>Query: WHERE store_id = <input type="range" id="lQ" min="1" max="60" value="12"> <span id="lQV">12</span></label>
+      <button id="lRun" type="button" class="primary">Run query</button>
+      <button id="lReset" type="button">Reset table</button>
+    </div>
+    <div class="panes">
+      <div class="pane"><h4>Data files</h4><div id="lFiles"></div></div>
+      <div class="pane"><h4>Table</h4><div id="lTbl"></div></div>
+    </div>
+    <div class="log" id="lLog" role="log" aria-label="What happened"></div>
+  </div>
+</section>
+
+<section id="code">
+  <div class="sec-num">Code</div>
+  <h2>Liquid clustering in SQL and Python</h2>
+<pre><code><span class="c-c">-- New table, clustered by the column most queries filter on</span>
+CREATE TABLE bakery.silver.sales (
+  sale_id   BIGINT,
+  store_id  INT,
+  sale_date DATE,
+  amount    DECIMAL(10,2)
+) CLUSTER BY (store_id);
+
+<span class="c-c">-- Change the keys later. Existing files are not rewritten now.</span>
+ALTER TABLE bakery.silver.sales CLUSTER BY (store_id, sale_date);
+
+<span class="c-c">-- Cluster new and unclustered data (incremental)</span>
+OPTIMIZE bakery.silver.sales;
+
+<span class="c-c">-- Recluster everything with the current keys (can take a long time on big tables)</span>
+OPTIMIZE bakery.silver.sales FULL;
+
+<span class="c-c">-- Let Databricks choose keys (UC managed table + predictive optimization)</span>
+ALTER TABLE bakery.silver.sales CLUSTER BY AUTO;
+
+<span class="c-c">-- Turn clustering off (no data is rewritten)</span>
+ALTER TABLE bakery.silver.sales CLUSTER BY NONE;</code></pre>
+<pre><code><span class="c-c"># Python: set clustering when creating or overwriting a table</span>
+(spark.read.table("bakery.bronze.sales_raw")
+      .write.clusterBy("store_id")
+      .mode("overwrite")
+      .saveAsTable("bakery.silver.sales"))</code></pre>
+  <p class="note">Liquid clustering is generally available on Databricks Runtime 15.4 LTS and above, and OPTIMIZE FULL needs 16.0 or above. Check version details and allowed column types in the docs.</p>
+</section>
+
+<section id="whatif">
+  <div class="sec-num">What if I change this?</div>
+  <h2>Choices and their effects</h2>
+  <div class="tbl"><table class="whatif">
+    <tr><th>Change</th><th>Effect</th></tr>
+    <tr><td>Key = a column you filter on</td><td>Queries on it skip most files.</td></tr>
+    <tr><td>Key = a column nobody filters on</td><td>Clustering work with no benefit.</td></tr>
+    <tr><td>Change keys with ALTER TABLE</td><td>Fast; old files keep their old layout until reclustered.</td></tr>
+    <tr><td>Run OPTIMIZE FULL after changing keys</td><td>All files follow the new keys; can take hours on a large table.</td></tr>
+    <tr><td>Never run OPTIMIZE (and no predictive optimization)</td><td>Small appended files stay unclustered and queries read them all.</td></tr>
+    <tr><td>Try to add CLUSTER BY to a partitioned table</td><td>Not allowed: liquid clustering does not mix with partitioning or ZORDER.</td></tr>
+    <tr><td>Use more keys on a small table</td><td>Filters on a single key can get slower. Use only keys you need.</td></tr>
+  </table></div>
+</section>
+
+<section id="compare">
+  <div class="sec-num">Compare</div>
+  <h2>Ways to lay out a table</h2>
+  <div class="tbl"><table>
+    <tr><th></th><th>Partitioning</th><th>Z-order</th><th>Liquid clustering</th></tr>
+    <tr><td>Set with</td><td><code>PARTITIONED BY</code></td><td><code>OPTIMIZE ... ZORDER BY</code></td><td><code>CLUSTER BY</code></td></tr>
+    <tr><td>Change the columns</td><td>Rewrite the whole table</td><td>Next OPTIMIZE, full rewrite</td><td>ALTER TABLE, no rewrite needed</td></tr>
+    <tr><td>Good with high-cardinality columns (many values)</td><td>No, too many folders</td><td>Yes</td><td>Yes</td></tr>
+    <tr><td>Incremental</td><td>n/a</td><td>No</td><td>Yes</td></tr>
+    <tr><td>Databricks advice for new tables</td><td>Avoid</td><td>Avoid</td><td>Use</td></tr>
+  </table></div>
+</section>
+
+<section id="scenarios">
+  <div class="sec-num">Real life</div>
+  <h2>Clustering in practice</h2>
+  <div class="tbl"><table>
+    <tr><th>Scenario</th><th>What happens</th><th>Fix</th></tr>
+    <tr><td>Dashboards filter by store and date, and are slow</td><td>Every query scans the whole table</td><td>CLUSTER BY (store_id, sale_date), then OPTIMIZE</td></tr>
+    <tr><td>Queries moved from filtering by store to by region</td><td>Old keys no longer help</td><td>ALTER TABLE CLUSTER BY (region); OPTIMIZE FULL when convenient</td></tr>
+    <tr><td>Nobody knows which keys to pick</td><td>Guessing wastes effort</td><td>CLUSTER BY AUTO on a managed table with predictive optimization</td></tr>
+    <tr><td>An old table is partitioned by date</td><td>Cannot just add CLUSTER BY</td><td>Rebuild it with CLUSTER BY (use the partition column as a key)</td></tr>
+  </table></div>
+</section>
+
+<section id="traps">
+  <div class="sec-num">Don't confuse these</div>
+  <h2>Clustering traps</h2>
+  <div class="grid2">
+    <div class="card trap"><span class="tag">ALTER does not rewrite</span><p>Changing keys is instant. Old files are only reclustered by OPTIMIZE FULL.</p></div>
+    <div class="card trap"><span class="tag">Not with partitions</span><p>Liquid clustering cannot be combined with partitioning or ZORDER.</p></div>
+    <div class="card trap"><span class="tag">Max four keys</span><p>And choose columns used in filters.</p></div>
+    <div class="card trap"><span class="tag">AUTO needs PO</span><p>CLUSTER BY AUTO relies on predictive optimization on a UC managed table.</p></div>
+  </div>
+</section>
+
+<section id="quiz">
+  <div class="sec-num">Check yourself</div>
+  <h2>Quiz</h2>
+  <div class="quiz">
+    <fieldset>
+      <legend>1. How does liquid clustering make filtered queries faster?</legend>
+      <label><input type="radio"> It caches the table in memory</label>
+      <label><input type="radio" data-correct> Each file holds a narrow range of key values, so Spark can skip files</label>
+      <label><input type="radio"> It creates one folder per key value</label>
+      <p class="explain" hidden>One folder per value is partitioning. Clustering narrows each file's range.</p>
+    </fieldset>
+    <fieldset>
+      <legend>2. You run ALTER TABLE ... CLUSTER BY with new keys. What happens to existing files?</legend>
+      <label><input type="radio"> They are rewritten immediately</label>
+      <label><input type="radio" data-correct> They stay as they are until reclustered, for example by OPTIMIZE FULL</label>
+      <label><input type="radio"> They are deleted</label>
+      <p class="explain" hidden>Changing keys is cheap; reclustering old data is a separate step.</p>
+    </fieldset>
+    <fieldset>
+      <legend>3. Which table can use CLUSTER BY AUTO?</legend>
+      <label><input type="radio"> Any external table</label>
+      <label><input type="radio" data-correct> A Unity Catalog managed table with predictive optimization</label>
+      <label><input type="radio"> A partitioned table</label>
+      <p class="explain" hidden>Automatic key selection is done by predictive optimization.</p>
+    </fieldset>
+    <fieldset>
+      <legend>4. In the demo, you clustered by store_id, ran OPTIMIZE, then appended 4 files. How many files did the query read?</legend>
+      <label><input type="radio"> Only 1</label>
+      <label><input type="radio" data-correct> 1 clustered file plus the 4 new unclustered ones</label>
+      <label><input type="radio"> All of them</label>
+      <p class="explain" hidden>New small files cover every store until the next OPTIMIZE clusters them.</p>
+    </fieldset>
+  </div>
+</section>
+
+<section id="wrap">
+  <div class="sec-num">Wrap up</div>
+  <h2>Key takeaways</h2>
+  <ul>
+    <li>Liquid clustering groups rows by up to four keys so queries skip files.</li>
+    <li>Set with CLUSTER BY; change keys without rewriting; recluster with OPTIMIZE or OPTIMIZE FULL.</li>
+    <li>CLUSTER BY AUTO picks keys for UC managed tables with predictive optimization.</li>
+    <li>It replaces partitioning and Z-order and does not mix with them.</li>
+  </ul>
+  <h3>Glossary terms used</h3>
+  <p><a href="../../glossary.html#liquid-clustering">liquid clustering</a> · <a href="../../glossary.html#clustering-key">clustering key</a> · <a href="../../glossary.html#z-order">Z-order</a> · <a href="../../glossary.html#optimize">OPTIMIZE</a> · <a href="../../glossary.html#delta-lake">Delta Lake</a> · <a href="../../glossary.html#partition">partition</a></p>
+  <h3>Official docs</h3>
+  <ul>
+    <li><a href="https://docs.databricks.com/aws/en/delta/clustering">Use liquid clustering for tables</a></li>
+    <li><a href="https://docs.databricks.com/aws/en/tables/operations/optimize">Optimize data file layout</a></li>
+  </ul>
+  <p class="cap">Last verified: 17 November 2026</p>
+</section>
+
+</main>
+
+<script>
+(function () {
+  var C = window.Course, $ = function (id) { return document.getElementById(id); }, L = $('lLog');
+  var files, key;
+  function reset() { key = null; files = []; for (var i = 0; i < 8; i++) files.push({ by: null, lo: 1, hi: 60 }); }
+  function recluster(list) {
+    var n = list.length; if (!n) return;
+    list.forEach(function (f, i) {
+      f.by = key;
+      if (key === 'store_id') { var w = 60 / n; f.lo = Math.floor(i * w) + 1; f.hi = Math.floor((i + 1) * w); }
+      else { f.lo = 1; f.hi = 60; }
+    });
+  }
+  function draw() {
+    var q = +$('lQ').value;
+    $('lFiles').innerHTML = files.map(function (f, i) {
+      var hit = q >= f.lo && q <= f.hi;
+      return '<div class="item' + (hit ? ' hot' : '') + '"><span>file ' + (i + 1) + ': stores ' + f.lo + '-' + f.hi + '</span><span>' + (f.by ? 'by ' + f.by : 'unclustered') + '</span></div>';
+    }).join('');
+    $('lTbl').innerHTML = '<div class="item">clustering keys: ' + (key || 'none') + '</div><div class="item">files: ' + files.length + '</div>';
+  }
+  $('lStore').onclick = function () { key = 'store_id'; draw(); C.log(L, 'ok', 'ALTER TABLE ... CLUSTER BY (store_id). Keys set. No files were rewritten.'); };
+  $('lDate').onclick = function () { key = 'sale_date'; draw(); C.log(L, 'ok', 'ALTER TABLE ... CLUSTER BY (sale_date). Keys changed. Existing files keep their old layout.'); };
+  $('lNone').onclick = function () { key = null; draw(); C.log(L, 'skip', 'CLUSTER BY NONE. Clustering is off. No files were rewritten.'); };
+  $('lOpt').onclick = function () {
+    if (!key) { C.log(L, 'skip', 'OPTIMIZE: no clustering keys, so it only compacts small files. Ranges stay wide.'); return; }
+    var todo = files.filter(function (f) { return !f.by; });
+    if (!todo.length) { C.log(L, 'skip', 'OPTIMIZE: nothing new to cluster. Files clustered by an older key are left as they are; use OPTIMIZE FULL.'); return; }
+    var merged = Math.max(1, Math.round(todo.length / 2)), keep = files.filter(function (f) { return f.by; });
+    var fresh = []; for (var i = 0; i < merged; i++) fresh.push({});
+    recluster(keep.filter(function (f) { return f.by === key; }).concat(fresh)); // files on an older key are left alone
+    files = keep.concat(fresh); draw(); C.bump($('lFiles'));
+    C.log(L, 'ok', 'OPTIMIZE (incremental): clustered ' + todo.length + ' unclustered file(s) into ' + merged + ' by ' + key + '.');
+  };
+  $('lFull').onclick = function () {
+    if (!key) { C.log(L, 'skip', 'OPTIMIZE FULL: no clustering keys set.'); return; }
+    var n = Math.max(4, Math.min(8, files.length)); files = []; for (var i = 0; i < n; i++) files.push({});
+    recluster(files); draw(); C.bump($('lFiles'));
+    C.log(L, 'ok', 'OPTIMIZE FULL: reclustered every file by ' + key + ' (' + n + ' files). On a big table this can take hours.');
+  };
+  $('lApp').onclick = function () { for (var i = 0; i < 4; i++) files.push({ by: null, lo: 1, hi: 60 }); draw(); C.log(L, 'skip', 'Appended 4 small files. They are not clustered yet (too small to cluster on write) and cover every store.'); };
+  $('lQ').oninput = function () { $('lQV').textContent = this.value; draw(); };
+  $('lRun').onclick = function () {
+    var q = +$('lQ').value, read = files.filter(function (f) { return q >= f.lo && q <= f.hi; }).length;
+    draw(); C.bump($('lFiles'));
+    C.log(L, read <= 2 ? 'ok' : 'bad', 'WHERE store_id = ' + q + ': read ' + read + ' of ' + files.length + ' files, skipped ' + (files.length - read) + '.');
+  };
+  $('lReset').onclick = function () { reset(); draw(); L.innerHTML = ''; };
+  reset(); draw();
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,259 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>06-05 Shuffle: why moving data is slow · DE Associate course</title>
+<link rel="stylesheet" href="../../assets/course.css">
+<script src="../../assets/course.js"></script>
+</head>
+<body data-lesson="06-05">
+
+<aside class="disclaimer" aria-label="Disclaimer"><strong>Learning resource only.</strong> This is an independent, unofficial study guide made for learning purposes. It is not affiliated with, endorsed by or sponsored by Databricks. Databricks features change often, so always check the details in the <a href="https://docs.databricks.com">official Databricks documentation</a> and the official exam guide on databricks.com before relying on anything here. Databricks and related names are trademarks of their respective owners.</aside>
+
+<main class="wrap">
+
+<header class="hero">
+  <div class="eyebrow">Module 06 · Troubleshooting, Monitoring and Optimization · Lesson 5 of 12</div>
+  <h1>Shuffle: why moving data is slow</h1>
+  <p class="lede">Most slow Spark stages have one thing in common: data being copied from machine to machine. This lesson shows when that happens, how to see it in the Spark UI, and how to do less of it.</p>
+  <dl class="where">
+    <div><dt>Module</dt><dd>06 Troubleshooting, Monitoring and Optimization (10% of the exam)</dd></div>
+    <div><dt>Exam objective</dt><dd>6.3 Recognise shuffle from the stage numbers in the Spark UI and know how to reduce it.</dd></div>
+    <div><dt>Time to read</dt><dd>About 12 minutes</dd></div>
+    <div><dt>Before this</dt><dd><a href="04-spark-ui-tour.html">06-04 A tour of the Spark UI</a></dd></div>
+  </dl>
+</header>
+
+<section id="idea">
+  <div class="sec-num">The idea</div>
+  <h2>Rows with the same key have to meet</h2>
+  <p>Spark spreads a table over many <a href="../../glossary.html#executor">executors</a>, one <a href="../../glossary.html#partition">partition</a> each. Some steps only need the rows already on that executor. They are <a href="../../glossary.html#narrow-transformation">narrow transformations</a>: filter, select, adding a column. They are cheap.</p>
+  <p>Other steps need all rows with the same key in one place. To add up sales per store, every row for store 7 must end up on the same executor. These are <a href="../../glossary.html#wide-transformation">wide transformations</a>: joins, aggregations such as groupBy and distinct, window functions, and repartition. To do them Spark runs a <a href="../../glossary.html#shuffle">shuffle</a>: each executor writes its rows out sorted by destination, and every executor fetches the rows meant for it.</p>
+  <p>A shuffle costs disk writes, network transfer, and turning rows into bytes and back. It also needs memory, and if there is not enough, data spills to disk (lesson 06-07). In a query plan a shuffle appears as an <a href="../../glossary.html#exchange">Exchange</a>.</p>
+  <div class="analogy">
+    <span class="tag">Everyday analogy</span>
+    <p><strong>Sorting the post at three bakery branches.</strong> Each branch gets mixed orders for every store. To pack orders per store, every branch has to send its envelopes to the branch that handles that store. Checking an envelope's stamp at the branch where it already is (narrow) is quick. Driving envelopes between branches (shuffle) is what takes the time.</p>
+  </div>
+</section>
+
+<section id="how">
+  <div class="sec-num">How it works</div>
+  <h2>Write, send, read</h2>
+  <div class="stage">
+    <svg viewBox="0 0 360 230" role="img" aria-label="Three executors on the left each hold mixed keys A, B and C. Lines cross to three executors on the right, each holding only one key.">
+      <defs>
+        <path id="sh1" d="M90 50 C 180 50, 180 110, 270 110"/><path id="sh2" d="M90 110 C 180 110, 180 50, 270 50"/>
+        <path id="sh3" d="M90 170 C 180 170, 180 110, 270 110"/><path id="sh4" d="M90 50 C 180 50, 180 170, 270 170"/>
+      </defs>
+      <g class="wire"><use href="#sh1"/><use href="#sh2"/><use href="#sh3"/><use href="#sh4"/></g>
+      <rect class="box" x="10" y="32" width="80" height="36" rx="6"/><text class="mono" x="50" y="55" text-anchor="middle">A B C</text>
+      <rect class="box" x="10" y="92" width="80" height="36" rx="6"/><text class="mono" x="50" y="115" text-anchor="middle">B A C</text>
+      <rect class="box" x="10" y="152" width="80" height="36" rx="6"/><text class="mono" x="50" y="175" text-anchor="middle">C B A</text>
+      <rect class="box-acc" x="270" y="32" width="80" height="36" rx="6"/><text class="mono" x="310" y="55" text-anchor="middle">A A A</text>
+      <rect class="box-acc" x="270" y="92" width="80" height="36" rx="6"/><text class="mono" x="310" y="115" text-anchor="middle">B B B</text>
+      <rect class="box-acc" x="270" y="152" width="80" height="36" rx="6"/><text class="mono" x="310" y="175" text-anchor="middle">C C C</text>
+      <text class="t-m" x="50" y="212" text-anchor="middle">shuffle write</text>
+      <text class="t-m" x="180" y="212" text-anchor="middle">network</text>
+      <text class="t-m" x="310" y="212" text-anchor="middle">shuffle read</text>
+      <g class="mover">
+        <circle r="5" class="dot"><animateMotion dur="2.6s" repeatCount="indefinite"><mpath href="#sh1"/></animateMotion></circle>
+        <circle r="5" class="dot"><animateMotion dur="2.6s" begin="-0.7s" repeatCount="indefinite"><mpath href="#sh2"/></animateMotion></circle>
+        <circle r="5" class="dot"><animateMotion dur="2.6s" begin="-1.4s" repeatCount="indefinite"><mpath href="#sh3"/></animateMotion></circle>
+        <circle r="5" class="dot"><animateMotion dur="2.6s" begin="-2s" repeatCount="indefinite"><mpath href="#sh4"/></animateMotion></circle>
+      </g>
+    </svg>
+    <p class="cap">In the stage details, the sending side shows Shuffle Write and the receiving side shows Shuffle Read.</p>
+  </div>
+</section>
+
+<section id="demo">
+  <div class="sec-num">Try it</div>
+  <h2>Count the rows that move</h2>
+  <p>Three executors hold 12 sales rows for stores 1 to 3. Pick an operation and see how many rows cross the network. For the join, change the size of the stores table and the broadcast limit.</p>
+  <div class="stage">
+    <div class="ctrls">
+      <label>Operation <select id="xOp">
+        <option value="filter">filter amount &gt; 10</option>
+        <option value="group">groupBy store_id, sum</option>
+        <option value="join">join with stores table</option>
+      </select></label>
+      <label>stores table size <select id="xSmall"><option value="2">2 MB</option><option value="40">40 MB</option><option value="900">900 MB</option></select></label>
+      <label>Broadcast limit <select id="xLim"><option value="10">10 MB</option><option value="30" selected>30 MB</option><option value="-1">off (-1)</option></select></label>
+      <button id="xGo" type="button" class="primary">Run</button>
+      <button id="xReset" type="button">Clear log</button>
+    </div>
+    <div class="panes">
+      <div class="pane"><h4>Before</h4><div id="xBefore"></div></div>
+      <div class="pane"><h4>After</h4><div id="xAfter"></div></div>
+    </div>
+    <div class="log" id="xLog" role="log" aria-label="What happened"></div>
+  </div>
+</section>
+
+<section id="code">
+  <div class="sec-num">Code</div>
+  <h2>Doing the same work with less shuffle</h2>
+<pre><code>from pyspark.sql import functions as F
+
+sales  = spark.read.table("bakery.silver.sales")
+stores = spark.read.table("bakery.silver.stores")      <span class="c-c"># small: a few hundred rows</span>
+
+<span class="c-c"># Shuffle-heavy: joins every column of every row, then filters</span>
+slow = (sales.join(stores, "store_id")
+             .filter(F.col("sale_date") &gt;= "2026-11-01"))
+
+<span class="c-c"># Lighter: filter and pick columns first, and broadcast the small table</span>
+fast = (sales.filter(F.col("sale_date") &gt;= "2026-11-01")
+             .select("store_id", "amount")
+             .join(F.broadcast(stores.select("store_id", "region")), "store_id"))
+
+fast.explain()    <span class="c-c"># look for BroadcastHashJoin instead of an Exchange on the big side</span></code></pre>
+  <p class="note">Spark's own default limit for an automatic broadcast is 10 MB (<code>spark.sql.autoBroadcastJoinThreshold</code>). On Databricks, AQE can also switch a join to broadcast at run time using <code>spark.databricks.adaptive.autoBroadcastJoinThreshold</code>, 30 MB by default. Verify current values in the docs. Lesson <a href="../03-transformation-and-modeling/13-tuning-memory-broadcast.html">03-13</a> covers the setting in detail.</p>
+</section>
+
+<section id="whatif">
+  <div class="sec-num">What if I change this?</div>
+  <h2>Changes and their effect on shuffle</h2>
+  <div class="tbl"><table class="whatif">
+    <tr><th>Change</th><th>Effect</th></tr>
+    <tr><td>Filter before a join or groupBy</td><td>Fewer rows are shuffled.</td></tr>
+    <tr><td>Select only needed columns first</td><td>Each shuffled row is smaller.</td></tr>
+    <tr><td>Broadcast a small table</td><td>The small table is copied to every executor; the big table does not move.</td></tr>
+    <tr><td>Broadcast a big table</td><td>Every executor needs memory for all of it; it can run out of memory.</td></tr>
+    <tr><td>Add an unneeded <code>repartition()</code></td><td>An extra full shuffle for nothing.</td></tr>
+    <tr><td>Two groupBys on different keys</td><td>Two shuffles. Group once on what you need if you can.</td></tr>
+  </table></div>
+</section>
+
+<section id="compare">
+  <div class="sec-num">Compare</div>
+  <h2>Narrow vs wide</h2>
+  <div class="grid2">
+    <div class="card"><h3>Narrow (no shuffle)</h3><p>filter, where, select, withColumn, reading files, union. Each partition is handled where it is.</p></div>
+    <div class="card"><h3>Wide (shuffle)</h3><p>join (not broadcast), groupBy and other aggregations, distinct, window functions, repartition. Rows move to meet their key.</p></div>
+  </div>
+  <div class="tbl"><table>
+    <tr><th>Join type</th><th>What moves</th><th>Best when</th></tr>
+    <tr><td>Shuffle (sort-merge) join</td><td>Both tables are shuffled by the key</td><td>Both tables are large</td></tr>
+    <tr><td>Broadcast join</td><td>Only the small table, copied to every executor</td><td>One table is small enough to fit in memory</td></tr>
+  </table></div>
+</section>
+
+<section id="scenarios">
+  <div class="sec-num">Real life</div>
+  <h2>Shuffle in practice</h2>
+  <div class="tbl"><table>
+    <tr><th>Scenario</th><th>What happens</th><th>Fix</th></tr>
+    <tr><td>Stage shows 80 GB Shuffle Read for a 10 GB table</td><td>Wide rows or a join that multiplies rows</td><td>Select fewer columns; check the join keys for duplicates</td></tr>
+    <tr><td>Joining sales to a 300 row stores table is slow</td><td>A shuffle join is being used</td><td>Broadcast the stores table</td></tr>
+    <tr><td>The plan has three Exchange nodes</td><td>Three shuffles</td><td>Remove extra repartitions; filter and aggregate earlier</td></tr>
+    <tr><td>A broadcast join crashes with out of memory</td><td>The "small" table is not small</td><td>Let Spark choose a shuffle join for it</td></tr>
+  </table></div>
+</section>
+
+<section id="traps">
+  <div class="sec-num">Don't confuse these</div>
+  <h2>Shuffle traps</h2>
+  <div class="grid2">
+    <div class="card trap"><span class="tag">Shuffle is not a bug</span><p>Joins and aggregations need it. The goal is to shuffle less data, not none.</p></div>
+    <div class="card trap"><span class="tag">Write vs Read</span><p>Shuffle Write is on the sending stage; Shuffle Read on the receiving one.</p></div>
+    <div class="card trap"><span class="tag">Exchange = shuffle</span><p>In a query plan, look for Exchange.</p></div>
+    <div class="card trap"><span class="tag">Broadcast has a limit</span><p>Only small tables should be broadcast.</p></div>
+  </div>
+</section>
+
+<section id="quiz">
+  <div class="sec-num">Check yourself</div>
+  <h2>Quiz</h2>
+  <div class="quiz">
+    <fieldset>
+      <legend>1. Which of these causes a shuffle?</legend>
+      <label><input type="radio"> filter</label>
+      <label><input type="radio"> withColumn</label>
+      <label><input type="radio" data-correct> groupBy</label>
+      <p class="explain" hidden>Grouping needs all rows with the same key together.</p>
+    </fieldset>
+    <fieldset>
+      <legend>2. What does a broadcast join avoid?</legend>
+      <label><input type="radio" data-correct> Shuffling the large table</label>
+      <label><input type="radio"> Reading the small table</label>
+      <label><input type="radio"> Using any memory</label>
+      <p class="explain" hidden>The small table is copied to each executor, so the big table stays where it is.</p>
+    </fieldset>
+    <fieldset>
+      <legend>3. In a query plan, which word marks a shuffle?</legend>
+      <label><input type="radio"> Project</label>
+      <label><input type="radio" data-correct> Exchange</label>
+      <label><input type="radio"> Filter</label>
+      <p class="explain" hidden>Exchange is where rows are redistributed between partitions.</p>
+    </fieldset>
+    <fieldset>
+      <legend>4. In the demo, what happened to the join with a 900 MB stores table?</legend>
+      <label><input type="radio"> It was broadcast</label>
+      <label><input type="radio" data-correct> It used a shuffle join, so rows from both tables moved</label>
+      <label><input type="radio"> Nothing moved</label>
+      <p class="explain" hidden>900 MB is above the broadcast limit, so Spark shuffles both sides.</p>
+    </fieldset>
+  </div>
+</section>
+
+<section id="wrap">
+  <div class="sec-num">Wrap up</div>
+  <h2>Key takeaways</h2>
+  <ul>
+    <li>Wide transformations (join, groupBy, distinct, window, repartition) shuffle; narrow ones do not.</li>
+    <li>Shuffle costs disk, network and memory. See it as Shuffle Read and Write, or Exchange in the plan.</li>
+    <li>Filter and select early, and broadcast small tables, to shuffle less.</li>
+  </ul>
+  <h3>Glossary terms used</h3>
+  <p><a href="../../glossary.html#shuffle">shuffle</a> · <a href="../../glossary.html#narrow-transformation">narrow transformation</a> · <a href="../../glossary.html#wide-transformation">wide transformation</a> · <a href="../../glossary.html#exchange">Exchange</a> · <a href="../../glossary.html#broadcast-join">broadcast join</a> · <a href="../../glossary.html#partition">partition</a></p>
+  <h3>Official docs</h3>
+  <ul>
+    <li><a href="https://docs.databricks.com/aws/en/optimizations/aqe">Adaptive query execution</a></li>
+    <li><a href="https://docs.databricks.com/aws/en/optimizations/spark-ui-guide/">Diagnose issues using the Spark UI</a></li>
+    <li><a href="https://spark.apache.org/docs/latest/sql-performance-tuning.html">Spark SQL performance tuning</a></li>
+  </ul>
+  <p class="cap">Last verified: 17 November 2026</p>
+</section>
+
+</main>
+
+<script>
+(function () {
+  var C = window.Course, $ = function (id) { return document.getElementById(id); }, L = $('xLog');
+  var ROWS = [[1, 12], [2, 8], [3, 30], [1, 5], [2, 22], [3, 14], [3, 9], [1, 40], [2, 11], [1, 7], [3, 25], [2, 16]];
+  var E = [ROWS.slice(0, 4), ROWS.slice(4, 8), ROWS.slice(8, 12)];
+  function show(id, ex) { $(id).innerHTML = ex.map(function (rs, i) { return '<div class="item"><span>executor ' + (i + 1) + '</span><span>' + (rs.length ? rs.map(function (r) { return 's' + r[0]; }).join(' ') : 'empty') + '</span></div>'; }).join(''); }
+  function draw() { show('xBefore', E); $('xAfter').innerHTML = '<div class="item off">press Run</div>'; }
+  $('xGo').onclick = function () {
+    var op = $('xOp').value, moved = 0, after;
+    if (op === 'filter') {
+      after = E.map(function (rs) { return rs.filter(function (r) { return r[1] > 10; }); });
+      show('xAfter', after);
+      C.log(L, 'ok', 'filter: narrow. Each executor kept its own matching rows. Rows moved over the network: 0. No new stage.');
+    } else if (op === 'group') {
+      after = [[], [], []];
+      E.forEach(function (rs, i) { rs.forEach(function (r) { var to = r[0] - 1; if (to !== i) moved++; after[to].push(r); }); });
+      show('xAfter', after);
+      C.log(L, 'bad', 'groupBy store_id: wide. ' + moved + ' of 12 rows moved so each store\'s rows meet on one executor. Shuffle Write and Shuffle Read: ' + moved + ' rows.');
+    } else {
+      var size = +$('xSmall').value, lim = +$('xLim').value;
+      if (lim > 0 && size <= lim) {
+        show('xAfter', E);
+        C.log(L, 'ok', 'Broadcast join: the ' + size + ' MB stores table was copied to all 3 executors (' + (size * 3) + ' MB in total). Sales rows moved: 0.');
+      } else {
+        after = [[], [], []];
+        E.forEach(function (rs, i) { rs.forEach(function (r) { var to = r[0] - 1; if (to !== i) moved++; after[to].push(r); }); });
+        show('xAfter', after);
+        C.log(L, 'bad', 'Shuffle join: ' + (lim < 0 ? 'broadcast is turned off' : 'the ' + size + ' MB stores table is over the ' + lim + ' MB limit') + '. ' + moved + ' of 12 sales rows moved, and the stores table was shuffled too.');
+      }
+    }
+    C.bump($('xAfter'));
+  };
+  $('xReset').onclick = function () { L.innerHTML = ''; draw(); };
+  draw();
+})();
+</script>
+</body>
+</html>

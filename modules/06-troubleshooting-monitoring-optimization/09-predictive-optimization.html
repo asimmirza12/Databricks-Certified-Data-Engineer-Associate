@@ -1,0 +1,251 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>06-09 Predictive optimization · DE Associate course</title>
+<link rel="stylesheet" href="../../assets/course.css">
+<script src="../../assets/course.js"></script>
+</head>
+<body data-lesson="06-09">
+
+<aside class="disclaimer" aria-label="Disclaimer"><strong>Learning resource only.</strong> This is an independent, unofficial study guide made for learning purposes. It is not affiliated with, endorsed by or sponsored by Databricks. Databricks features change often, so always check the details in the <a href="https://docs.databricks.com">official Databricks documentation</a> and the official exam guide on databricks.com before relying on anything here. Databricks and related names are trademarks of their respective owners.</aside>
+
+<main class="wrap">
+
+<header class="hero">
+  <div class="eyebrow">Module 06 · Troubleshooting, Monitoring and Optimization · Lesson 9 of 12</div>
+  <h1>Predictive optimization</h1>
+  <p class="lede">Delta tables need regular upkeep: compacting small files, deleting old ones and refreshing statistics. Predictive optimization does that upkeep for you, on the tables that need it, without you scheduling anything.</p>
+  <dl class="where">
+    <div><dt>Module</dt><dd>06 Troubleshooting, Monitoring and Optimization (10% of the exam)</dd></div>
+    <div><dt>Exam objective</dt><dd>6.4 Know what predictive optimization does, which tables it covers and how it is switched on or off.</dd></div>
+    <div><dt>Time to read</dt><dd>About 11 minutes</dd></div>
+    <div><dt>Before this</dt><dd><a href="08-liquid-clustering.html">06-08 Liquid clustering</a></dd></div>
+  </dl>
+</header>
+
+<section id="idea">
+  <div class="sec-num">The idea</div>
+  <h2>Table upkeep, on autopilot</h2>
+  <p>Without help, a busy <a href="../../glossary.html#delta-lake">Delta</a> table slowly gets worse. Many small writes leave many small files. Updates and deletes leave old files behind. Statistics used to skip files go stale. You would normally fix this by scheduling <a href="../../glossary.html#optimize">OPTIMIZE</a>, <a href="../../glossary.html#vacuum">VACUUM</a> and ANALYZE yourself.</p>
+  <p><a href="../../glossary.html#predictive-optimization">Predictive optimization</a> runs those three operations automatically. Databricks watches how each table is used and runs the operation only when it expects a benefit. It also clusters tables that use <a href="08-liquid-clustering.html">liquid clustering</a>, and picks keys for <code>CLUSTER BY AUTO</code> tables.</p>
+  <p>The main facts:</p>
+  <ul>
+    <li>It works only on Unity Catalog <a href="../../glossary.html#managed-table">managed tables</a>, not <a href="../../glossary.html#external-table">external tables</a>.</li>
+    <li>The docs say it is on by default. An account admin can change the account setting, and a catalog, schema or table can ENABLE, DISABLE or INHERIT it. By default each level inherits from the one above.</li>
+    <li>The work runs on serverless compute and is billed under a serverless jobs SKU.</li>
+    <li>You can see what it did in the system table <code>system.storage.predictive_optimization_operations_history</code> (Public Preview).</li>
+    <li>VACUUM keeps at least 7 days of old files, matching the default retention.</li>
+  </ul>
+  <div class="analogy">
+    <span class="tag">Everyday analogy</span>
+    <p><strong>A cleaning service for the bakery.</strong> Instead of putting "clean the ovens" on the calendar every Tuesday whether they need it or not, a cleaner checks each oven and cleans the ones that are actually dirty. They only work in the shop's own kitchens (managed tables), not in kitchens you rent elsewhere (external tables).</p>
+  </div>
+</section>
+
+<section id="how">
+  <div class="sec-num">How it works</div>
+  <h2>Settings flow down, work flows to the tables that need it</h2>
+  <div class="stage">
+    <svg viewBox="0 0 360 240" role="img" aria-label="Account setting flows down to catalog bakery, then schema gold, then to tables. A managed table receives OPTIMIZE, VACUUM and ANALYZE. An external table receives nothing.">
+      <defs><path id="po1" d="M180 40 V70 M180 100 V130 M180 160 V175"/><path id="po2" d="M180 175 C 180 190, 100 190, 100 205"/></defs>
+      <g class="wire"><path d="M180 40 V70"/><path d="M180 100 V130"/><path d="M180 160 V175 H100 V195"/><path d="M180 175 H260 V195"/></g>
+      <rect class="box-soft" x="110" y="10" width="140" height="30" rx="6"/><text class="t-b" x="180" y="30" text-anchor="middle">account: enabled</text>
+      <rect class="box" x="110" y="70" width="140" height="30" rx="6"/><text class="mono" x="180" y="90" text-anchor="middle">catalog bakery: inherit</text>
+      <rect class="box" x="110" y="130" width="140" height="30" rx="6"/><text class="mono" x="180" y="150" text-anchor="middle">schema gold: inherit</text>
+      <rect class="box-acc" x="30" y="195" width="140" height="34" rx="6"/><text class="t-m" x="100" y="210" text-anchor="middle">managed table</text><text class="t-m" x="100" y="224" text-anchor="middle">OPTIMIZE · VACUUM · ANALYZE</text>
+      <rect class="box-soft" x="200" y="195" width="125" height="34" rx="6"/><text class="t-m" x="262" y="210" text-anchor="middle">external table</text><text class="t-m" x="262" y="224" text-anchor="middle">not covered</text>
+      <g class="mover"><circle r="5" class="dot"><animateMotion dur="3s" repeatCount="indefinite"><mpath href="#po2"/></animateMotion></circle></g>
+    </svg>
+    <p class="cap">Each level inherits unless it sets ENABLE or DISABLE itself.</p>
+  </div>
+</section>
+
+<section id="demo">
+  <div class="sec-num">Try it</div>
+  <h2>Run a week with and without it</h2>
+  <p>Set the account, catalog, schema and table type, then simulate a week of busy writes to <code>bakery.gold.daily_sales</code>. Watch the small files, old files and statistics.</p>
+  <div class="stage">
+    <div class="ctrls">
+      <label>Account <select id="oAcc"><option value="ENABLE">enabled</option><option value="DISABLE">disabled</option></select></label>
+      <label>Catalog bakery <select id="oCat"><option>INHERIT</option><option>ENABLE</option><option>DISABLE</option></select></label>
+      <label>Schema gold <select id="oSch"><option>INHERIT</option><option>ENABLE</option><option>DISABLE</option></select></label>
+      <label>Table type <select id="oType"><option value="managed">managed</option><option value="external">external</option></select></label>
+      <button id="oWeek" type="button" class="primary">Simulate a week</button>
+      <button id="oReset" type="button">Reset table</button>
+    </div>
+    <div class="panes">
+      <div class="pane"><h4>Effective setting</h4><div id="oEff"></div></div>
+      <div class="pane"><h4>Table health</h4><div id="oHealth"></div></div>
+    </div>
+    <div class="log" id="oLog" role="log" aria-label="What happened"></div>
+  </div>
+</section>
+
+<section id="code">
+  <div class="sec-num">Code</div>
+  <h2>Control it and check what it did</h2>
+<pre><code><span class="c-c">-- Turn it on for the whole bakery catalog, off for one sandbox schema</span>
+ALTER CATALOG bakery ENABLE PREDICTIVE OPTIMIZATION;
+ALTER SCHEMA bakery.sandbox DISABLE PREDICTIVE OPTIMIZATION;
+
+<span class="c-c">-- Go back to following the parent's setting</span>
+ALTER SCHEMA bakery.sandbox INHERIT PREDICTIVE OPTIMIZATION;
+
+<span class="c-c">-- See the effective setting on an object</span>
+DESCRIBE SCHEMA EXTENDED bakery.gold;
+
+<span class="c-c">-- What did it run on the bakery catalog in the last week?</span>
+SELECT start_time, table_name, operation_type, operation_status, usage_quantity
+FROM system.storage.predictive_optimization_operations_history
+WHERE catalog_name = 'bakery'
+  AND start_time &gt;= current_date() - INTERVAL 7 DAYS
+ORDER BY start_time DESC;</code></pre>
+  <p class="note">The history table is in Public Preview and rows can take several hours to appear. Check its column names in the docs before building a dashboard on it.</p>
+</section>
+
+<section id="whatif">
+  <div class="sec-num">What if I change this?</div>
+  <h2>Settings and their effects</h2>
+  <div class="tbl"><table class="whatif">
+    <tr><th>Change</th><th>Effect</th></tr>
+    <tr><td>Catalog set to INHERIT</td><td>Follows the account setting.</td></tr>
+    <tr><td>Schema set to DISABLE under an enabled catalog</td><td>Tables in that schema are not maintained (unless a table enables it).</td></tr>
+    <tr><td>Account disabled, catalog set to ENABLE</td><td>That catalog is still maintained. An explicit setting wins over the parent.</td></tr>
+    <tr><td>Table is external</td><td>Never covered. Schedule OPTIMIZE and VACUUM yourself.</td></tr>
+    <tr><td>Table uses CLUSTER BY AUTO</td><td>Needs predictive optimization to choose keys and cluster.</td></tr>
+    <tr><td>Table uses ZORDER</td><td>Predictive optimization's OPTIMIZE does not Z-order.</td></tr>
+  </table></div>
+</section>
+
+<section id="compare">
+  <div class="sec-num">Compare</div>
+  <h2>Manual upkeep vs predictive optimization</h2>
+  <div class="tbl"><table>
+    <tr><th></th><th>Manual (scheduled jobs)</th><th>Predictive optimization</th></tr>
+    <tr><td>Who decides when</td><td>You, on a schedule</td><td>Databricks, based on table use</td></tr>
+    <tr><td>Tables covered</td><td>Any you script</td><td>UC managed tables</td></tr>
+    <tr><td>Compute</td><td>Your job's compute</td><td>Serverless, billed as serverless jobs</td></tr>
+    <tr><td>Risk</td><td>Forgotten tables, wasted runs on idle tables</td><td>Little to manage; check the history table</td></tr>
+  </table></div>
+  <div class="grid3">
+    <div class="card"><h3>OPTIMIZE</h3><p>Compacts small files and clusters liquid-clustered tables.</p></div>
+    <div class="card"><h3>VACUUM</h3><p>Deletes files no longer used by the table, older than the retention period.</p></div>
+    <div class="card"><h3>ANALYZE</h3><p>Refreshes statistics so queries skip files and plan joins well.</p></div>
+  </div>
+</section>
+
+<section id="scenarios">
+  <div class="sec-num">Real life</div>
+  <h2>Predictive optimization in practice</h2>
+  <div class="tbl"><table>
+    <tr><th>Scenario</th><th>What happens</th><th>Fix</th></tr>
+    <tr><td>A streaming table has thousands of tiny files</td><td>On a managed table, compaction runs automatically</td><td>Confirm it is enabled and check the history table</td></tr>
+    <tr><td>Storage costs keep rising on an external table</td><td>Old files are never vacuumed</td><td>Schedule VACUUM, or move to a managed table</td></tr>
+    <tr><td>A scratch schema racks up maintenance cost</td><td>It is maintained like everything else</td><td>DISABLE it on that schema</td></tr>
+    <tr><td>A team still runs nightly OPTIMIZE jobs on managed tables</td><td>Double upkeep</td><td>Retire the manual jobs</td></tr>
+  </table></div>
+</section>
+
+<section id="traps">
+  <div class="sec-num">Don't confuse these</div>
+  <h2>Predictive optimization traps</h2>
+  <div class="grid2">
+    <div class="card trap"><span class="tag">Managed only</span><p>External tables are never covered.</p></div>
+    <div class="card trap"><span class="tag">Three operations</span><p>OPTIMIZE, VACUUM and ANALYZE. Not ZORDER.</p></div>
+    <div class="card trap"><span class="tag">Inheritance</span><p>Account, then catalog, then schema, then table. An explicit setting beats the parent.</p></div>
+    <div class="card trap"><span class="tag">Not free</span><p>It runs on serverless compute and is billed.</p></div>
+  </div>
+</section>
+
+<section id="quiz">
+  <div class="sec-num">Check yourself</div>
+  <h2>Quiz</h2>
+  <div class="quiz">
+    <fieldset>
+      <legend>1. Which operations does predictive optimization run?</legend>
+      <label><input type="radio"> OPTIMIZE with ZORDER only</label>
+      <label><input type="radio" data-correct> OPTIMIZE, VACUUM and ANALYZE</label>
+      <label><input type="radio"> MERGE and COPY INTO</label>
+      <p class="explain" hidden>It also clusters liquid-clustered tables as part of OPTIMIZE.</p>
+    </fieldset>
+    <fieldset>
+      <legend>2. Which table is never covered?</legend>
+      <label><input type="radio" data-correct> An external table</label>
+      <label><input type="radio"> A UC managed table in an enabled schema</label>
+      <label><input type="radio"> A managed streaming table</label>
+      <p class="explain" hidden>Only Unity Catalog managed tables are covered.</p>
+    </fieldset>
+    <fieldset>
+      <legend>3. The account is enabled. Catalog bakery is INHERIT, schema sandbox is DISABLE. What happens to tables in bakery.sandbox?</legend>
+      <label><input type="radio"> They are maintained</label>
+      <label><input type="radio" data-correct> They are not maintained</label>
+      <label><input type="radio"> Only VACUUM runs</label>
+      <p class="explain" hidden>The schema's own DISABLE overrides what it would inherit.</p>
+    </fieldset>
+    <fieldset>
+      <legend>4. In the demo, after a week on an external table, what did the health panel show?</legend>
+      <label><input type="radio"> Everything tidy</label>
+      <label><input type="radio" data-correct> Small files and old files piling up, and stale statistics</label>
+      <label><input type="radio"> The table was converted to managed</label>
+      <p class="explain" hidden>Nothing runs on external tables, whatever the settings say.</p>
+    </fieldset>
+  </div>
+</section>
+
+<section id="wrap">
+  <div class="sec-num">Wrap up</div>
+  <h2>Key takeaways</h2>
+  <ul>
+    <li>Predictive optimization runs OPTIMIZE, VACUUM and ANALYZE when they help.</li>
+    <li>Unity Catalog managed tables only; external tables need manual upkeep.</li>
+    <li>Set at account, catalog, schema or table with ENABLE, DISABLE or INHERIT.</li>
+    <li>Runs on serverless compute; see what it did in the operations history system table.</li>
+  </ul>
+  <h3>Glossary terms used</h3>
+  <p><a href="../../glossary.html#predictive-optimization">predictive optimization</a> · <a href="../../glossary.html#optimize">OPTIMIZE</a> · <a href="../../glossary.html#vacuum">VACUUM</a> · <a href="../../glossary.html#managed-table">managed table</a> · <a href="../../glossary.html#external-table">external table</a> · <a href="../../glossary.html#delta-lake">Delta Lake</a></p>
+  <h3>Official docs</h3>
+  <ul>
+    <li><a href="https://docs.databricks.com/aws/en/optimizations/predictive-optimization">Predictive optimization for Unity Catalog managed tables</a></li>
+    <li><a href="https://docs.databricks.com/aws/en/admin/system-tables/predictive-optimization">Predictive optimization system table</a></li>
+  </ul>
+  <p class="cap">Last verified: 17 November 2026</p>
+</section>
+
+</main>
+
+<script>
+(function () {
+  var C = window.Course, $ = function (id) { return document.getElementById(id); }, L = $('oLog');
+  var t;
+  function reset() { t = { small: 20, old: 0, stale: 0, week: 0 }; }
+  function effective() {
+    var src = 'account', v = $('oAcc').value;
+    if ($('oCat').value !== 'INHERIT') { v = $('oCat').value; src = 'catalog bakery'; }
+    if ($('oSch').value !== 'INHERIT') { v = $('oSch').value; src = 'schema gold'; }
+    return { on: v === 'ENABLE', src: src };
+  }
+  function draw() {
+    var e = effective(), ext = $('oType').value === 'external';
+    $('oEff').innerHTML = '<div class="big">' + (e.on && !ext ? 'ON' : 'OFF') + '</div><div class="item">setting: ' + (e.on ? 'enabled' : 'disabled') + ', from the ' + e.src + '</div>' + (ext ? '<div class="item hot">external table: never covered</div>' : '');
+    $('oHealth').innerHTML = '<div class="item' + (t.small > 100 ? ' hot' : '') + '"><span>small files</span><span>' + t.small + '</span></div><div class="item' + (t.old > 50 ? ' hot' : '') + '"><span>unused old files</span><span>' + t.old + '</span></div><div class="item' + (t.stale > 3 ? ' hot' : '') + '"><span>statistics age</span><span>' + t.stale + ' days</span></div>';
+  }
+  $('oWeek').onclick = function () {
+    var e = effective(), on = e.on && $('oType').value === 'managed';
+    t.week++; t.small += 140; t.old += 60; t.stale += 7;
+    if (on) {
+      var c = t.small; t.small = 6; var v = t.old; t.old = 15; t.stale = 0;
+      C.log(L, 'ok', 'Week ' + t.week + ': OPTIMIZE compacted ' + c + ' small files into 6; VACUUM removed ' + (v - 15) + ' unused files older than 7 days (kept 15 newer ones); ANALYZE refreshed statistics. Billed as serverless jobs.');
+    } else {
+      C.log(L, 'bad', 'Week ' + t.week + ': nothing ran (' + ($('oType').value === 'external' ? 'external table' : 'disabled by the ' + e.src) + '). Small files: ' + t.small + ', unused files: ' + t.old + ', statistics ' + t.stale + ' days old.');
+    }
+    draw(); C.bump($('oHealth'));
+  };
+  ['oAcc', 'oCat', 'oSch', 'oType'].forEach(function (id) { $(id).onchange = draw; });
+  $('oReset').onclick = function () { reset(); draw(); L.innerHTML = ''; };
+  reset(); draw();
+})();
+</script>
+</body>
+</html>

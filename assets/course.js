@@ -85,18 +85,18 @@
     ["10", "automated-ci-cd", "Automated CI/CD: deploying from a pipeline", 1]
   ]},
   {n:"06", slug:"troubleshooting-monitoring-optimization", title:"Troubleshooting, Monitoring and Optimization", weight:10, lessons:[
-    ["01", "run-history-and-baselines", "Run history: comparing a run with its normal", 0],
-    ["02", "job-statuses-and-task-graph", "Job statuses and finding upstream blockers", 0],
-    ["03", "run-times-and-failure-rates", "Tracking run times and failure rates", 0],
-    ["04", "spark-ui-tour", "A tour of the Spark UI: jobs, stages, tasks", 0],
-    ["05", "shuffle", "Shuffle: why moving data is slow", 0],
-    ["06", "data-skew", "Data skew", 0],
-    ["07", "disk-spill", "Disk spill", 0],
-    ["08", "liquid-clustering", "Liquid clustering", 0],
-    ["09", "predictive-optimization", "Predictive optimization", 0],
-    ["10", "cluster-startup-failures", "Cluster startup failures", 0],
-    ["11", "library-conflicts", "Library conflicts", 0],
-    ["12", "out-of-memory", "Out-of-memory errors", 0]
+    ["01", "run-history-and-baselines", "Run history: comparing a run with its normal", 1],
+    ["02", "job-statuses-and-task-graph", "Job statuses and finding upstream blockers", 1],
+    ["03", "run-times-and-failure-rates", "Tracking run times and failure rates", 1],
+    ["04", "spark-ui-tour", "A tour of the Spark UI: jobs, stages, tasks", 1],
+    ["05", "shuffle", "Shuffle: why moving data is slow", 1],
+    ["06", "data-skew", "Data skew", 1],
+    ["07", "disk-spill", "Disk spill", 1],
+    ["08", "liquid-clustering", "Liquid clustering", 1],
+    ["09", "predictive-optimization", "Predictive optimization", 1],
+    ["10", "cluster-startup-failures", "Cluster startup failures", 1],
+    ["11", "library-conflicts", "Library conflicts", 1],
+    ["12", "out-of-memory", "Out-of-memory errors", 1]
   ]},
   {n:"07", slug:"governance-and-security", title:"Governance and Security", weight:15, lessons:[
     ["01", "managed-vs-external-tables", "Managed vs external tables", 0],

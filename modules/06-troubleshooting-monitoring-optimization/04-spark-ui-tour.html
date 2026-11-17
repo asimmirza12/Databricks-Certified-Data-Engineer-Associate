@@ -1,0 +1,248 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>06-04 A tour of the Spark UI: jobs, stages, tasks · DE Associate course</title>
+<link rel="stylesheet" href="../../assets/course.css">
+<script src="../../assets/course.js"></script>
+</head>
+<body data-lesson="06-04">
+
+<aside class="disclaimer" aria-label="Disclaimer"><strong>Learning resource only.</strong> This is an independent, unofficial study guide made for learning purposes. It is not affiliated with, endorsed by or sponsored by Databricks. Databricks features change often, so always check the details in the <a href="https://docs.databricks.com">official Databricks documentation</a> and the official exam guide on databricks.com before relying on anything here. Databricks and related names are trademarks of their respective owners.</aside>
+
+<main class="wrap">
+
+<header class="hero">
+  <div class="eyebrow">Module 06 · Troubleshooting, Monitoring and Optimization · Lesson 4 of 12</div>
+  <h1>A tour of the Spark UI: jobs, stages, tasks</h1>
+  <p class="lede">When a single task in your job is slow, the next place to look is inside Spark itself. The Spark UI shows how your code was split into pieces of work and how long each piece took.</p>
+  <dl class="where">
+    <div><dt>Module</dt><dd>06 Troubleshooting, Monitoring and Optimization (10% of the exam)</dd></div>
+    <div><dt>Exam objective</dt><dd>6.3 Read stage numbers in the Spark UI. This lesson covers how to open it, its tabs, and how Spark jobs, stages and tasks fit together.</dd></div>
+    <div><dt>Time to read</dt><dd>About 13 minutes</dd></div>
+    <div><dt>Before this</dt><dd><a href="../00-foundations/05-what-is-spark.html">00-05 What is Apache Spark?</a> and <a href="../03-transformation-and-modeling/12-tuning-partitions.html">03-12 Tuning: shuffle partitions</a></dd></div>
+  </dl>
+</header>
+
+<section id="idea">
+  <div class="sec-num">The idea</div>
+  <h2>Your code, broken into jobs, stages and tasks</h2>
+  <p>The <a href="../../glossary.html#spark-ui">Spark UI</a> is a set of web pages that show what Spark did with your code. It uses three nested words:</p>
+  <ul>
+    <li>A <a href="../../glossary.html#spark-job">Spark job</a> starts each time your code asks for a result, such as writing a table or counting rows (an action).</li>
+    <li>Each Spark job is split into <a href="../../glossary.html#stage">stages</a>. A new stage begins wherever data has to be <a href="../../glossary.html#shuffle">shuffled</a> between machines.</li>
+    <li>Each stage is split into <a href="../../glossary.html#spark-task">Spark tasks</a>, one per <a href="../../glossary.html#partition">partition</a> of data. Tasks in a stage run in parallel on the <a href="../../glossary.html#executor">executors</a>.</li>
+  </ul>
+  <p>Careful: a Spark job is not a Lakeflow job, and a Spark task is not a job task. One notebook task in Lakeflow Jobs can start many Spark jobs.</p>
+  <p>To open it on classic compute, go to the compute's details page and choose the <strong>Spark UI</strong> tab. On serverless compute the Spark UI is not available; you use the <a href="../../glossary.html#query-profile">query profile</a> instead.</p>
+  <div class="analogy">
+    <span class="tag">Everyday analogy</span>
+    <p><strong>A catering order at the bakery.</strong> The order (Spark job) is "200 sandwiches". It happens in stages: bake the bread, then slice and fill. Between stages, trays have to be carried across the kitchen (the shuffle). Inside each stage, each baker handles one tray (a task). The Spark UI is the kitchen's whiteboard showing every tray and how long it took.</p>
+  </div>
+</section>
+
+<section id="how">
+  <div class="sec-num">How it works</div>
+  <h2>One action, two stages, many tasks</h2>
+  <div class="stage">
+    <svg viewBox="0 0 360 240" role="img" aria-label="An action creates one Spark job. Stage 1 reads files with four tasks. A shuffle boundary separates it from stage 2, which aggregates with three tasks.">
+      <defs><path id="su1" d="M95 105 C 150 105, 150 75, 215 75"/><path id="su2" d="M95 165 C 150 165, 150 175, 215 175"/></defs>
+      <rect class="box-soft" x="100" y="8" width="160" height="28" rx="6"/><text class="t-b" x="180" y="27" text-anchor="middle">Spark job: write gold table</text>
+      <text class="t-m" x="55" y="56" text-anchor="middle">stage 1: read</text>
+      <text class="t-m" x="290" y="56" text-anchor="middle">stage 2: aggregate</text>
+      <rect class="box" x="15" y="65" width="80" height="26" rx="5"/><text class="mono" x="55" y="83" text-anchor="middle">task 1</text>
+      <rect class="box" x="15" y="95" width="80" height="26" rx="5"/><text class="mono" x="55" y="113" text-anchor="middle">task 2</text>
+      <rect class="box" x="15" y="125" width="80" height="26" rx="5"/><text class="mono" x="55" y="143" text-anchor="middle">task 3</text>
+      <rect class="box" x="15" y="155" width="80" height="26" rx="5"/><text class="mono" x="55" y="173" text-anchor="middle">task 4</text>
+      <g class="wire"><path d="M180 50 V200" stroke-dasharray="4 4"/><use href="#su1"/><use href="#su2"/></g>
+      <text class="t-m" x="180" y="218" text-anchor="middle">shuffle boundary</text>
+      <rect class="box-acc" x="215" y="62" width="135" height="26" rx="5"/><text class="mono" x="282" y="80" text-anchor="middle">task 1</text>
+      <rect class="box-acc" x="215" y="112" width="135" height="26" rx="5"/><text class="mono" x="282" y="130" text-anchor="middle">task 2</text>
+      <rect class="box-acc" x="215" y="162" width="135" height="26" rx="5"/><text class="mono" x="282" y="180" text-anchor="middle">task 3</text>
+      <g class="mover">
+        <circle r="5" class="dot"><animateMotion dur="2.4s" repeatCount="indefinite"><mpath href="#su1"/></animateMotion></circle>
+        <circle r="5" class="dot"><animateMotion dur="2.4s" begin="-1.2s" repeatCount="indefinite"><mpath href="#su2"/></animateMotion></circle>
+      </g>
+    </svg>
+    <p class="cap">Stage 1 has one task per input partition. After the shuffle, stage 2 has one task per shuffle partition.</p>
+  </div>
+</section>
+
+<section id="demo">
+  <div class="sec-num">Try it</div>
+  <h2>Predict the jobs, stages and tasks</h2>
+  <p>Pick an operation and the size of the input, then run it. The demo builds what the Spark UI would roughly show. It is a simplified model: real plans can add or merge stages.</p>
+  <div class="stage">
+    <div class="ctrls">
+      <label>Operation <select id="uOp">
+        <option value="filter">filter, then write</option>
+        <option value="group">groupBy store, then write</option>
+        <option value="join">join with stores, groupBy, write</option>
+      </select></label>
+      <label>Input files <input type="range" id="uFiles" min="1" max="16" value="8"> <span id="uFilesV">8</span></label>
+      <label>Data size <select id="uSize"><option value="200">200 MB</option><option value="2000" selected>2 GB</option><option value="20000">20 GB</option></select></label>
+      <label class="tog"><input type="checkbox" id="uAqe" checked> AQE coalescing on</label>
+      <button id="uGo" type="button" class="primary">Run and open Spark UI</button>
+      <button id="uReset" type="button">Clear log</button>
+    </div>
+    <div class="panes">
+      <div class="pane"><h4>Jobs tab</h4><div id="uJobs"></div></div>
+      <div class="pane"><h4>Stages tab</h4><div id="uStages"></div></div>
+    </div>
+    <div class="log" id="uLog" role="log" aria-label="What happened"></div>
+  </div>
+</section>
+
+<section id="code">
+  <div class="sec-num">Code</div>
+  <h2>Code that makes stages</h2>
+<pre><code><span class="c-c"># Nothing runs yet: these are transformations (lazy)</span>
+sales = spark.read.table("bakery.silver.sales")
+big   = sales.filter("amount &gt; 10")                 <span class="c-c"># narrow: stays in the same stage</span>
+daily = big.groupBy("store_id", "sale_date").sum("amount")   <span class="c-c"># wide: needs a shuffle</span>
+
+<span class="c-c"># This action starts a Spark job. In the Spark UI expect a read stage,</span>
+<span class="c-c"># a shuffle, and an aggregate stage.</span>
+daily.write.mode("overwrite").saveAsTable("bakery.gold.daily_store_sales")
+
+<span class="c-c"># See the plan without running it. "Exchange" marks each shuffle.</span>
+daily.explain()</code></pre>
+  <p class="note">In the Spark UI, the <strong>SQL</strong> tab shows the same plan as a picture, with an Exchange box at each shuffle and metrics on each step.</p>
+</section>
+
+<section id="whatif">
+  <div class="sec-num">What if I change this?</div>
+  <h2>Changes and what you see in the Spark UI</h2>
+  <div class="tbl"><table class="whatif">
+    <tr><th>Change</th><th>Effect</th></tr>
+    <tr><td>Add a groupBy or join</td><td>One more shuffle, so one more stage.</td></tr>
+    <tr><td>Add a filter or a new column</td><td>No new stage. It runs inside the existing one.</td></tr>
+    <tr><td>More input files</td><td>More tasks in the read stage.</td></tr>
+    <tr><td>Change <code>spark.sql.shuffle.partitions</code></td><td>Changes the number of tasks after a shuffle (default 200).</td></tr>
+    <tr><td>AQE coalescing on</td><td>Tiny shuffle partitions are merged at run time, so fewer, fuller tasks.</td></tr>
+    <tr><td>Restart the compute</td><td>The Spark UI now shows the new session; the old history is not there.</td></tr>
+  </table></div>
+</section>
+
+<section id="compare">
+  <div class="sec-num">Compare</div>
+  <h2>The Spark UI tabs</h2>
+  <div class="tbl"><table>
+    <tr><th>Tab</th><th>What it shows</th><th>Use it to</th></tr>
+    <tr><td>Jobs</td><td>Every Spark job, with an Event Timeline</td><td>Find the slowest job and gaps where nothing ran</td></tr>
+    <tr><td>Stages</td><td>Every stage; click one for its task details and summary metrics</td><td>Find the slowest stage, skew and spill</td></tr>
+    <tr><td>Storage</td><td>Cached DataFrames</td><td>Check what is held in memory</td></tr>
+    <tr><td>Environment</td><td>Spark settings in effect</td><td>Confirm a setting really changed</td></tr>
+    <tr><td>Executors</td><td>Memory, cores, tasks, shuffle and GC time per executor, plus the driver</td><td>Spot an overloaded or failing executor</td></tr>
+    <tr><td>SQL</td><td>Each query's plan with metrics</td><td>See where shuffles (Exchange) happen and how many rows each step handled</td></tr>
+  </table></div>
+  <p>Databricks suggests an order: start with the Jobs timeline, find the longest stage, then check it for skew or spill, then check whether it is mostly reading or writing data.</p>
+</section>
+
+<section id="scenarios">
+  <div class="sec-num">Real life</div>
+  <h2>The Spark UI in practice</h2>
+  <div class="tbl"><table>
+    <tr><th>Scenario</th><th>What happens</th><th>Fix</th></tr>
+    <tr><td>A notebook task takes 40 minutes</td><td>One stage takes 35 of them</td><td>Open that stage and read its summary metrics</td></tr>
+    <tr><td>You cannot find the Spark UI on a serverless notebook</td><td>It is not available on serverless</td><td>Use the query profile from the cell or from query history</td></tr>
+    <tr><td>Yesterday's slow run is gone from the Spark UI</td><td>The compute was restarted</td><td>Look at the run's own page, or reproduce the run</td></tr>
+    <tr><td>A stage has 200 tiny tasks on a small table</td><td>Task startup costs more than the work</td><td>Keep AQE on, or lower the shuffle partitions</td></tr>
+  </table></div>
+</section>
+
+<section id="traps">
+  <div class="sec-num">Don't confuse these</div>
+  <h2>Spark UI traps</h2>
+  <div class="grid2">
+    <div class="card trap"><span class="tag">Spark job vs Lakeflow job</span><p>A Spark job is one action inside your code. A Lakeflow job is the scheduled workflow.</p></div>
+    <div class="card trap"><span class="tag">Spark task vs job task</span><p>A Spark task handles one partition. A job task is one notebook, query or pipeline.</p></div>
+    <div class="card trap"><span class="tag">Stage boundary = shuffle</span><p>New stages start where data moves between machines.</p></div>
+    <div class="card trap"><span class="tag">Serverless</span><p>No Spark UI. Use the query profile.</p></div>
+  </div>
+</section>
+
+<section id="quiz">
+  <div class="sec-num">Check yourself</div>
+  <h2>Quiz</h2>
+  <div class="quiz">
+    <fieldset>
+      <legend>1. What usually starts a new stage inside a Spark job?</legend>
+      <label><input type="radio"> A filter</label>
+      <label><input type="radio" data-correct> A shuffle, such as for a groupBy or join</label>
+      <label><input type="radio"> Every new column</label>
+      <p class="explain" hidden>Stage boundaries sit where data must move between machines.</p>
+    </fieldset>
+    <fieldset>
+      <legend>2. How many tasks does a stage normally have?</legend>
+      <label><input type="radio" data-correct> One per partition of data it processes</label>
+      <label><input type="radio"> One per executor</label>
+      <label><input type="radio"> Always 200</label>
+      <p class="explain" hidden>200 is only the default number of shuffle partitions, and AQE can change it.</p>
+    </fieldset>
+    <fieldset>
+      <legend>3. You use serverless compute. Where do you look instead of the Spark UI?</legend>
+      <label><input type="radio"> The Executors tab</label>
+      <label><input type="radio" data-correct> The query profile</label>
+      <label><input type="radio"> The cluster event log</label>
+      <p class="explain" hidden>Serverless does not offer the Spark UI.</p>
+    </fieldset>
+    <fieldset>
+      <legend>4. In the demo, what changed when you picked "join with stores, groupBy, write"?</legend>
+      <label><input type="radio"> Fewer stages than the filter</label>
+      <label><input type="radio" data-correct> More stages, because of more shuffles</label>
+      <label><input type="radio"> More Spark jobs but the same stages</label>
+      <p class="explain" hidden>Each wide step added a shuffle and so a stage.</p>
+    </fieldset>
+  </div>
+</section>
+
+<section id="wrap">
+  <div class="sec-num">Wrap up</div>
+  <h2>Key takeaways</h2>
+  <ul>
+    <li>Action makes a Spark job; shuffles split it into stages; partitions split stages into tasks.</li>
+    <li>Open it from the compute details page, Spark UI tab. Serverless uses the query profile.</li>
+    <li>Start with the Jobs timeline, then the longest stage, then its summary metrics.</li>
+    <li>Spark jobs and tasks are not Lakeflow jobs and tasks.</li>
+  </ul>
+  <h3>Glossary terms used</h3>
+  <p><a href="../../glossary.html#spark-ui">Spark UI</a> · <a href="../../glossary.html#spark-job">Spark job</a> · <a href="../../glossary.html#stage">stage</a> · <a href="../../glossary.html#spark-task">Spark task</a> · <a href="../../glossary.html#query-profile">query profile</a> · <a href="../../glossary.html#shuffle">shuffle</a> · <a href="../../glossary.html#partition">partition</a> · <a href="../../glossary.html#executor">executor</a></p>
+  <h3>Official docs</h3>
+  <ul>
+    <li><a href="https://docs.databricks.com/aws/en/optimizations/spark-ui-guide/">Diagnose cost and performance issues using the Spark UI</a></li>
+    <li><a href="https://docs.databricks.com/aws/en/compute/clusters-manage">Manage classic compute (Spark UI tab)</a></li>
+    <li><a href="https://docs.databricks.com/aws/en/sql/user/queries/query-profile">Query profile</a></li>
+    <li><a href="https://spark.apache.org/docs/latest/web-ui.html">Apache Spark Web UI</a></li>
+  </ul>
+  <p class="cap">Last verified: 17 November 2026</p>
+</section>
+
+</main>
+
+<script>
+(function () {
+  var C = window.Course, $ = function (id) { return document.getElementById(id); }, L = $('uLog'), n = 0;
+  $('uFiles').oninput = function () { $('uFilesV').textContent = this.value; };
+  function shuffleTasks(mb) { return $('uAqe').checked ? Math.max(1, Math.min(200, Math.ceil(mb / 64))) : 200; }
+  $('uGo').onclick = function () {
+    var op = $('uOp').value, files = +$('uFiles').value, mb = +$('uSize').value, st = [];
+    n++;
+    st.push({ name: 'read sales (' + files + ' files)', tasks: files });
+    if (op === 'join') st.push({ name: 'read stores', tasks: 1 }, { name: 'join on store_id', tasks: shuffleTasks(mb) });
+    if (op !== 'filter') st.push({ name: 'aggregate by store and write', tasks: shuffleTasks(mb * (op === 'join' ? 0.5 : 0.3)) });
+    else st[0].name += ', filter, write';
+    var total = st.reduce(function (a, s) { return a + s.tasks; }, 0), shuffles = st.length - 1 - (op === 'join' ? 1 : 0);
+    $('uJobs').innerHTML = '<div class="item"><span>Spark job ' + n + ': saveAsTable</span><span>' + st.length + ' stages</span></div><div class="item">' + total + ' tasks in total</div>';
+    $('uStages').innerHTML = st.map(function (s, i) { return '<div class="item"><span>stage ' + (i + 1) + ': ' + s.name + '</span><span>' + s.tasks + ' tasks</span></div>'; }).join('');
+    C.bump($('uStages'));
+    C.log(L, 'ok', 'Spark job ' + n + ': ' + st.length + ' stage(s), ' + total + ' tasks, ' + (op === 'filter' ? 'no shuffle (filter is narrow).' : shuffles + ' shuffle(s) between stages.'));
+    if (op !== 'filter') C.log(L, $('uAqe').checked ? 'ok' : 'skip', $('uAqe').checked ? 'AQE merged small shuffle partitions, so the stages after a shuffle have fewer, fuller tasks.' : 'AQE off: every stage after a shuffle uses the default 200 shuffle partitions, even for small data.');
+  };
+  $('uReset').onclick = function () { L.innerHTML = ''; };
+  $('uJobs').innerHTML = $('uStages').innerHTML = '<div class="item off">nothing run yet</div>';
+})();
+</script>
+</body>
+</html>

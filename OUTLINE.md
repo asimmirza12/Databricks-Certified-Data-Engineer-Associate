@@ -172,18 +172,18 @@ Objectives:
 
 | Status | Lesson | File | Objective | Prerequisites |
 |---|---|---|---|---|
-| [ ] | 06-01 Run history: comparing a run with its normal | `01-run-history-and-baselines.html` | 6.1 | 04-01 |
-| [ ] | 06-02 Job statuses and finding upstream blockers | `02-job-statuses-and-task-graph.html` | 6.2 | 04-03, 06-01 |
-| [ ] | 06-03 Tracking run times and failure rates | `03-run-times-and-failure-rates.html` | 6.2 | 06-02 |
-| [ ] | 06-04 A tour of the Spark UI: jobs, stages, tasks | `04-spark-ui-tour.html` | 6.3 | 00-05, 03-12 |
-| [ ] | 06-05 Shuffle: why moving data is slow | `05-shuffle.html` | 6.3 | 06-04 |
-| [ ] | 06-06 Data skew | `06-data-skew.html` | 6.3 | 06-05 |
-| [ ] | 06-07 Disk spill | `07-disk-spill.html` | 6.3 | 06-05 |
-| [ ] | 06-08 Liquid clustering | `08-liquid-clustering.html` | 6.4 | 01-02 |
-| [ ] | 06-09 Predictive optimization | `09-predictive-optimization.html` | 6.4 | 06-08 |
-| [ ] | 06-10 Cluster startup failures | `10-cluster-startup-failures.html` | 6.5 | 01-04 |
-| [ ] | 06-11 Library conflicts | `11-library-conflicts.html` | 6.5 | 01-04 |
-| [ ] | 06-12 Out-of-memory errors | `12-out-of-memory.html` | 6.5 | 06-07, 03-13 |
+| [x] | 06-01 Run history: comparing a run with its normal | `01-run-history-and-baselines.html` | 6.1 | 04-01 |
+| [x] | 06-02 Job statuses and finding upstream blockers | `02-job-statuses-and-task-graph.html` | 6.2 | 04-03, 06-01 |
+| [x] | 06-03 Tracking run times and failure rates | `03-run-times-and-failure-rates.html` | 6.2 | 06-02 |
+| [x] | 06-04 A tour of the Spark UI: jobs, stages, tasks | `04-spark-ui-tour.html` | 6.3 | 00-05, 03-12 |
+| [x] | 06-05 Shuffle: why moving data is slow | `05-shuffle.html` | 6.3 | 06-04 |
+| [x] | 06-06 Data skew | `06-data-skew.html` | 6.3 | 06-05 |
+| [x] | 06-07 Disk spill | `07-disk-spill.html` | 6.3 | 06-05 |
+| [x] | 06-08 Liquid clustering | `08-liquid-clustering.html` | 6.4 | 01-02 |
+| [x] | 06-09 Predictive optimization | `09-predictive-optimization.html` | 6.4 | 06-08 |
+| [x] | 06-10 Cluster startup failures | `10-cluster-startup-failures.html` | 6.5 | 01-04 |
+| [x] | 06-11 Library conflicts | `11-library-conflicts.html` | 6.5 | 01-04 |
+| [x] | 06-12 Out-of-memory errors | `12-out-of-memory.html` | 6.5 | 06-07, 03-13 |
 
 ## Module 07: Governance and Security (15% of the exam)
 

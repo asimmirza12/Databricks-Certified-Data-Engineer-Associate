@@ -1,0 +1,254 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>06-12 Out-of-memory errors · DE Associate course</title>
+<link rel="stylesheet" href="../../assets/course.css">
+<script src="../../assets/course.js"></script>
+</head>
+<body data-lesson="06-12">
+
+<aside class="disclaimer" aria-label="Disclaimer"><strong>Learning resource only.</strong> This is an independent, unofficial study guide made for learning purposes. It is not affiliated with, endorsed by or sponsored by Databricks. Databricks features change often, so always check the details in the <a href="https://docs.databricks.com">official Databricks documentation</a> and the official exam guide on databricks.com before relying on anything here. Databricks and related names are trademarks of their respective owners.</aside>
+
+<main class="wrap">
+
+<header class="hero">
+  <div class="eyebrow">Module 06 · Troubleshooting, Monitoring and Optimization · Lesson 12 of 12</div>
+  <h1>Out-of-memory errors</h1>
+  <p class="lede">Spill makes a job slow. Running out of memory makes it fail. The first question is always the same: did the driver run out, or an executor? The answer points straight at the fix.</p>
+  <dl class="where">
+    <div><dt>Module</dt><dd>06 Troubleshooting, Monitoring and Optimization (10% of the exam)</dd></div>
+    <div><dt>Exam objective</dt><dd>6.5 Work out why memory runs out, on the driver or on executors, and how to fix each case.</dd></div>
+    <div><dt>Time to read</dt><dd>About 13 minutes</dd></div>
+    <div><dt>Before this</dt><dd><a href="07-disk-spill.html">06-07 Disk spill</a> and <a href="../03-transformation-and-modeling/13-tuning-memory-broadcast.html">03-13 Tuning: memory and broadcast</a></dd></div>
+  </dl>
+</header>
+
+<section id="idea">
+  <div class="sec-num">The idea</div>
+  <h2>Two places memory can run out</h2>
+  <p>An <a href="../../glossary.html#oom">out-of-memory error</a> (OOM) happens when a process needs more memory than it has. In Spark there are two kinds of process, and they fail for different reasons.</p>
+  <p><strong>The <a href="../../glossary.html#driver">driver</a></strong> plans the work and runs your notebook's plain Python. It runs out when you pull a large result back to it:</p>
+  <ul>
+    <li><a href="../../glossary.html#collect">collect()</a> or <code>toPandas()</code> on a big DataFrame copies every row into the driver.</li>
+    <li>Broadcasting a table that is not small: the driver builds it before sending it out.</li>
+    <li>Many notebooks attached to one cluster all keep their state on the driver.</li>
+  </ul>
+  <p>The compute may stop with the termination reason <code>DRIVER_OUT_OF_MEMORY</code>, or the notebook reports that the driver restarted. Fixes: keep big data distributed (write it to a table, aggregate or <code>limit()</code> first, use <code>display()</code> for a look), or choose a larger driver type.</p>
+  <p><strong>An <a href="../../glossary.html#executor">executor</a></strong> processes partitions. It usually <a href="07-disk-spill.html">spills</a> rather than failing, but it can run out when one piece of work cannot be split or spilled: a huge <a href="06-data-skew.html">skewed</a> partition, a broadcast table too big for its memory, or very large single values (giant arrays or strings). Tasks fail and the executor may be lost; Spark retries, and after several failures the job fails. Fixes: fix skew, avoid oversized broadcasts, use more and smaller partitions, carry fewer columns, or use instance types with more memory.</p>
+  <div class="analogy">
+    <span class="tag">Everyday analogy</span>
+    <p><strong>The bakery manager's desk.</strong> The bakers (executors) each work at their own bench. If the manager (driver) says "bring me every single receipt from every bench", the desk overflows and the office stops. That is a driver OOM. If one baker is handed a cake too big for any bench, that bench collapses. That is an executor OOM.</p>
+  </div>
+</section>
+
+<section id="how">
+  <div class="sec-num">How it works</div>
+  <h2>collect() pulls everything to one machine</h2>
+  <div class="stage">
+    <svg viewBox="0 0 360 230" role="img" aria-label="Four executors each send their rows up to a single driver box, which overflows. A separate path shows rows written from executors straight to a table, which works.">
+      <defs>
+        <path id="om1" d="M50 170 C 50 110, 180 110, 180 70"/><path id="om2" d="M130 170 C 130 120, 180 120, 180 70"/>
+        <path id="om3" d="M230 170 C 230 120, 180 120, 180 70"/><path id="om4" d="M310 170 C 310 110, 180 110, 180 70"/>
+      </defs>
+      <g class="wire"><use href="#om1"/><use href="#om2"/><use href="#om3"/><use href="#om4"/></g>
+      <rect class="box-acc" x="120" y="25" width="120" height="45" rx="7"/><text class="t-b" x="180" y="45" text-anchor="middle">driver</text><text class="t-m" x="180" y="61" text-anchor="middle">memory full</text>
+      <rect class="box" x="15" y="170" width="70" height="32" rx="6"/><text class="t-m" x="50" y="191" text-anchor="middle">executor</text>
+      <rect class="box" x="95" y="170" width="70" height="32" rx="6"/><text class="t-m" x="130" y="191" text-anchor="middle">executor</text>
+      <rect class="box" x="195" y="170" width="70" height="32" rx="6"/><text class="t-m" x="230" y="191" text-anchor="middle">executor</text>
+      <rect class="box" x="275" y="170" width="70" height="32" rx="6"/><text class="t-m" x="310" y="191" text-anchor="middle">executor</text>
+      <text class="t-m" x="180" y="222" text-anchor="middle">collect(): every row to one place</text>
+      <g class="mover">
+        <circle r="5" class="dot"><animateMotion dur="2.4s" repeatCount="indefinite"><mpath href="#om1"/></animateMotion></circle>
+        <circle r="5" class="dot"><animateMotion dur="2.4s" begin="-0.6s" repeatCount="indefinite"><mpath href="#om2"/></animateMotion></circle>
+        <circle r="5" class="dot"><animateMotion dur="2.4s" begin="-1.2s" repeatCount="indefinite"><mpath href="#om3"/></animateMotion></circle>
+        <circle r="5" class="dot"><animateMotion dur="2.4s" begin="-1.8s" repeatCount="indefinite"><mpath href="#om4"/></animateMotion></circle>
+      </g>
+    </svg>
+    <p class="cap">Writing to a table lets each executor save its own part. Nothing piles up on the driver.</p>
+  </div>
+</section>
+
+<section id="demo">
+  <div class="sec-num">Try it</div>
+  <h2>Make it fail, then fix it</h2>
+  <p>Choose an action on the bakery's sales data and the memory sizes, then run. This simplified model assumes about 1 KB of driver memory per collected row and that executors can spill partitions but not a broadcast table.</p>
+  <div class="stage">
+    <div class="ctrls">
+      <label>Action <select id="mAct">
+        <option value="collect">rows = df.collect()</option>
+        <option value="pandas">pdf = df.toPandas()</option>
+        <option value="agg">aggregate first, then toPandas()</option>
+        <option value="write">df.write.saveAsTable(...)</option>
+        <option value="bcast">broadcast join with "small" table</option>
+      </select></label>
+      <label>Rows <select id="mRows"><option value="1">1 million</option><option value="20" selected>20 million</option><option value="200">200 million</option></select></label>
+      <label>Broadcast table <select id="mB"><option value="0.02">20 MB</option><option value="6">6 GB</option></select></label>
+      <label>Driver memory <select id="mDrv"><option value="8">8 GB</option><option value="16" selected>16 GB</option><option value="64">64 GB</option></select></label>
+      <label>Executor memory <select id="mExe"><option value="4" selected>4 GB</option><option value="16">16 GB</option></select></label>
+      <button id="mGo" type="button" class="primary">Run</button>
+      <button id="mReset" type="button">Clear log</button>
+    </div>
+    <div class="panes">
+      <div class="pane"><h4>Driver</h4><div id="mDrvP"></div></div>
+      <div class="pane"><h4>Executors</h4><div id="mExeP"></div></div>
+    </div>
+    <div class="log" id="mLog" role="log" aria-label="What happened"></div>
+  </div>
+</section>
+
+<section id="code">
+  <div class="sec-num">Code</div>
+  <h2>Driver-safe habits</h2>
+<pre><code>sales = spark.read.table("bakery.silver.sales")   <span class="c-c"># 200 million rows</span>
+
+<span class="c-c"># Risky: copies every row into the driver's memory</span>
+<span class="c-c"># rows = sales.collect()</span>
+<span class="c-c"># pdf  = sales.toPandas()</span>
+
+<span class="c-c"># Safe: shrink first, then bring the small result back</span>
+daily = sales.groupBy("store_id").sum("amount")    <span class="c-c"># 60 rows, one per store</span>
+pdf = daily.toPandas()
+
+<span class="c-c"># Safe: just look at a sample</span>
+display(sales.limit(1000))
+
+<span class="c-c"># Safe: keep big results distributed by writing them out</span>
+sales.filter("amount &gt; 100").write.mode("overwrite").saveAsTable("bakery.gold.big_orders")</code></pre>
+  <p class="note">On serverless notebooks you can switch the notebook to high memory (32 GB instead of 16 GB) for plain Python work. It does not change the memory Spark uses. Exact error messages vary; read the termination reason and the driver logs to confirm which process ran out.</p>
+</section>
+
+<section id="whatif">
+  <div class="sec-num">What if I change this?</div>
+  <h2>Changes and their effects</h2>
+  <div class="tbl"><table class="whatif">
+    <tr><th>Change</th><th>Effect</th></tr>
+    <tr><td>Replace <code>collect()</code> with a write to a table</td><td>Each executor writes its own part; the driver stays light.</td></tr>
+    <tr><td>Aggregate before <code>toPandas()</code></td><td>Only the small result reaches the driver.</td></tr>
+    <tr><td>Larger driver type</td><td>Room for bigger results and more attached notebooks. Treats the symptom, costs more.</td></tr>
+    <tr><td>Broadcast a big table</td><td>Every executor and the driver need room for it all; risk of OOM.</td></tr>
+    <tr><td>More shuffle partitions</td><td>Smaller pieces per task, less chance of executor OOM.</td></tr>
+    <tr><td>Memory-heavier instance types for workers</td><td>More room per task for joins, sorts and aggregations.</td></tr>
+  </table></div>
+</section>
+
+<section id="compare">
+  <div class="sec-num">Compare</div>
+  <h2>Driver OOM vs executor OOM</h2>
+  <div class="tbl"><table>
+    <tr><th></th><th>Driver OOM</th><th>Executor OOM</th></tr>
+    <tr><td>Typical cause</td><td>collect(), toPandas(), big broadcasts, many notebooks</td><td>Skewed partition, oversized broadcast, huge single values</td></tr>
+    <tr><td>What you see</td><td>Driver restarts; termination reason such as DRIVER_OUT_OF_MEMORY</td><td>Tasks fail and executors are lost; Spark retries, then the job fails</td></tr>
+    <tr><td>Where to look</td><td>Termination reason, driver logs</td><td>Spark UI failed tasks and Executors tab</td></tr>
+    <tr><td>First fix</td><td>Do not pull big data to the driver</td><td>Fix skew, smaller partitions, smaller broadcasts</td></tr>
+    <tr><td>Bigger machine</td><td>Larger driver type</td><td>Workers with more memory</td></tr>
+  </table></div>
+</section>
+
+<section id="scenarios">
+  <div class="sec-num">Real life</div>
+  <h2>OOM in practice</h2>
+  <div class="tbl"><table>
+    <tr><th>Scenario</th><th>What happens</th><th>Fix</th></tr>
+    <tr><td>A notebook does <code>toPandas()</code> on a year of sales</td><td>The driver runs out and restarts</td><td>Aggregate in Spark first, or write to a table</td></tr>
+    <tr><td>A shared cluster with 30 notebooks attached becomes unstable</td><td>The driver holds every notebook's state</td><td>Detach idle notebooks; bigger driver; move jobs to job compute</td></tr>
+    <tr><td>One task keeps failing on executors</td><td>A skewed partition is too big</td><td>Fix the skew (AQE, salting)</td></tr>
+    <tr><td>A forced broadcast of a 6 GB table fails</td><td>It does not fit in executor memory</td><td>Remove the broadcast hint; let Spark use a shuffle join</td></tr>
+  </table></div>
+</section>
+
+<section id="traps">
+  <div class="sec-num">Don't confuse these</div>
+  <h2>Memory traps</h2>
+  <div class="grid2">
+    <div class="card trap"><span class="tag">Spill vs OOM</span><p>Spill is slow but finishes. OOM fails.</p></div>
+    <div class="card trap"><span class="tag">Driver vs executor</span><p>Bigger workers do not help a driver OOM, and a bigger driver does not help an executor OOM.</p></div>
+    <div class="card trap"><span class="tag">display vs collect</span><p>display() shows a limited sample; collect() brings back everything.</p></div>
+    <div class="card trap"><span class="tag">More memory last</span><p>Fix the cause first. Bigger machines cost money every run.</p></div>
+  </div>
+</section>
+
+<section id="quiz">
+  <div class="sec-num">Check yourself</div>
+  <h2>Quiz</h2>
+  <div class="quiz">
+    <fieldset>
+      <legend>1. A notebook fails right after <code>df.toPandas()</code> on 300 million rows. Which process most likely ran out?</legend>
+      <label><input type="radio" data-correct> The driver</label>
+      <label><input type="radio"> An executor</label>
+      <label><input type="radio"> The SQL warehouse</label>
+      <p class="explain" hidden>toPandas() copies all rows into the driver.</p>
+    </fieldset>
+    <fieldset>
+      <legend>2. What is the best first fix for that failure?</legend>
+      <label><input type="radio"> Add more workers</label>
+      <label><input type="radio" data-correct> Aggregate or filter in Spark first, or write the result to a table</label>
+      <label><input type="radio"> Increase shuffle partitions</label>
+      <p class="explain" hidden>Keep big data distributed and only bring small results back.</p>
+    </fieldset>
+    <fieldset>
+      <legend>3. Executors keep failing on one task of a join. What is a likely cause?</legend>
+      <label><input type="radio"> Too many notebooks attached</label>
+      <label><input type="radio" data-correct> A huge skewed partition or an oversized broadcast table</label>
+      <label><input type="radio"> collect() in the notebook</label>
+      <p class="explain" hidden>Those are pieces of work an executor cannot split or spill.</p>
+    </fieldset>
+    <fieldset>
+      <legend>4. In the demo, what happened with df.write.saveAsTable on 200 million rows?</legend>
+      <label><input type="radio"> Driver OOM</label>
+      <label><input type="radio" data-correct> It succeeded: each executor wrote its own part</label>
+      <label><input type="radio"> Executor OOM</label>
+      <p class="explain" hidden>Writing does not move rows to the driver.</p>
+    </fieldset>
+  </div>
+</section>
+
+<section id="wrap">
+  <div class="sec-num">Wrap up</div>
+  <h2>Key takeaways</h2>
+  <ul>
+    <li>First ask: driver or executor?</li>
+    <li>Driver OOM: collect(), toPandas(), big broadcasts, many notebooks. Keep data distributed; bigger driver if needed.</li>
+    <li>Executor OOM: skew, oversized broadcasts, huge values. Fix skew, smaller partitions, more memory per worker.</li>
+    <li>Spill is the warning; OOM is the failure.</li>
+  </ul>
+  <h3>Glossary terms used</h3>
+  <p><a href="../../glossary.html#oom">out-of-memory error</a> · <a href="../../glossary.html#driver">driver</a> · <a href="../../glossary.html#executor">executor</a> · <a href="../../glossary.html#collect">collect()</a> · <a href="../../glossary.html#spill">spill</a> · <a href="../../glossary.html#data-skew">data skew</a></p>
+  <h3>Official docs</h3>
+  <ul>
+    <li><a href="https://docs.databricks.com/aws/en/compute/configure">Compute configuration reference (driver type)</a></li>
+    <li><a href="https://docs.databricks.com/aws/en/compute/cluster-config-best-practices">Compute configuration recommendations</a></li>
+    <li><a href="https://docs.databricks.com/aws/en/compute/troubleshooting/debugging-spark-ui">Debugging with the Spark UI</a></li>
+    <li><a href="https://docs.databricks.com/aws/en/optimizations/spark-ui-guide/long-spark-stage-page">Skew and spill</a></li>
+  </ul>
+  <p class="cap">Last verified: 17 November 2026</p>
+</section>
+
+</main>
+
+<script>
+(function () {
+  var C = window.Course, $ = function (id) { return document.getElementById(id); }, L = $('mLog');
+  function show(drvUsed, drv, exe) {
+    $('mDrvP').innerHTML = '<div class="item' + (drvUsed > drv ? ' hot' : '') + '"><span>needs ' + drvUsed.toFixed(1) + ' GB</span><span>has ' + drv + ' GB</span></div>';
+    $('mExeP').innerHTML = '<div class="item' + (exe[0] > exe[1] ? ' hot' : '') + '"><span>' + exe[2] + '</span><span>has ' + exe[1] + ' GB</span></div>';
+  }
+  $('mGo').onclick = function () {
+    var act = $('mAct').value, rows = +$('mRows').value, drv = +$('mDrv').value, exe = +$('mExe').value, b = +$('mB').value;
+    var need = 0, exeNeed = 0, label = 'partitions spill if needed';
+    if (act === 'collect') need = rows;            // ~1 KB per row
+    if (act === 'pandas') need = rows * 1.5;       // Python objects plus a copy
+    if (act === 'agg') need = 0.001;               // 60 store rows
+    if (act === 'bcast') { need = b * 2; exeNeed = b * 2; label = 'needs ' + (b * 2).toFixed(2) + ' GB for the broadcast'; }
+    show(need, drv, [exeNeed, exe, label]); C.bump($('mDrvP'));
+    if (need > drv) { C.log(L, 'bad', 'Driver out of memory: it needed about ' + need.toFixed(1) + ' GB but has ' + drv + ' GB. The driver restarts (termination reason such as DRIVER_OUT_OF_MEMORY). Keep the data distributed, or use a bigger driver.'); return; }
+    if (exeNeed > exe) { C.log(L, 'bad', 'Executor out of memory: the ' + b + ' GB broadcast table does not fit in ' + exe + ' GB. Tasks fail, Spark retries, then the job fails. Remove the broadcast and use a shuffle join.'); return; }
+    var msg = { collect: 'collect() fit: ' + rows + ' million rows (~' + need.toFixed(0) + ' GB) are now in the driver. It works, but grows with the data.', pandas: 'toPandas() fit in the driver this time (~' + need.toFixed(0) + ' GB).', agg: 'Aggregated in Spark first: only 60 rows reached the driver. Safe at any data size.', write: 'saveAsTable: each executor wrote its own partitions. The driver only coordinated. Safe at any data size.', bcast: 'Broadcast fit: ' + b + ' GB copied to the driver and every executor.' }[act];
+    C.log(L, act === 'agg' || act === 'write' ? 'ok' : 'skip', msg);
+  };
+  $('mReset').onclick = function () { L.innerHTML = ''; };
+})();
+</script>
+</body>
+</html>

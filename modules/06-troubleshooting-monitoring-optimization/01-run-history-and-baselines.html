@@ -1,0 +1,263 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>06-01 Run history: comparing a run with its normal · DE Associate course</title>
+<link rel="stylesheet" href="../../assets/course.css">
+<script src="../../assets/course.js"></script>
+</head>
+<body data-lesson="06-01">
+
+<aside class="disclaimer" aria-label="Disclaimer"><strong>Learning resource only.</strong> This is an independent, unofficial study guide made for learning purposes. It is not affiliated with, endorsed by or sponsored by Databricks. Databricks features change often, so always check the details in the <a href="https://docs.databricks.com">official Databricks documentation</a> and the official exam guide on databricks.com before relying on anything here. Databricks and related names are trademarks of their respective owners.</aside>
+
+<main class="wrap">
+
+<header class="hero">
+  <div class="eyebrow">Module 06 · Troubleshooting, Monitoring and Optimization · Lesson 1 of 12</div>
+  <h1>Run history: comparing a run with its normal</h1>
+  <p class="lede">"This run took 40 minutes" means nothing on its own. It only matters when you compare it with how long the same job usually takes. This lesson shows where that history lives and how to use it.</p>
+  <dl class="where">
+    <div><dt>Module</dt><dd>06 Troubleshooting, Monitoring and Optimization (10% of the exam)</dd></div>
+    <div><dt>Exam objective</dt><dd>6.1 Use a job's past runs to notice when a run is slower than usual. This lesson covers the Runs tab, a job's normal duration, duration warnings and the jobs system table.</dd></div>
+    <div><dt>Time to read</dt><dd>About 12 minutes</dd></div>
+    <div><dt>Before this</dt><dd><a href="../04-lakeflow-jobs/01-jobs-tasks-runs.html">04-01 Lakeflow Jobs: jobs, tasks and runs</a></dd></div>
+  </dl>
+</header>
+
+<section id="idea">
+  <div class="sec-num">The idea</div>
+  <h2>Slow is only slow compared with normal</h2>
+  <p>Every time a <a href="../../glossary.html#job">job</a> runs, Lakeflow Jobs keeps a record of that <a href="../../glossary.html#run">run</a>: when it started, how long it took and how it ended. Put those records side by side and you get the job's run history.</p>
+  <p>From the history you can work out a <a href="../../glossary.html#baseline">baseline</a>: the duration the job normally takes, for example the middle value (median) of its last ten good runs. A new run is "slow" when it is clearly longer than that baseline, not when it passes some number you picked from the air.</p>
+  <p>Databricks shows the history in three places:</p>
+  <ul>
+    <li>The job's <strong>Runs</strong> tab. It has a <a href="../../glossary.html#matrix-view">matrix view</a>, where each column is one run and a bar shows its duration, and a list view. It shows about 60 days of runs.</li>
+    <li>A <a href="../../glossary.html#duration-threshold">duration threshold</a> on the job. You set an expected time, and Databricks raises a duration warning when a run goes over it.</li>
+    <li>The <a href="../../glossary.html#system-tables">system table</a> <code>system.lakeflow.job_run_timeline</code>. It keeps a much longer history that you can query with SQL.</li>
+  </ul>
+  <div class="analogy">
+    <span class="tag">Everyday analogy</span>
+    <p><strong>Your morning commute.</strong> If the drive to the bakery normally takes 20 minutes, a 35 minute drive is worth asking about. If it normally takes 45, 35 is a good day. The history of past drives is the run history; "about 20 minutes" is the baseline; the phone alert that says "heavier traffic than usual" is the duration warning.</p>
+  </div>
+</section>
+
+<section id="how">
+  <div class="sec-num">How it works</div>
+  <h2>Each run is compared with the runs before it</h2>
+  <div class="stage">
+    <svg viewBox="0 0 360 230" role="img" aria-label="Bars for eight past runs of similar height, a dashed baseline line across them, and a ninth bar that is much taller and marked slower than normal.">
+      <defs><path id="rh1" d="M20 60 H340"/></defs>
+      <g class="wire"><path d="M20 190 H340"/></g>
+      <rect class="box-soft" x="24" y="128" width="26" height="62" rx="3"/>
+      <rect class="box-soft" x="58" y="122" width="26" height="68" rx="3"/>
+      <rect class="box-soft" x="92" y="132" width="26" height="58" rx="3"/>
+      <rect class="box-soft" x="126" y="126" width="26" height="64" rx="3"/>
+      <rect class="box-soft" x="160" y="120" width="26" height="70" rx="3"/>
+      <rect class="box-soft" x="194" y="130" width="26" height="60" rx="3"/>
+      <rect class="box-soft" x="228" y="124" width="26" height="66" rx="3"/>
+      <rect class="box-soft" x="262" y="128" width="26" height="62" rx="3"/>
+      <rect class="box-acc" x="300" y="62" width="30" height="128" rx="3"/>
+      <g class="wire"><path d="M20 126 H340" stroke-dasharray="5 4"/></g>
+      <text class="t-m" x="24" y="116">baseline (median)</text>
+      <text class="t-b" x="315" y="54" text-anchor="middle">2x</text>
+      <text class="t-m" x="180" y="212" text-anchor="middle">older runs  →  newest run</text>
+      <g class="mover"><circle r="5" class="dot"><animateMotion dur="3s" repeatCount="indefinite"><mpath href="#rh1"/></animateMotion></circle></g>
+    </svg>
+    <p class="cap">The newest run is judged against the middle of the recent runs, not against a fixed guess.</p>
+  </div>
+</section>
+
+<section id="demo">
+  <div class="sec-num">Try it</div>
+  <h2>Spot a slow run</h2>
+  <p>The nightly <code>bakery_sales</code> job has ten past runs. Choose how long the next run takes and add it. The demo works out the baseline from recent runs and checks the warning and timeout you set.</p>
+  <div class="stage">
+    <div class="ctrls">
+      <label>Next run (minutes) <input type="range" id="rNext" min="5" max="90" value="24"> <span id="rNextV">24</span></label>
+      <label>Baseline from last <select id="rWin"><option value="5">5 runs</option><option value="10" selected>10 runs</option></select></label>
+      <label>Duration warning at <select id="rWarn"><option value="0">not set</option><option value="35" selected>35 min</option><option value="45">45 min</option></select></label>
+      <label>Timeout at <select id="rTime"><option value="0">not set</option><option value="60" selected>60 min</option></select></label>
+      <button id="rAdd" type="button" class="primary">Add run</button>
+      <button id="rReset" type="button">Reset history</button>
+    </div>
+    <div class="panes">
+      <div class="pane"><h4>Run history (newest first)</h4><div id="rList"></div></div>
+      <div class="pane"><h4>Baseline</h4><div id="rBase"></div></div>
+    </div>
+    <div class="log" id="rLog" role="log" aria-label="What happened"></div>
+  </div>
+</section>
+
+<section id="code">
+  <div class="sec-num">Code</div>
+  <h2>Compare each run with its recent normal in SQL</h2>
+  <p>The Runs tab is good for a quick look. For a longer view, query the jobs system table. A run that lasts more than an hour is stored as several hourly rows, so add the slices up per run first.</p>
+<pre><code><span class="c-c">-- One row per finished run of the bakery_sales job, with its "normal" next to it</span>
+WITH runs AS (
+  SELECT run_id,
+         MIN(period_start_time) AS started,
+         SUM(timestampdiff(SECOND, period_start_time, period_end_time)) / 60 AS minutes,
+         MAX_BY(result_state, period_end_time) AS result_state   <span class="c-c">-- only the last slice has it</span>
+  FROM system.lakeflow.job_run_timeline
+  WHERE job_id = '123456789'                                    <span class="c-c">-- made-up id</span>
+    AND period_start_time &gt;= current_date() - INTERVAL 30 DAYS
+  GROUP BY run_id
+)
+SELECT run_id,
+       started,
+       round(minutes, 1) AS minutes,
+       round(median(minutes) OVER (ORDER BY started
+             ROWS BETWEEN 10 PRECEDING AND 1 PRECEDING), 1) AS normal_minutes
+FROM runs
+WHERE result_state = 'SUCCEEDED'
+ORDER BY started DESC;</code></pre>
+  <p class="note">Compare <code>minutes</code> with <code>normal_minutes</code>. A ratio well above 1 (say 1.5 or more) is worth a look. Check the column names on the jobs system table page before you rely on them.</p>
+</section>
+
+<section id="whatif">
+  <div class="sec-num">What if I change this?</div>
+  <h2>Choices and their effects</h2>
+  <div class="tbl"><table class="whatif">
+    <tr><th>Change</th><th>Effect</th></tr>
+    <tr><td>Set a duration warning</td><td>A run that passes the expected time raises a duration warning event, which can send a notification. The run keeps going.</td></tr>
+    <tr><td>Set a timeout</td><td>A run that passes the maximum time is stopped and ends as Timed Out.</td></tr>
+    <tr><td>Warning set too low (below the normal)</td><td>Every run warns, so people learn to ignore it.</td></tr>
+    <tr><td>Warning set far too high</td><td>A run can double in length without anyone hearing about it.</td></tr>
+    <tr><td>Baseline from fewer runs</td><td>Reacts faster to a real change, but one odd run moves it more.</td></tr>
+    <tr><td>Use the average instead of the median</td><td>One very long run drags the average up; the median barely moves.</td></tr>
+  </table></div>
+</section>
+
+<section id="compare">
+  <div class="sec-num">Compare</div>
+  <h2>Where to look</h2>
+  <div class="tbl"><table>
+    <tr><th>Tool</th><th>Good for</th><th>How far back</th></tr>
+    <tr><td>Runs tab, matrix view</td><td>A quick look: bar height shows duration, colour shows the result, per run and per task</td><td>About 60 days</td></tr>
+    <tr><td>Runs tab, list view</td><td>Exact start time, duration, status and error code per run</td><td>About 60 days</td></tr>
+    <tr><td>Duration threshold</td><td>Being told automatically when one run is slow</td><td>Checks each run as it happens</td></tr>
+    <tr><td><code>system.lakeflow.job_run_timeline</code></td><td>Trends, medians and comparisons across many jobs</td><td>395 days (verify in the docs)</td></tr>
+  </table></div>
+</section>
+
+<section id="scenarios">
+  <div class="sec-num">Real life</div>
+  <h2>Run history in practice</h2>
+  <div class="tbl"><table>
+    <tr><th>Scenario</th><th>What happens</th><th>Fix</th></tr>
+    <tr><td>The nightly job slowly creeps from 20 to 32 minutes over a month</td><td>No single run looks alarming</td><td>Compare with a baseline from weeks ago in the system table, not just yesterday</td></tr>
+    <tr><td>Black Friday doubles the sales data</td><td>Runs are slower but for a known reason</td><td>Note the cause; check the baseline returns after the peak</td></tr>
+    <tr><td>One run took 3 hours, the rest 25 minutes</td><td>The average jumps; the median does not</td><td>Use the median for the baseline and open that one run to see why</td></tr>
+    <tr><td>Nobody noticed a slow run until the dashboard was late</td><td>No warning was set</td><td>Set a duration warning a bit above the normal and add a notification</td></tr>
+  </table></div>
+</section>
+
+<section id="traps">
+  <div class="sec-num">Don't confuse these</div>
+  <h2>Run history traps</h2>
+  <div class="grid2">
+    <div class="card trap"><span class="tag">Warning vs timeout</span><p>A warning only tells you. A timeout stops the run and marks it Timed Out.</p></div>
+    <div class="card trap"><span class="tag">Slow vs failed</span><p>A slow run can still succeed. Watch duration, not just colour.</p></div>
+    <div class="card trap"><span class="tag">Hourly slices</span><p>In the system table a long run is several rows. Add them per run before comparing.</p></div>
+    <div class="card trap"><span class="tag">60 days vs 395</span><p>The Runs tab covers recent runs. For long trends, use the system table.</p></div>
+  </div>
+</section>
+
+<section id="quiz">
+  <div class="sec-num">Check yourself</div>
+  <h2>Quiz</h2>
+  <div class="quiz">
+    <fieldset>
+      <legend>1. A job usually takes 20 minutes. Today it took 34 minutes and succeeded. What is the best reading?</legend>
+      <label><input type="radio"> Fine, it succeeded</label>
+      <label><input type="radio" data-correct> Worth a look: it is well above its normal</label>
+      <label><input type="radio"> It must have timed out</label>
+      <p class="explain" hidden>Success does not mean healthy. 34 is about 1.7 times its normal.</p>
+    </fieldset>
+    <fieldset>
+      <legend>2. What does a duration warning do when a run passes it?</legend>
+      <label><input type="radio"> Stops the run</label>
+      <label><input type="radio" data-correct> Raises an event that can send a notification, and the run continues</label>
+      <label><input type="radio"> Retries the run</label>
+      <p class="explain" hidden>Stopping the run is what a timeout does.</p>
+    </fieldset>
+    <fieldset>
+      <legend>3. Why use the median of recent runs as the baseline?</legend>
+      <label><input type="radio" data-correct> One very long run barely changes it</label>
+      <label><input type="radio"> It is always lower than the average</label>
+      <label><input type="radio"> Databricks requires it</label>
+      <p class="explain" hidden>The median is the middle value, so a single odd run does not drag it.</p>
+    </fieldset>
+    <fieldset>
+      <legend>4. In the demo, what happened when you added a 70 minute run with the timeout at 60?</legend>
+      <label><input type="radio"> It succeeded with a warning</label>
+      <label><input type="radio" data-correct> It was stopped at 60 minutes and marked Timed Out</label>
+      <label><input type="radio"> It became the new baseline</label>
+      <p class="explain" hidden>Timed out runs are not good runs, so they do not join the baseline either.</p>
+    </fieldset>
+  </div>
+</section>
+
+<section id="wrap">
+  <div class="sec-num">Wrap up</div>
+  <h2>Key takeaways</h2>
+  <ul>
+    <li>Judge a run against the job's own normal, worked out from recent good runs.</li>
+    <li>The Runs tab matrix view shows duration as bar height for each run and task.</li>
+    <li>A duration warning tells you; a timeout stops the run.</li>
+    <li>For long trends, query <code>system.lakeflow.job_run_timeline</code>, adding hourly slices per run.</li>
+  </ul>
+  <h3>Glossary terms used</h3>
+  <p><a href="../../glossary.html#baseline">baseline</a> · <a href="../../glossary.html#matrix-view">matrix view</a> · <a href="../../glossary.html#duration-threshold">duration threshold</a> · <a href="../../glossary.html#job">job</a> · <a href="../../glossary.html#run">run</a> · <a href="../../glossary.html#system-tables">system tables</a></p>
+  <h3>Official docs</h3>
+  <ul>
+    <li><a href="https://docs.databricks.com/aws/en/jobs/monitor">Monitoring and observability for Lakeflow Jobs</a></li>
+    <li><a href="https://docs.databricks.com/aws/en/jobs/configure-job">Configure a job (duration thresholds and timeout)</a></li>
+    <li><a href="https://docs.databricks.com/aws/en/jobs/notifications">Job notifications</a></li>
+    <li><a href="https://docs.databricks.com/aws/en/admin/system-tables/jobs">Jobs system table reference</a></li>
+  </ul>
+  <p class="cap">Last verified: 17 November 2026</p>
+</section>
+
+</main>
+
+<script>
+(function () {
+  var C = window.Course, $ = function (id) { return document.getElementById(id); }, L = $('rLog');
+  var START = [22, 24, 21, 23, 25, 22, 24, 23, 26, 22];
+  var runs;
+  function reset() { runs = START.map(function (m, i) { return { n: i + 1, min: m, state: 'Succeeded' }; }); }
+  function median(a) { var s = a.slice().sort(function (x, y) { return x - y; }), m = s.length >> 1; return s.length ? (s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2) : 0; }
+  function base() {
+    var good = runs.filter(function (r) { return r.state === 'Succeeded'; }).slice(-(+$('rWin').value));
+    return median(good.map(function (r) { return r.min; }));
+  }
+  function bar(m) { return new Array(Math.max(1, Math.round(m / 4)) + 1).join('#'); }
+  function draw() {
+    $('rList').innerHTML = runs.slice().reverse().slice(0, 12).map(function (r) {
+      return '<div class="item' + (r.flag ? ' hot' : '') + '"><span>#' + r.n + ' ' + r.min + ' min ' + bar(r.min) + '</span><span>' + r.state + '</span></div>';
+    }).join('');
+    var b = base();
+    $('rBase').innerHTML = '<div class="big">' + b + ' min</div><div class="item">median of the last ' + $('rWin').value + ' good runs</div><div class="item">"slower than normal" from ' + Math.round(b * 1.5) + ' min (1.5x)</div>';
+  }
+  $('rNext').oninput = function () { $('rNextV').textContent = this.value; };
+  $('rWin').onchange = draw;
+  $('rAdd').onclick = function () {
+    var m = +$('rNext').value, b = base(), warn = +$('rWarn').value, tout = +$('rTime').value;
+    var r = { n: runs.length + 1, min: m, state: 'Succeeded', flag: false };
+    if (tout && m > tout) { r.min = tout; r.state = 'Timed Out'; r.flag = true; }
+    runs.push(r); draw(); C.bump($('rList'));
+    if (r.state === 'Timed Out') { C.log(L, 'bad', 'Run #' + r.n + ' passed the ' + tout + ' min timeout and was stopped: Timed Out. It is left out of the baseline.'); return; }
+    var ratio = Math.round(m / b * 10) / 10;
+    if (warn && m > warn) C.log(L, 'bad', 'Run #' + r.n + ': ' + m + ' min is over the ' + warn + ' min warning, so a duration warning event fired. The run carried on and succeeded.');
+    if (ratio >= 1.5) { r.flag = true; draw(); C.log(L, 'bad', 'Run #' + r.n + ': ' + m + ' min is ' + ratio + 'x the baseline of ' + b + ' min. Slower than normal: open this run and find the slow task.'); }
+    else C.log(L, 'ok', 'Run #' + r.n + ': ' + m + ' min is ' + ratio + 'x the baseline of ' + b + ' min. Within normal.');
+    if (!warn && ratio >= 1.5) C.log(L, 'skip', 'No duration warning is set, so nobody was told automatically.');
+  };
+  $('rReset').onclick = function () { reset(); draw(); L.innerHTML = ''; C.log(L, 'skip', 'History reset to ten normal runs.'); };
+  reset(); draw();
+})();
+</script>
+</body>
+</html>

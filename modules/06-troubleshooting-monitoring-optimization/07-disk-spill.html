@@ -1,0 +1,234 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>06-07 Disk spill · DE Associate course</title>
+<link rel="stylesheet" href="../../assets/course.css">
+<script src="../../assets/course.js"></script>
+</head>
+<body data-lesson="06-07">
+
+<aside class="disclaimer" aria-label="Disclaimer"><strong>Learning resource only.</strong> This is an independent, unofficial study guide made for learning purposes. It is not affiliated with, endorsed by or sponsored by Databricks. Databricks features change often, so always check the details in the <a href="https://docs.databricks.com">official Databricks documentation</a> and the official exam guide on databricks.com before relying on anything here. Databricks and related names are trademarks of their respective owners.</aside>
+
+<main class="wrap">
+
+<header class="hero">
+  <div class="eyebrow">Module 06 · Troubleshooting, Monitoring and Optimization · Lesson 7 of 12</div>
+  <h1>Disk spill</h1>
+  <p class="lede">When a task's data does not fit in memory, Spark does not give up. It writes the overflow to local disk and reads it back later. The job still finishes, just much more slowly. That overflow is called spill.</p>
+  <dl class="where">
+    <div><dt>Module</dt><dd>06 Troubleshooting, Monitoring and Optimization (10% of the exam)</dd></div>
+    <div><dt>Exam objective</dt><dd>6.3 Spot disk spill from a stage's numbers in the Spark UI and know how to reduce it.</dd></div>
+    <div><dt>Time to read</dt><dd>About 12 minutes</dd></div>
+    <div><dt>Before this</dt><dd><a href="05-shuffle.html">06-05 Shuffle: why moving data is slow</a></dd></div>
+  </dl>
+</header>
+
+<section id="idea">
+  <div class="sec-num">The idea</div>
+  <h2>Not enough room, so use the floor</h2>
+  <p>Shuffles, joins, sorts and aggregations need working memory on each <a href="../../glossary.html#executor">executor</a>. If one task's <a href="../../glossary.html#partition">partition</a> is bigger than the memory it can use, Spark writes part of it to the executor's local disk, then reads it back. That is <a href="../../glossary.html#spill">spill</a>. Disk is far slower than memory, so a spilling stage can take many times longer.</p>
+  <p>How to spot it in the <a href="../../glossary.html#spark-ui">Spark UI</a>: open the stage. If it spilled, the stage details show two numbers:</p>
+  <ul>
+    <li><strong>Shuffle spill (memory)</strong>: how big the spilled data was while it sat in memory.</li>
+    <li><strong>Shuffle spill (disk)</strong>: how big it was once written to disk (smaller, because it is stored compactly).</li>
+  </ul>
+  <p>If neither appears, the stage did not spill. Spill is often a warning sign: push the same stage harder and it can become an <a href="12-out-of-memory.html">out-of-memory error</a>.</p>
+  <p>Fixes from the Databricks guide: let Spark pick the number of shuffle partitions (<code>spark.sql.shuffle.partitions = auto</code>), carry fewer rows and columns into the stage (especially big strings and arrays), give executors more memory (larger instances, or fewer but larger workers), and for streaming, read less per batch. If the cause is one huge key, fix the <a href="06-data-skew.html">skew</a> first.</p>
+  <div class="analogy">
+    <span class="tag">Everyday analogy</span>
+    <p><strong>Icing cakes on a small table.</strong> If the cakes fit on the table, the baker works fast. If there are too many, the baker stacks some on the floor and keeps bending down to fetch them. The work gets done, slowly. A bigger table (more memory) or smaller batches (more partitions) fixes it.</p>
+  </div>
+</section>
+
+<section id="how">
+  <div class="sec-num">How it works</div>
+  <h2>Memory fills, the rest goes to disk</h2>
+  <div class="stage">
+    <svg viewBox="0 0 360 220" role="img" aria-label="A partition flows into an executor's memory box. Memory fills up and the overflow flows down to a local disk box and back again.">
+      <defs><path id="sp1" d="M80 70 H170"/><path id="sp2" d="M230 95 V160"/><path id="sp3" d="M250 160 V95"/></defs>
+      <g class="wire"><use href="#sp1"/><use href="#sp2"/><use href="#sp3"/></g>
+      <rect class="box-soft" x="10" y="50" width="70" height="40" rx="6"/><text class="t-m" x="45" y="75" text-anchor="middle">partition</text>
+      <rect class="box" x="170" y="40" width="140" height="55" rx="7"/><text class="t-b" x="240" y="62" text-anchor="middle">execution memory</text><text class="t-m" x="240" y="80" text-anchor="middle">full</text>
+      <rect class="box-acc" x="170" y="160" width="140" height="40" rx="7"/><text class="t-b" x="240" y="185" text-anchor="middle">local disk (spill)</text>
+      <text class="t-m" x="200" y="132" text-anchor="end">write out</text><text class="t-m" x="262" y="132">read back</text>
+      <g class="mover">
+        <circle r="5" class="dot"><animateMotion dur="2s" repeatCount="indefinite"><mpath href="#sp1"/></animateMotion></circle>
+        <circle r="5" class="dot"><animateMotion dur="2s" begin="-0.5s" repeatCount="indefinite"><mpath href="#sp2"/></animateMotion></circle>
+        <circle r="5" class="dot-ok"><animateMotion dur="2s" begin="-1.5s" repeatCount="indefinite"><mpath href="#sp3"/></animateMotion></circle>
+      </g>
+    </svg>
+    <p class="cap">Every byte that spills is written and read again, on top of the normal work.</p>
+  </div>
+</section>
+
+<section id="demo">
+  <div class="sec-num">Try it</div>
+  <h2>Make a stage spill, then fix it</h2>
+  <p>A groupBy shuffles the bakery's sales history. Change the data size, the shuffle partitions, the memory per task and the columns carried along. This simplified model assumes about half of each task's memory is free for the aggregation.</p>
+  <div class="stage">
+    <div class="ctrls">
+      <label>Shuffle data <select id="pData"><option value="20">20 GB</option><option value="100" selected>100 GB</option><option value="400">400 GB</option></select></label>
+      <label>Shuffle partitions <select id="pParts"><option value="50">50</option><option value="200" selected>200 (default)</option><option value="800">800</option><option value="auto">auto</option></select></label>
+      <label>Memory per task <select id="pMem"><option value="1">1 GB</option><option value="2" selected>2 GB</option><option value="4">4 GB</option></select></label>
+      <label class="tog"><input type="checkbox" id="pCols"> Select only needed columns</label>
+      <button id="pGo" type="button" class="primary">Run stage</button>
+      <button id="pReset" type="button">Clear log</button>
+    </div>
+    <div class="panes">
+      <div class="pane"><h4>Per task</h4><div id="pTask"></div></div>
+      <div class="pane"><h4>Stage details</h4><div id="pStage"></div></div>
+    </div>
+    <div class="log" id="pLog" role="log" aria-label="What happened"></div>
+  </div>
+</section>
+
+<section id="code">
+  <div class="sec-num">Code</div>
+  <h2>Reducing spill</h2>
+<pre><code><span class="c-c"># Let AQE choose the number of shuffle partitions from the data size</span>
+spark.conf.set("spark.sql.shuffle.partitions", "auto")
+
+sales = spark.read.table("bakery.silver.sales")
+
+<span class="c-c"># Carry only what the aggregation needs: drop the long free-text column early</span>
+daily = (sales.select("store_id", "sale_date", "amount")
+              .groupBy("store_id", "sale_date")
+              .sum("amount"))
+
+daily.write.mode("overwrite").saveAsTable("bakery.gold.daily_store_sales")</code></pre>
+<pre><code><span class="c-c">-- Same idea in SQL: name the columns instead of SELECT *</span>
+CREATE OR REPLACE TABLE bakery.gold.daily_store_sales AS
+SELECT store_id, sale_date, SUM(amount) AS revenue
+FROM bakery.silver.sales
+GROUP BY store_id, sale_date;</code></pre>
+  <p class="note">On a SQL warehouse, the query profile can flag spill as a performance insight. The suggested fix there is a bigger warehouse size, or reading fewer rows and columns.</p>
+</section>
+
+<section id="whatif">
+  <div class="sec-num">What if I change this?</div>
+  <h2>Changes and their effect on spill</h2>
+  <div class="tbl"><table class="whatif">
+    <tr><th>Change</th><th>Effect</th></tr>
+    <tr><td>More shuffle partitions</td><td>Each task gets less data, so it is more likely to fit in memory. Too many gives lots of tiny tasks.</td></tr>
+    <tr><td><code>spark.sql.shuffle.partitions = auto</code></td><td>Spark sizes the partitions from the data.</td></tr>
+    <tr><td>Larger instances (more memory per core)</td><td>Each task has more room, so less spills.</td></tr>
+    <tr><td>Select fewer columns</td><td>Every row is smaller, so more rows fit.</td></tr>
+    <tr><td>Data grows tenfold, settings unchanged</td><td>Partitions grow tenfold and start spilling.</td></tr>
+    <tr><td>One skewed key</td><td>One task spills heavily while others do not. Fix the skew.</td></tr>
+  </table></div>
+</section>
+
+<section id="compare">
+  <div class="sec-num">Compare</div>
+  <h2>Spill vs out of memory vs skew</h2>
+  <div class="tbl"><table>
+    <tr><th></th><th>Spill</th><th>Out of memory</th><th>Skew</th></tr>
+    <tr><td>Does the job finish?</td><td>Yes, slowly</td><td>No, a task or the driver fails</td><td>Yes, slowly</td></tr>
+    <tr><td>Where you see it</td><td>Shuffle spill (memory/disk) in stage details</td><td>Error message, lost executor, termination reason</td><td>Max task far above the 75th percentile</td></tr>
+    <tr><td>Typical fix</td><td>More partitions, more memory, fewer columns</td><td>Avoid collecting to the driver, more memory, smaller partitions</td><td>AQE, salting</td></tr>
+  </table></div>
+</section>
+
+<section id="scenarios">
+  <div class="sec-num">Real life</div>
+  <h2>Spill in practice</h2>
+  <div class="tbl"><table>
+    <tr><th>Scenario</th><th>What happens</th><th>Fix</th></tr>
+    <tr><td>Nightly job doubled in time after a year of growth</td><td>Partitions outgrew memory and now spill</td><td>Set shuffle partitions to auto, or raise them</td></tr>
+    <tr><td>Stage shows 300 GB spill (disk) on a 50 GB table</td><td>Wide rows with long text columns</td><td>Drop the columns you do not need before the shuffle</td></tr>
+    <tr><td>Only one task spills</td><td>That partition is skewed</td><td>Treat it as skew</td></tr>
+    <tr><td>Streaming job spills after a backlog</td><td>Each micro-batch is too big</td><td>Limit how much each batch reads</td></tr>
+  </table></div>
+</section>
+
+<section id="traps">
+  <div class="sec-num">Don't confuse these</div>
+  <h2>Spill traps</h2>
+  <div class="grid2">
+    <div class="card trap"><span class="tag">Spill is not failure</span><p>The job finishes. It is a performance problem.</p></div>
+    <div class="card trap"><span class="tag">Memory vs disk numbers</span><p>Spill (memory) is the in-memory size; spill (disk) is the smaller on-disk size of the same data.</p></div>
+    <div class="card trap"><span class="tag">No numbers, no spill</span><p>If the spill fields are missing, the stage did not spill.</p></div>
+    <div class="card trap"><span class="tag">More executors</span><p>Adding machines does not shrink a single task's partition. More partitions or more memory per core does.</p></div>
+  </div>
+</section>
+
+<section id="quiz">
+  <div class="sec-num">Check yourself</div>
+  <h2>Quiz</h2>
+  <div class="quiz">
+    <fieldset>
+      <legend>1. What is disk spill?</legend>
+      <label><input type="radio"> Data deleted when memory is full</label>
+      <label><input type="radio" data-correct> Data written to local disk because a task ran out of working memory, then read back</label>
+      <label><input type="radio"> Writing a table to cloud storage</label>
+      <p class="explain" hidden>The job keeps going but spends time on extra disk writes and reads.</p>
+    </fieldset>
+    <fieldset>
+      <legend>2. Where do you see spill in the Spark UI?</legend>
+      <label><input type="radio"> In the Environment tab</label>
+      <label><input type="radio" data-correct> In the stage details, as Shuffle spill (memory) and Shuffle spill (disk)</label>
+      <label><input type="radio"> In the compute event log</label>
+      <p class="explain" hidden>If those fields are not shown, the stage did not spill.</p>
+    </fieldset>
+    <fieldset>
+      <legend>3. Which change most directly reduces spill?</legend>
+      <label><input type="radio"> Adding a filter after the write</label>
+      <label><input type="radio" data-correct> Setting shuffle partitions to auto and selecting fewer columns</label>
+      <label><input type="radio"> Turning off AQE</label>
+      <p class="explain" hidden>Smaller partitions and narrower rows fit in memory more easily.</p>
+    </fieldset>
+    <fieldset>
+      <legend>4. In the demo, with 400 GB and 200 partitions at 2 GB per task, what happened?</legend>
+      <label><input type="radio"> No spill</label>
+      <label><input type="radio" data-correct> Every task spilled and the stage slowed down</label>
+      <label><input type="radio"> The job failed</label>
+      <p class="explain" hidden>2 GB per partition is more than the roughly 1 GB free per task in the model.</p>
+    </fieldset>
+  </div>
+</section>
+
+<section id="wrap">
+  <div class="sec-num">Wrap up</div>
+  <h2>Key takeaways</h2>
+  <ul>
+    <li>Spill happens when a task's data does not fit in working memory; it slows the stage but does not fail it.</li>
+    <li>See it as Shuffle spill (memory) and Shuffle spill (disk) in the stage details.</li>
+    <li>Fix with auto or more shuffle partitions, fewer rows and columns, or more memory per core.</li>
+  </ul>
+  <h3>Glossary terms used</h3>
+  <p><a href="../../glossary.html#spill">spill</a> · <a href="../../glossary.html#executor">executor</a> · <a href="../../glossary.html#partition">partition</a> · <a href="../../glossary.html#spark-ui">Spark UI</a> · <a href="../../glossary.html#oom">out-of-memory error</a></p>
+  <h3>Official docs</h3>
+  <ul>
+    <li><a href="https://docs.databricks.com/aws/en/optimizations/spark-ui-guide/long-spark-stage-page">Skew and spill (Spark UI guide)</a></li>
+    <li><a href="https://docs.databricks.com/aws/en/optimizations/aqe">Adaptive query execution (auto shuffle partitions)</a></li>
+    <li><a href="https://docs.databricks.com/aws/en/compute/cluster-config-best-practices">Compute configuration recommendations</a></li>
+  </ul>
+  <p class="cap">Last verified: 17 November 2026</p>
+</section>
+
+</main>
+
+<script>
+(function () {
+  var C = window.Course, $ = function (id) { return document.getElementById(id); }, L = $('pLog');
+  $('pGo').onclick = function () {
+    var gb = +$('pData').value * ($('pCols').checked ? 0.4 : 1), p = $('pParts').value, mem = +$('pMem').value;
+    var parts = p === 'auto' ? Math.max(1, Math.ceil(gb * 1024 / 128)) : +p;
+    var perTask = gb * 1024 / parts, free = mem * 1024 * 0.5;
+    var spillPer = Math.max(0, perTask - free), spillMemGB = spillPer * parts / 1024, spillDiskGB = spillMemGB * 0.4;
+    var secs = Math.round((parts * perTask / 64 + spillDiskGB * 1024 / 32 * 2) / 50);
+    $('pTask').innerHTML = '<div class="item">tasks: ' + parts + (p === 'auto' ? ' (picked by auto)' : '') + '</div><div class="item">data per task: ' + Math.round(perTask) + ' MB</div><div class="item">memory free per task: ' + Math.round(free) + ' MB</div>';
+    $('pStage').innerHTML = spillPer > 0 ? '<div class="item hot">Shuffle spill (memory): ' + spillMemGB.toFixed(1) + ' GB</div><div class="item hot">Shuffle spill (disk): ' + spillDiskGB.toFixed(1) + ' GB</div><div class="big">' + secs + ' s</div>' : '<div class="item">no spill fields shown</div><div class="big">' + secs + ' s</div>';
+    C.bump($('pStage'));
+    if ($('pCols').checked) C.log(L, 'ok', 'Selected only the needed columns: the shuffle carries ' + gb.toFixed(0) + ' GB instead of ' + $('pData').value + ' GB.');
+    if (spillPer > 0) C.log(L, 'bad', 'Each task holds ' + Math.round(perTask) + ' MB but only about ' + Math.round(free) + ' MB is free, so every task spilled. ' + spillDiskGB.toFixed(1) + ' GB was written to disk and read back. Stage ~' + secs + ' s.');
+    else C.log(L, 'ok', 'Each task\'s ' + Math.round(perTask) + ' MB fits in the ~' + Math.round(free) + ' MB free. No spill. Stage ~' + secs + ' s.');
+    if (perTask < 16) C.log(L, 'skip', 'Partitions are tiny now; very many small tasks add their own overhead.');
+  };
+  $('pReset').onclick = function () { L.innerHTML = ''; };
+})();
+</script>
+</body>
+</html>

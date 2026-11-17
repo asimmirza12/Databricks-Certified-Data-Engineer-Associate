@@ -1,0 +1,246 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>06-11 Library conflicts · DE Associate course</title>
+<link rel="stylesheet" href="../../assets/course.css">
+<script src="../../assets/course.js"></script>
+</head>
+<body data-lesson="06-11">
+
+<aside class="disclaimer" aria-label="Disclaimer"><strong>Learning resource only.</strong> This is an independent, unofficial study guide made for learning purposes. It is not affiliated with, endorsed by or sponsored by Databricks. Databricks features change often, so always check the details in the <a href="https://docs.databricks.com">official Databricks documentation</a> and the official exam guide on databricks.com before relying on anything here. Databricks and related names are trademarks of their respective owners.</aside>
+
+<main class="wrap">
+
+<header class="hero">
+  <div class="eyebrow">Module 06 · Troubleshooting, Monitoring and Optimization · Lesson 11 of 12</div>
+  <h1>Library conflicts</h1>
+  <p class="lede">"It worked yesterday" is often a library problem: two versions of the same package, installed in two places, and the wrong one wins. This lesson explains where libraries come from on Databricks and which one Python actually loads.</p>
+  <dl class="where">
+    <div><dt>Module</dt><dd>06 Troubleshooting, Monitoring and Optimization (10% of the exam)</dd></div>
+    <div><dt>Exam objective</dt><dd>6.5 Work out why libraries clash: which versions are installed where, which one is used, and how to fix it.</dd></div>
+    <div><dt>Time to read</dt><dd>About 13 minutes</dd></div>
+    <div><dt>Before this</dt><dd><a href="../01-databricks-platform/04-compute-types.html">01-04 Compute types</a></dd></div>
+  </dl>
+</header>
+
+<section id="idea">
+  <div class="sec-num">The idea</div>
+  <h2>Same package, several places, one winner</h2>
+  <p>A library is a package of code your notebook imports, such as pandas. On Databricks a Python library can come from three main places:</p>
+  <ul>
+    <li><strong><a href="../../glossary.html#databricks-runtime">Databricks Runtime</a></strong>: every runtime version ships with many libraries already installed. Each runtime's release notes list the exact versions.</li>
+    <li><strong><a href="../../glossary.html#compute-scoped-library">Compute-scoped libraries</a></strong>: installed on a cluster (from PyPI, Maven, a volume, a requirements.txt file and so on). Every notebook on that cluster sees them.</li>
+    <li><strong><a href="../../glossary.html#notebook-scoped-library">Notebook-scoped libraries</a></strong>: installed with <code>%pip install</code> inside one notebook. Only that notebook session sees them, and they must be installed again in each new session.</li>
+  </ul>
+  <p>When the same package is in several places, Python uses the one highest in this order: notebook-scoped, then compute-scoped, then the runtime's own copy. (Files in the current Git folder come even before notebook-scoped libraries.)</p>
+  <p>Two more rules cause most surprises:</p>
+  <ul>
+    <li>A package that was already imported stays loaded. After installing a new version, restart Python with <code>dbutils.library.restartPython()</code>, or you keep using the old one.</li>
+    <li>A newly installed cluster library is only seen by notebooks after they start a new session.</li>
+  </ul>
+  <p>A conflict happens when two packages need different versions of the same dependency, or when your version breaks something the runtime relies on. The fix is nearly always: pin exact versions, install in one place, restart Python, and read the runtime release notes.</p>
+  <div class="analogy">
+    <span class="tag">Everyday analogy</span>
+    <p><strong>Recipe cards in the bakery.</strong> There is the head office's recipe book (the runtime), a recipe pinned on the kitchen wall (compute-scoped) and a card in a baker's own pocket (notebook-scoped). If they disagree, the baker follows the pocket card. And if the baker already started mixing from the old card, swapping cards mid-batch does nothing until they start a fresh batch (restart Python).</p>
+  </div>
+</section>
+
+<section id="how">
+  <div class="sec-num">How it works</div>
+  <h2>Which copy wins</h2>
+  <div class="stage">
+    <svg viewBox="0 0 360 220" role="img" aria-label="Three stacked layers: notebook-scoped on top, compute-scoped in the middle, runtime at the bottom. An arrow from import pandas checks from the top and stops at the first layer that has pandas.">
+      <defs><path id="lb1" d="M300 30 V170"/></defs>
+      <rect class="box-acc" x="20" y="20" width="230" height="40" rx="6"/><text class="t-b" x="135" y="45" text-anchor="middle">1 notebook-scoped (%pip)</text>
+      <rect class="box" x="20" y="80" width="230" height="40" rx="6"/><text class="t-b" x="135" y="105" text-anchor="middle">2 compute-scoped (cluster)</text>
+      <rect class="box-soft" x="20" y="140" width="230" height="40" rx="6"/><text class="t-b" x="135" y="165" text-anchor="middle">3 Databricks Runtime</text>
+      <g class="wire"><use href="#lb1"/></g>
+      <text class="mono" x="300" y="200" text-anchor="middle">import pandas</text>
+      <g class="mover"><circle r="5" class="dot"><animateMotion dur="3s" repeatCount="indefinite"><mpath href="#lb1"/></animateMotion></circle></g>
+    </svg>
+    <p class="cap">Python takes the first copy it finds, starting from the top.</p>
+  </div>
+</section>
+
+<section id="demo">
+  <div class="sec-num">Try it</div>
+  <h2>Which pandas did you get?</h2>
+  <p>The runtime in this demo ships pandas 1.5.3 (an example version; check the release notes for yours). Install other versions in different places, import pandas, and try installing without restarting Python. <code>bakery_utils</code> is a made-up package that needs pandas below 2.</p>
+  <div class="stage">
+    <div class="ctrls">
+      <label>Cluster library <select id="bClu"><option value="">none</option><option value="2.0.3">pandas==2.0.3</option></select></label>
+      <label>%pip in notebook <select id="bPip"><option value="">none</option><option value="2.2.2">pandas==2.2.2</option><option value="1.5.3">pandas==1.5.3</option></select></label>
+      <label class="tog"><input type="checkbox" id="bUtil"> Also use bakery_utils (needs pandas&lt;2)</label>
+      <button id="bInst" type="button">Apply installs</button>
+      <button id="bRestart" type="button">restartPython()</button>
+      <button id="bImp" type="button" class="primary">import pandas</button>
+      <button id="bNew" type="button">New session</button>
+      <button id="bReset" type="button">Clear log</button>
+    </div>
+    <div class="panes">
+      <div class="pane"><h4>Installed</h4><div id="bLayers"></div></div>
+      <div class="pane"><h4>Loaded in Python</h4><div id="bLoaded"></div></div>
+    </div>
+    <div class="log" id="bLog" role="log" aria-label="What happened"></div>
+  </div>
+</section>
+
+<section id="code">
+  <div class="sec-num">Code</div>
+  <h2>Installing safely in a notebook</h2>
+<pre><code><span class="c-c"># Cell 1: install first, with exact versions (put this at the top of the notebook)</span>
+%pip install pandas==2.2.2 openpyxl==3.1.5
+
+<span class="c-c"># Cell 2: restart Python so the new versions are the ones imported</span>
+dbutils.library.restartPython()
+
+<span class="c-c"># Cell 3: check what you actually got</span>
+import pandas, sys
+print(pandas.__version__, sys.version)</code></pre>
+<pre><code><span class="c-c"># requirements.txt kept in a volume, installed the same way</span>
+%pip install -r /Volumes/bakery/ops/libs/requirements.txt</code></pre>
+  <p class="note">Install libraries before any code that imports them, because restarting Python clears your variables. You cannot uninstall a runtime library with <code>%pip</code>; you can only install a different version on top. JAR libraries cannot be notebook-scoped. On serverless notebooks, add dependencies in the Environment side panel, and never install PySpark there.</p>
+</section>
+
+<section id="whatif">
+  <div class="sec-num">What if I change this?</div>
+  <h2>Choices and their effects</h2>
+  <div class="tbl"><table class="whatif">
+    <tr><th>Change</th><th>Effect</th></tr>
+    <tr><td><code>%pip install</code> without restarting Python, after pandas was imported</td><td>The old version stays loaded until restart.</td></tr>
+    <tr><td>Install on the cluster while notebooks are attached</td><td>They only see it after a new session.</td></tr>
+    <tr><td>Unpinned install (<code>%pip install pandas</code>)</td><td>You get whatever is newest today; tomorrow may differ.</td></tr>
+    <tr><td>Upgrade the runtime version</td><td>Preinstalled library versions change. Read the release notes first.</td></tr>
+    <tr><td>Install a package that needs an older dependency</td><td>pip may downgrade a shared dependency and break other code.</td></tr>
+    <tr><td>Uninstall a cluster library</td><td>Shows as pending until the cluster restarts.</td></tr>
+  </table></div>
+</section>
+
+<section id="compare">
+  <div class="sec-num">Compare</div>
+  <h2>Compute-scoped vs notebook-scoped</h2>
+  <div class="tbl"><table>
+    <tr><th></th><th>Compute-scoped</th><th>Notebook-scoped (<code>%pip</code>)</th></tr>
+    <tr><td>Who sees it</td><td>All notebooks and jobs on the cluster</td><td>Only this notebook session</td></tr>
+    <tr><td>Lasts</td><td>Reinstalled at every cluster start</td><td>Only this session; reinstall each time</td></tr>
+    <tr><td>Wins over the other?</td><td>No</td><td>Yes</td></tr>
+    <tr><td>JARs (Java/Scala)</td><td>Yes</td><td>No</td></tr>
+    <tr><td>Good for</td><td>Shared, stable dependencies</td><td>One notebook's needs without affecting others</td></tr>
+  </table></div>
+  <p>Installing libraries from DBFS root or with init scripts is no longer recommended. Use volumes, workspace files or package indexes instead.</p>
+</section>
+
+<section id="scenarios">
+  <div class="sec-num">Real life</div>
+  <h2>Conflicts in practice</h2>
+  <div class="tbl"><table>
+    <tr><th>Scenario</th><th>What happens</th><th>Fix</th></tr>
+    <tr><td>Code breaks after a runtime upgrade</td><td>A preinstalled library changed version</td><td>Check the release notes; pin the version you need with %pip</td></tr>
+    <tr><td>You installed pandas 2.2 but still see 1.5</td><td>Python was not restarted</td><td>restartPython() after installing</td></tr>
+    <tr><td>Library shows Failed on the compute's Libraries tab</td><td>Bad version, unreachable index, or a dependency clash</td><td>Read the error message, fix the version, reinstall</td></tr>
+    <tr><td>Two notebooks on one cluster need different versions</td><td>A cluster library forces one version on both</td><td>Use notebook-scoped installs in each</td></tr>
+  </table></div>
+</section>
+
+<section id="traps">
+  <div class="sec-num">Don't confuse these</div>
+  <h2>Library traps</h2>
+  <div class="grid2">
+    <div class="card trap"><span class="tag">Installed vs loaded</span><p>A new version on disk does nothing until Python restarts.</p></div>
+    <div class="card trap"><span class="tag">%pip wins</span><p>Notebook-scoped beats compute-scoped, which beats the runtime.</p></div>
+    <div class="card trap"><span class="tag">Restart clears state</span><p>restartPython() wipes your variables. Install first, then run the rest.</p></div>
+    <div class="card trap"><span class="tag">Pin versions</span><p>Unpinned installs drift over time and cause "worked yesterday" bugs.</p></div>
+  </div>
+</section>
+
+<section id="quiz">
+  <div class="sec-num">Check yourself</div>
+  <h2>Quiz</h2>
+  <div class="quiz">
+    <fieldset>
+      <legend>1. The cluster has pandas 2.0.3 installed and your notebook ran <code>%pip install pandas==2.2.2</code> then restarted Python. Which version does it use?</legend>
+      <label><input type="radio"> 2.0.3</label>
+      <label><input type="radio" data-correct> 2.2.2</label>
+      <label><input type="radio"> The runtime's version</label>
+      <p class="explain" hidden>Notebook-scoped libraries come first.</p>
+    </fieldset>
+    <fieldset>
+      <legend>2. Why call <code>dbutils.library.restartPython()</code> after %pip install?</legend>
+      <label><input type="radio" data-correct> So modules already imported are loaded again at the new version</label>
+      <label><input type="radio"> To restart the whole cluster</label>
+      <label><input type="radio"> To save the library for other notebooks</label>
+      <p class="explain" hidden>It restarts only this notebook's Python process.</p>
+    </fieldset>
+    <fieldset>
+      <legend>3. Where do you find which libraries a Databricks Runtime version ships with?</legend>
+      <label><input type="radio"> The Spark UI</label>
+      <label><input type="radio" data-correct> That runtime's release notes</label>
+      <label><input type="radio"> The event log</label>
+      <p class="explain" hidden>Each release notes page lists the preinstalled library versions.</p>
+    </fieldset>
+    <fieldset>
+      <legend>4. In the demo, you imported pandas, then installed 2.2.2 with %pip and imported again without restarting. What loaded?</legend>
+      <label><input type="radio"> 2.2.2</label>
+      <label><input type="radio" data-correct> The version imported before, because Python was not restarted</label>
+      <label><input type="radio"> An error</label>
+      <p class="explain" hidden>Already imported modules stay loaded until Python restarts.</p>
+    </fieldset>
+  </div>
+</section>
+
+<section id="wrap">
+  <div class="sec-num">Wrap up</div>
+  <h2>Key takeaways</h2>
+  <ul>
+    <li>Python libraries come from the runtime, the cluster, or %pip; %pip wins, then cluster, then runtime.</li>
+    <li>Restart Python after installing; new cluster libraries need a new session.</li>
+    <li>Pin versions and check runtime release notes before upgrading.</li>
+    <li>Use notebook-scoped installs when notebooks need different versions.</li>
+  </ul>
+  <h3>Glossary terms used</h3>
+  <p><a href="../../glossary.html#compute-scoped-library">compute-scoped library</a> · <a href="../../glossary.html#notebook-scoped-library">notebook-scoped library</a> · <a href="../../glossary.html#databricks-runtime">Databricks Runtime</a></p>
+  <h3>Official docs</h3>
+  <ul>
+    <li><a href="https://docs.databricks.com/aws/en/libraries/">Install libraries (including precedence)</a></li>
+    <li><a href="https://docs.databricks.com/aws/en/libraries/notebooks-python-libraries">Notebook-scoped Python libraries</a></li>
+    <li><a href="https://docs.databricks.com/aws/en/libraries/cluster-libraries">Compute-scoped libraries</a></li>
+    <li><a href="https://docs.databricks.com/aws/en/libraries/restart-python-process">Restart the Python process</a></li>
+    <li><a href="https://docs.databricks.com/aws/en/compute/serverless/dependencies">Serverless environment dependencies</a></li>
+    <li><a href="https://docs.databricks.com/aws/en/release-notes/runtime/">Databricks Runtime release notes</a></li>
+  </ul>
+  <p class="cap">Last verified: 17 November 2026</p>
+</section>
+
+</main>
+
+<script>
+(function () {
+  var C = window.Course, $ = function (id) { return document.getElementById(id); }, L = $('bLog');
+  var RUNTIME = '1.5.3', inst = { clu: '', pip: '' }, loaded = null, cluPending = null;
+  function winner() { return inst.pip || inst.clu || RUNTIME; }
+  function where(v) { return v === inst.pip && inst.pip ? 'notebook-scoped' : v === inst.clu && inst.clu ? 'compute-scoped' : 'runtime'; }
+  function draw() {
+    $('bLayers').innerHTML = '<div class="item"><span>notebook (%pip)</span><span>' + (inst.pip || '-') + '</span></div><div class="item"><span>cluster</span><span>' + (inst.clu || '-') + (cluPending !== null ? ' (new session: ' + (cluPending || 'removed') + ')' : '') + '</span></div><div class="item"><span>runtime</span><span>' + RUNTIME + '</span></div>';
+    $('bLoaded').innerHTML = loaded ? '<div class="big">pandas ' + loaded + '</div>' : '<div class="item off">pandas not imported yet</div>';
+  }
+  $('bInst').onclick = function () {
+    var clu = $('bClu').value, pip = $('bPip').value;
+    if (clu !== inst.clu && clu !== cluPending) { cluPending = clu; C.log(L, 'skip', clu ? 'Installed pandas==' + clu + ' on the cluster. This notebook will see it after a new session.' : 'Removed the cluster library: uninstall pending until restart.'); }
+    if (pip !== inst.pip) { inst.pip = pip; C.log(L, 'ok', pip ? '%pip install pandas==' + pip + ': installed for this notebook session only.' : 'No notebook-scoped pandas.'); if (loaded) C.log(L, 'skip', 'pandas is already imported. Restart Python to use the new version.'); }
+    draw();
+  };
+  $('bRestart').onclick = function () { loaded = null; draw(); C.log(L, 'ok', 'restartPython(): Python restarted. Variables are cleared; the next import loads fresh.'); };
+  $('bNew').onclick = function () { inst.pip = ''; $('bPip').value = ''; if (cluPending !== null) inst.clu = cluPending; cluPending = null; loaded = null; draw(); C.log(L, 'skip', 'New session: %pip installs are gone, cluster libraries are picked up.'); };
+  $('bImp').onclick = function () {
+    if (loaded) { C.log(L, loaded === winner() ? 'ok' : 'bad', 'import pandas: still ' + loaded + ' (already loaded).' + (loaded !== winner() ? ' Installed winner is ' + winner() + ', but Python was not restarted.' : '')); }
+    else { loaded = winner(); draw(); C.bump($('bLoaded')); C.log(L, 'ok', 'import pandas: loaded ' + loaded + ' from the ' + where(loaded) + ' copy (highest place that has it).'); }
+    if ($('bUtil').checked && loaded.charAt(0) !== '1') C.log(L, 'bad', 'bakery_utils needs pandas<2 but ' + loaded + ' is loaded: conflict. Pin pandas below 2 for this notebook, or upgrade bakery_utils.');
+  };
+  $('bReset').onclick = function () { L.innerHTML = ''; };
+  draw();
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,249 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>06-10 Cluster startup failures · DE Associate course</title>
+<link rel="stylesheet" href="../../assets/course.css">
+<script src="../../assets/course.js"></script>
+</head>
+<body data-lesson="06-10">
+
+<aside class="disclaimer" aria-label="Disclaimer"><strong>Learning resource only.</strong> This is an independent, unofficial study guide made for learning purposes. It is not affiliated with, endorsed by or sponsored by Databricks. Databricks features change often, so always check the details in the <a href="https://docs.databricks.com">official Databricks documentation</a> and the official exam guide on databricks.com before relying on anything here. Databricks and related names are trademarks of their respective owners.</aside>
+
+<main class="wrap">
+
+<header class="hero">
+  <div class="eyebrow">Module 06 · Troubleshooting, Monitoring and Optimization · Lesson 10 of 12</div>
+  <h1>Cluster startup failures</h1>
+  <p class="lede">Sometimes a job fails before any of your code runs, because the compute never started. The cause is almost always written down. This lesson shows where to read it and what the common causes are.</p>
+  <dl class="where">
+    <div><dt>Module</dt><dd>06 Troubleshooting, Monitoring and Optimization (10% of the exam)</dd></div>
+    <div><dt>Exam objective</dt><dd>6.5 Work out why classic compute will not start, using the event log and the termination reason.</dd></div>
+    <div><dt>Time to read</dt><dd>About 12 minutes</dd></div>
+    <div><dt>Before this</dt><dd><a href="../01-databricks-platform/04-compute-types.html">01-04 Compute types</a></dd></div>
+  </dl>
+</header>
+
+<section id="idea">
+  <div class="sec-num">The idea</div>
+  <h2>Startup is a checklist; the log says which step broke</h2>
+  <p>Starting classic <a href="../../glossary.html#compute">compute</a> runs through a series of steps: check the settings against any <a href="../../glossary.html#compute-policy">compute policy</a>, ask the cloud for machines, give them network addresses, connect them to the Databricks control plane, run any <a href="../../glossary.html#init-script">init scripts</a>, then start Spark. If any step fails, the compute stops with a <a href="../../glossary.html#termination-code">termination reason</a>.</p>
+  <p>Where to look:</p>
+  <ul>
+    <li><strong>The <a href="../../glossary.html#event-log">event log</a></strong>, a tab on the compute's details page. It lists every start, resize, init script and termination, with details. Events are kept for 60 days.</li>
+    <li><strong>The termination reason</strong>, shown on the compute and in the event log, with a code such as <code>INIT_SCRIPT_FAILURE</code> or <code>CLOUD_PROVIDER_LAUNCH_FAILURE</code>.</li>
+    <li><strong>Init script logs</strong>, if a script failed: each script writes its own stdout and stderr files.</li>
+    <li><strong>Driver logs</strong>, a tab on the compute page, for problems after Spark started.</li>
+  </ul>
+  <p>Common causes: the cloud has no spare machines of that type, the account hit a cloud quota, the subnet has run out of free IP addresses, a network rule blocks the nodes from reaching the control plane, an init script exits with an error, or a permission is missing. <a href="../../glossary.html#serverless">Serverless</a> compute avoids most of these, because Databricks runs the machines.</p>
+  <div class="analogy">
+    <span class="tag">Everyday analogy</span>
+    <p><strong>Opening the bakery in the morning.</strong> Unlock the door, switch on the power, light the ovens, start the mixers. If the ovens will not light, you do not blame the bread recipe. You check the opening checklist to see which step failed. The event log is that checklist, filled in.</p>
+  </div>
+</section>
+
+<section id="how">
+  <div class="sec-num">How it works</div>
+  <h2>The startup steps</h2>
+  <div class="stage">
+    <svg viewBox="0 0 360 250" role="img" aria-label="Five steps from top to bottom: policy check, get machines from the cloud, network and IP addresses, init scripts, Spark ready. A side arrow from any step leads to terminated with a reason, recorded in the event log.">
+      <defs><path id="cs1" d="M110 30 V215"/></defs>
+      <g class="wire"><use href="#cs1"/><path d="M180 110 H250"/></g>
+      <rect class="box-soft" x="20" y="15" width="180" height="30" rx="6"/><text class="t-m" x="110" y="35" text-anchor="middle">1 policy check</text>
+      <rect class="box" x="20" y="60" width="180" height="30" rx="6"/><text class="t-m" x="110" y="80" text-anchor="middle">2 get machines (capacity, quota)</text>
+      <rect class="box" x="20" y="105" width="180" height="30" rx="6"/><text class="t-m" x="110" y="125" text-anchor="middle">3 network and IP addresses</text>
+      <rect class="box" x="20" y="150" width="180" height="30" rx="6"/><text class="t-m" x="110" y="170" text-anchor="middle">4 init scripts</text>
+      <rect class="box-soft" x="20" y="200" width="180" height="30" rx="6"/><text class="t-b" x="110" y="220" text-anchor="middle">5 Spark ready</text>
+      <rect class="box-acc" x="250" y="90" width="100" height="44" rx="6"/><text class="t-m" x="300" y="108" text-anchor="middle">terminated</text><text class="t-m" x="300" y="124" text-anchor="middle">+ reason</text>
+      <text class="t-m" x="300" y="152" text-anchor="middle">event log</text>
+      <g class="mover"><circle r="5" class="dot"><animateMotion dur="3s" repeatCount="indefinite"><mpath href="#cs1"/></animateMotion></circle></g>
+    </svg>
+    <p class="cap">The first step that fails decides the termination reason.</p>
+  </div>
+</section>
+
+<section id="demo">
+  <div class="sec-num">Try it</div>
+  <h2>Start the compute</h2>
+  <p>Untick a condition to break that step, then start the compute for the nightly bakery job. The demo walks the steps in order and records what the event log would show.</p>
+  <div class="stage">
+    <div class="ctrls">
+      <label class="tog"><input type="checkbox" id="cPol" checked> Policy allows this instance type</label>
+      <label class="tog"><input type="checkbox" id="cCap" checked> Cloud has capacity in this zone</label>
+      <label class="tog"><input type="checkbox" id="cAz"> Availability zone set to auto</label>
+      <label class="tog"><input type="checkbox" id="cQuota" checked> Cloud quota not reached</label>
+      <label class="tog"><input type="checkbox" id="cIp" checked> Subnet has free IP addresses</label>
+      <label class="tog"><input type="checkbox" id="cNet" checked> Nodes can reach the control plane</label>
+      <label class="tog"><input type="checkbox" id="cInit" checked> Init script exits cleanly</label>
+      <button id="cGo" type="button" class="primary">Start compute</button>
+      <button id="cReset" type="button">Clear</button>
+    </div>
+    <div class="panes">
+      <div class="pane"><h4>Event log</h4><div id="cEvents"></div></div>
+      <div class="pane"><h4>Compute state</h4><div id="cState"></div></div>
+    </div>
+    <div class="log" id="cLog" role="log" aria-label="What happened"></div>
+  </div>
+</section>
+
+<section id="code">
+  <div class="sec-num">Code</div>
+  <h2>Reading the reason from the CLI</h2>
+<pre><code><span class="c-c"># Show the compute's state and termination reason (the JSON includes termination_reason)</span>
+databricks clusters get 0123-456789-abcdefgh
+
+<span class="c-c"># List recent events for the compute, newest first</span>
+databricks clusters events 0123-456789-abcdefgh --order DESC --limit 20</code></pre>
+<pre><code><span class="c-c">#!/bin/bash</span>
+<span class="c-c"># init script kept in a Unity Catalog volume, e.g. /Volumes/bakery/ops/scripts/setup.sh</span>
+<span class="c-c"># Fail loudly and early so the error is easy to find in the init script logs</span>
+set -euo pipefail
+echo "installing bakery fonts"
+apt-get install -y fonts-dejavu-core=2.37-2   <span class="c-c"># pin versions</span></code></pre>
+  <p class="note">The cluster ID above is made up. Check the CLI's exact flags with <code>databricks clusters events --help</code>. Init scripts stored on DBFS are end of life; keep them in volumes or workspace files. Databricks recommends avoiding init scripts where a policy or notebook-scoped library can do the job.</p>
+</section>
+
+<section id="whatif">
+  <div class="sec-num">What if I change this?</div>
+  <h2>Settings and their effect on startup</h2>
+  <div class="tbl"><table class="whatif">
+    <tr><th>Change</th><th>Effect</th></tr>
+    <tr><td>Availability zone set to auto</td><td>Databricks picks the zone with the most free IPs and can retry another zone if the first lacks capacity at startup.</td></tr>
+    <tr><td>Use flexible node types</td><td>Can fall back to a similar instance type when the one you asked for is unavailable.</td></tr>
+    <tr><td>Add an init script</td><td>One more thing that can fail at every start. Changes need a restart.</td></tr>
+    <tr><td>Choose a type the policy does not allow</td><td>You cannot create or edit the compute with that setting.</td></tr>
+    <tr><td>Ask for more workers than the subnet has IPs</td><td>Nodes cannot get addresses; startup or resize fails.</td></tr>
+    <tr><td>Switch the job to serverless</td><td>No machines, subnets or init scripts for you to manage.</td></tr>
+  </table></div>
+</section>
+
+<section id="compare">
+  <div class="sec-num">Compare</div>
+  <h2>Common causes and where they show</h2>
+  <div class="tbl"><table>
+    <tr><th>Cause</th><th>Example termination code</th><th>Usual fix</th></tr>
+    <tr><td>Cloud out of capacity for that type</td><td><code>AWS_INSUFFICIENT_INSTANCE_CAPACITY_FAILURE</code></td><td>Zone auto, another instance type, retry later</td></tr>
+    <tr><td>Cloud quota reached</td><td><code>AWS_RESOURCE_QUOTA_EXCEEDED</code></td><td>Ask the cloud admin to raise the quota</td></tr>
+    <tr><td>Subnet out of IP addresses</td><td><code>AWS_INSUFFICIENT_FREE_ADDRESSES_IN_SUBNET_FAILURE</code></td><td>Fewer nodes, bigger subnets</td></tr>
+    <tr><td>Init script error</td><td><code>INIT_SCRIPT_FAILURE</code></td><td>Read the script's stderr log and fix the script</td></tr>
+    <tr><td>Nodes cannot reach the control plane</td><td>Event log shows the nodes not responding (verify the exact code in the docs)</td><td>Fix firewall or routing rules</td></tr>
+  </table></div>
+  <p>The exact code names depend on your cloud. The Clusters API reference lists them all.</p>
+</section>
+
+<section id="scenarios">
+  <div class="sec-num">Real life</div>
+  <h2>Startup failures in practice</h2>
+  <div class="tbl"><table>
+    <tr><th>Scenario</th><th>What happens</th><th>Fix</th></tr>
+    <tr><td>Nightly job fails with no notebook output</td><td>The job compute never started</td><td>Open the run, then the compute's event log and termination reason</td></tr>
+    <tr><td>Startup broke after someone edited an init script</td><td>The script now exits with an error</td><td>Read its stderr log; fix and restart</td></tr>
+    <tr><td>Big clusters fail at 9am every Monday</td><td>Many jobs start at once and the subnet runs out of IPs</td><td>Stagger schedules or enlarge the subnet</td></tr>
+    <tr><td>One instance type keeps failing in one region</td><td>The cloud has no spare capacity</td><td>Zone auto, flexible node types, or another type</td></tr>
+  </table></div>
+</section>
+
+<section id="traps">
+  <div class="sec-num">Don't confuse these</div>
+  <h2>Startup traps</h2>
+  <div class="grid2">
+    <div class="card trap"><span class="tag">Event log vs driver log</span><p>Startup problems are in the event log. Driver logs cover what happened after Spark started.</p></div>
+    <div class="card trap"><span class="tag">Not your code</span><p>If compute never started, your notebook did not run. Do not debug the notebook first.</p></div>
+    <div class="card trap"><span class="tag">Policy edits</span><p>Changing a policy does not update existing compute until compliance is enforced or it is edited.</p></div>
+    <div class="card trap"><span class="tag">Serverless</span><p>No init scripts or policies there, and far fewer startup problems.</p></div>
+  </div>
+</section>
+
+<section id="quiz">
+  <div class="sec-num">Check yourself</div>
+  <h2>Quiz</h2>
+  <div class="quiz">
+    <fieldset>
+      <legend>1. Classic compute failed to start. Where should you look first?</legend>
+      <label><input type="radio"> The notebook's last cell output</label>
+      <label><input type="radio" data-correct> The compute's event log and termination reason</label>
+      <label><input type="radio"> The Spark UI Stages tab</label>
+      <p class="explain" hidden>If Spark never started there is no notebook output or Spark UI to read.</p>
+    </fieldset>
+    <fieldset>
+      <legend>2. The termination reason is INIT_SCRIPT_FAILURE. What next?</legend>
+      <label><input type="radio" data-correct> Read that script's stderr log and fix the script</label>
+      <label><input type="radio"> Add more workers</label>
+      <label><input type="radio"> Raise the cloud quota</label>
+      <p class="explain" hidden>Each init script writes its own stdout and stderr files.</p>
+    </fieldset>
+    <fieldset>
+      <legend>3. Which setting can help when one zone has no capacity at startup?</legend>
+      <label><input type="radio"> A bigger driver</label>
+      <label><input type="radio" data-correct> Availability zone set to auto</label>
+      <label><input type="radio"> More shuffle partitions</label>
+      <p class="explain" hidden>Auto can retry in another zone on a capacity error at startup.</p>
+    </fieldset>
+    <fieldset>
+      <legend>4. In the demo, you broke both the subnet IPs and the init script. Which reason was shown?</legend>
+      <label><input type="radio"> Init script failure</label>
+      <label><input type="radio" data-correct> The subnet IP failure, because it comes first</label>
+      <label><input type="radio"> Both at once</label>
+      <p class="explain" hidden>Startup stops at the first failing step, so later steps never run.</p>
+    </fieldset>
+  </div>
+</section>
+
+<section id="wrap">
+  <div class="sec-num">Wrap up</div>
+  <h2>Key takeaways</h2>
+  <ul>
+    <li>Startup is a series of steps; the first failure sets the termination reason.</li>
+    <li>Read the event log (60 days) and the termination reason; read init script logs when a script failed.</li>
+    <li>Common causes: capacity, quota, subnet IPs, network rules, init scripts, permissions.</li>
+    <li>Serverless avoids most of these.</li>
+  </ul>
+  <h3>Glossary terms used</h3>
+  <p><a href="../../glossary.html#event-log">event log</a> · <a href="../../glossary.html#termination-code">termination reason</a> · <a href="../../glossary.html#init-script">init script</a> · <a href="../../glossary.html#compute-policy">compute policy</a> · <a href="../../glossary.html#compute">compute</a> · <a href="../../glossary.html#serverless">serverless</a></p>
+  <h3>Official docs</h3>
+  <ul>
+    <li><a href="https://docs.databricks.com/aws/en/compute/clusters-manage">Manage classic compute (event log, logs)</a></li>
+    <li><a href="https://docs.databricks.com/aws/en/compute/troubleshooting/">Compute troubleshooting</a></li>
+    <li><a href="https://docs.databricks.com/aws/en/init-scripts/logs">Init script logging</a></li>
+    <li><a href="https://docs.databricks.com/aws/en/compute/configure">Compute configuration reference</a></li>
+    <li><a href="https://docs.databricks.com/aws/en/admin/clusters/policies">Compute policies</a></li>
+  </ul>
+  <p class="cap">Last verified: 17 November 2026</p>
+</section>
+
+</main>
+
+<script>
+(function () {
+  var C = window.Course, $ = function (id) { return document.getElementById(id); }, L = $('cLog');
+  function ev(list) { $('cEvents').innerHTML = list.map(function (e) { return '<div class="item' + (e[1] ? ' hot' : '') + '">' + e[0] + '</div>'; }).join(''); }
+  $('cGo').onclick = function () {
+    var e = [];
+    if (!$('cPol').checked) { e.push(['Policy check: instance type not allowed', 1]); ev(e); $('cState').innerHTML = '<div class="big">Not created</div>'; C.log(L, 'bad', 'The compute policy blocks this instance type, so the compute cannot be created with it. Pick an allowed type or ask an admin.'); return; }
+    e.push(['CREATING']);
+    if (!$('cCap').checked) {
+      if ($('cAz').checked) { e.push(['Zone A has no capacity: retrying in zone B']); C.log(L, 'ok', 'Zone auto: zone A had no capacity, so startup retried in another zone.'); }
+      else return stop(e, 'AWS_INSUFFICIENT_INSTANCE_CAPACITY_FAILURE', 'The cloud has no spare machines of this type in this zone. Try zone auto, flexible node types or another type.');
+    }
+    if (!$('cQuota').checked) return stop(e, 'AWS_RESOURCE_QUOTA_EXCEEDED', 'The cloud account hit its instance quota. Ask the cloud admin to raise it.');
+    if (!$('cIp').checked) return stop(e, 'AWS_INSUFFICIENT_FREE_ADDRESSES_IN_SUBNET_FAILURE', 'The subnet has no free IP addresses for the new nodes. Use fewer nodes or larger subnets.');
+    e.push(['Instances launched; IPs assigned']);
+    if (!$('cNet').checked) { e.push(['Nodes not responding to the control plane', 1]); return stop(e, 'nodes unreachable (verify the exact code)', 'The nodes started but could not reach the control plane. Check firewall and routing rules.'); }
+    e.push(['INIT_SCRIPTS_STARTED']);
+    if (!$('cInit').checked) { e.push(['init script setup.sh exited with code 1', 1]); return stop(e, 'INIT_SCRIPT_FAILURE', 'setup.sh failed. Read its stderr file in the init script logs.'); }
+    e.push(['INIT_SCRIPTS_FINISHED'], ['RUNNING: Spark ready']); ev(e);
+    $('cState').innerHTML = '<div class="big">Running</div><div class="item">the job\'s notebook can start</div>'; C.bump($('cState'));
+    C.log(L, 'ok', 'All steps passed. Compute is running.');
+  };
+  function stop(e, code, msg) {
+    e.push(['TERMINATING: ' + code, 1]); ev(e);
+    $('cState').innerHTML = '<div class="big">Terminated</div><div class="item hot">reason: ' + code + '</div>'; C.bump($('cState'));
+    C.log(L, 'bad', 'Terminated: ' + code + '. ' + msg);
+  }
+  $('cReset').onclick = function () { L.innerHTML = ''; $('cEvents').innerHTML = ''; $('cState').innerHTML = '<div class="item off">not started</div>'; };
+  $('cReset').onclick();
+})();
+</script>
+</body>
+</html>

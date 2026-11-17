@@ -1,0 +1,255 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>06-06 Data skew · DE Associate course</title>
+<link rel="stylesheet" href="../../assets/course.css">
+<script src="../../assets/course.js"></script>
+</head>
+<body data-lesson="06-06">
+
+<aside class="disclaimer" aria-label="Disclaimer"><strong>Learning resource only.</strong> This is an independent, unofficial study guide made for learning purposes. It is not affiliated with, endorsed by or sponsored by Databricks. Databricks features change often, so always check the details in the <a href="https://docs.databricks.com">official Databricks documentation</a> and the official exam guide on databricks.com before relying on anything here. Databricks and related names are trademarks of their respective owners.</aside>
+
+<main class="wrap">
+
+<header class="hero">
+  <div class="eyebrow">Module 06 · Troubleshooting, Monitoring and Optimization · Lesson 6 of 12</div>
+  <h1>Data skew</h1>
+  <p class="lede">A stage with 200 tasks is only as fast as its slowest task. When one key holds far more rows than the others, one task gets stuck with most of the work while the rest sit idle. That is data skew.</p>
+  <dl class="where">
+    <div><dt>Module</dt><dd>06 Troubleshooting, Monitoring and Optimization (10% of the exam)</dd></div>
+    <div><dt>Exam objective</dt><dd>6.3 Spot data skew from a stage's task numbers in the Spark UI and know the usual fixes.</dd></div>
+    <div><dt>Time to read</dt><dd>About 13 minutes</dd></div>
+    <div><dt>Before this</dt><dd><a href="05-shuffle.html">06-05 Shuffle: why moving data is slow</a></dd></div>
+  </dl>
+</header>
+
+<section id="idea">
+  <div class="sec-num">The idea</div>
+  <h2>One task does most of the work</h2>
+  <p>After a <a href="../../glossary.html#shuffle">shuffle</a>, all rows with the same key go to the same <a href="../../glossary.html#partition">partition</a>. If one key is huge, its partition is huge too. That uneven spread is <a href="../../glossary.html#data-skew">data skew</a>. In the bakery example, the flagship store sells ten times more than any other, so the task for its partition takes ten times longer.</p>
+  <p>How to spot it in the <a href="../../glossary.html#spark-ui">Spark UI</a>: open the slow stage and read its Summary Metrics. Compare the Max task duration with the 75th percentile. The Databricks guide says that if Max is 50% or more above the 75th percentile, the stage may be skewed. You can also sort the task list by duration and see one or two tasks far above the rest.</p>
+  <p>Usual fixes:</p>
+  <ul>
+    <li><a href="../../glossary.html#aqe">AQE</a> skew join handling, on by default. During a join it splits a partition that is much bigger than the others into smaller pieces.</li>
+    <li><a href="../../glossary.html#salting">Salting</a>: add a random number to the hot key so its rows spread over several partitions, then combine the results.</li>
+    <li>Remove rows that cannot match anyway, such as NULL join keys in an inner join.</li>
+    <li>If the skew comes from how the table is laid out, <a href="08-liquid-clustering.html">liquid clustering</a> can help. For skewed output files, the REBALANCE hint can help.</li>
+  </ul>
+  <div class="analogy">
+    <span class="tag">Everyday analogy</span>
+    <p><strong>Checkout lanes at the bakery.</strong> Five lanes, but one customer has a catering order for 300 rolls. Four cashiers finish in two minutes and wait; one takes twenty. The shop closes when the last lane finishes. Opening extra lanes just for that order (splitting it) is what AQE and salting do.</p>
+  </div>
+</section>
+
+<section id="how">
+  <div class="sec-num">How it works</div>
+  <h2>The stage waits for the longest task</h2>
+  <div class="stage">
+    <svg viewBox="0 0 360 230" role="img" aria-label="Six task bars. Five are short and similar. One is about five times longer. A dashed line marks where the stage ends, at the end of the longest bar.">
+      <defs><path id="sk1" d="M70 165 H330"/></defs>
+      <text class="t-m" x="10" y="35">task 1</text><rect class="box-soft" x="60" y="22" width="50" height="18" rx="3"/>
+      <text class="t-m" x="10" y="60">task 2</text><rect class="box-soft" x="60" y="47" width="56" height="18" rx="3"/>
+      <text class="t-m" x="10" y="85">task 3</text><rect class="box-soft" x="60" y="72" width="46" height="18" rx="3"/>
+      <text class="t-m" x="10" y="110">task 4</text><rect class="box-soft" x="60" y="97" width="52" height="18" rx="3"/>
+      <text class="t-m" x="10" y="135">task 5</text><rect class="box-soft" x="60" y="122" width="48" height="18" rx="3"/>
+      <text class="t-m" x="10" y="160">task 6</text><rect class="box-acc" x="60" y="147" width="270" height="18" rx="3"/>
+      <g class="wire"><path d="M330 12 V190" stroke-dasharray="4 4"/></g>
+      <text class="t-b" x="330" y="208" text-anchor="middle">stage ends</text>
+      <text class="t-m" x="200" y="160" text-anchor="middle">hot key: store 1</text>
+      <g class="mover"><circle r="5" class="dot"><animateMotion dur="3s" repeatCount="indefinite"><mpath href="#sk1"/></animateMotion></circle></g>
+    </svg>
+    <p class="cap">Five executors finish early and sit idle. The stage takes as long as task 6.</p>
+  </div>
+</section>
+
+<section id="demo">
+  <div class="sec-num">Try it</div>
+  <h2>Skew a join, then fix it</h2>
+  <p>The stage joins 8 GB of sales with stores, over 8 shuffle partitions. Make the flagship store bigger, then turn on AQE skew handling or salting. Durations assume one second per 64 MB.</p>
+  <div class="stage">
+    <div class="ctrls">
+      <label>Flagship store share <input type="range" id="kHot" min="12" max="80" value="12"> <span id="kHotV">12</span>%</label>
+      <label class="tog"><input type="checkbox" id="kAqe"> AQE skew join</label>
+      <label>Salt buckets <select id="kSalt"><option value="1">none</option><option value="4">4</option><option value="8">8</option></select></label>
+      <button id="kGo" type="button" class="primary">Run stage</button>
+      <button id="kReset" type="button">Clear log</button>
+    </div>
+    <div class="panes">
+      <div class="pane"><h4>Task durations</h4><div id="kTasks"></div></div>
+      <div class="pane"><h4>Summary metrics</h4><div id="kSum"></div></div>
+    </div>
+    <div class="log" id="kLog" role="log" aria-label="What happened"></div>
+  </div>
+</section>
+
+<section id="code">
+  <div class="sec-num">Code</div>
+  <h2>Salting a hot key</h2>
+<pre><code>from pyspark.sql import functions as F
+
+SALT = 8   <span class="c-c"># how many pieces to split each key into</span>
+
+sales  = spark.read.table("bakery.silver.sales")
+stores = spark.read.table("bakery.silver.stores")
+
+<span class="c-c"># 1. Give every sales row a random salt from 0 to 7</span>
+salted_sales = sales.withColumn("salt", (F.rand() * SALT).cast("int"))
+
+<span class="c-c"># 2. Copy each store row 8 times, once per salt value</span>
+salted_stores = stores.withColumn("salt", F.explode(F.sequence(F.lit(0), F.lit(SALT - 1))))
+
+<span class="c-c"># 3. Join on the key AND the salt, so store 1's rows spread over 8 partitions</span>
+joined = salted_sales.join(salted_stores, ["store_id", "salt"]).drop("salt")</code></pre>
+<pre><code><span class="c-c">-- Check how uneven the keys are before you tune anything</span>
+SELECT store_id, COUNT(*) AS rows
+FROM bakery.silver.sales
+GROUP BY store_id
+ORDER BY rows DESC
+LIMIT 10;</code></pre>
+  <p class="note">AQE skew join is controlled by <code>spark.sql.adaptive.skewJoin.enabled</code> (default true). A partition counts as skewed when it is more than 5 times the median partition size and larger than 256 MB. It works for shuffle joins, not broadcast joins. Older skew hints are retired. Verify current defaults on the AQE page.</p>
+</section>
+
+<section id="whatif">
+  <div class="sec-num">What if I change this?</div>
+  <h2>Changes and their effect on skew</h2>
+  <div class="tbl"><table class="whatif">
+    <tr><th>Change</th><th>Effect</th></tr>
+    <tr><td>Hot key grows</td><td>Its task grows; the stage time grows with it, even though most tasks are fast.</td></tr>
+    <tr><td>Add more executors</td><td>Barely helps: one task still runs on one core.</td></tr>
+    <tr><td>Add more shuffle partitions</td><td>Barely helps: all rows of one key still go to one partition.</td></tr>
+    <tr><td>AQE skew join on</td><td>Big partitions in a shuffle join are split into smaller tasks automatically.</td></tr>
+    <tr><td>Salting</td><td>Spreads one key across several partitions; costs copying the other side.</td></tr>
+    <tr><td>Lower the AQE skew thresholds</td><td>Smaller partitions are also treated as skewed and split.</td></tr>
+  </table></div>
+</section>
+
+<section id="compare">
+  <div class="sec-num">Compare</div>
+  <h2>Skew fixes</h2>
+  <div class="tbl"><table>
+    <tr><th>Fix</th><th>Effort</th><th>Works for</th></tr>
+    <tr><td>AQE skew join</td><td>None, on by default</td><td>Shuffle joins</td></tr>
+    <tr><td>Salting</td><td>Code change</td><td>Joins and aggregations with a known hot key</td></tr>
+    <tr><td>Filter useless rows (e.g. NULL keys)</td><td>Small code change</td><td>Hot keys that should not match anything</td></tr>
+    <tr><td>Broadcast the small side</td><td>Hint or setting</td><td>Joins where one table is small: no shuffle, so no skewed partition</td></tr>
+    <tr><td>Liquid clustering</td><td>Table setting</td><td>Skew caused by the table's file layout</td></tr>
+  </table></div>
+</section>
+
+<section id="scenarios">
+  <div class="sec-num">Real life</div>
+  <h2>Skew in practice</h2>
+  <div class="tbl"><table>
+    <tr><th>Scenario</th><th>What happens</th><th>Fix</th></tr>
+    <tr><td>199 tasks take 10 seconds, one takes 25 minutes</td><td>Classic skew</td><td>Find the hot key with a GROUP BY count</td></tr>
+    <tr><td>The hot key is NULL</td><td>Rows with missing store_id all land in one partition</td><td>Filter NULLs before an inner join, or handle them separately</td></tr>
+    <tr><td>Skew is in a groupBy, not a join</td><td>AQE skew join does not apply</td><td>Salt and aggregate in two steps</td></tr>
+    <tr><td>Doubling the cluster did nothing</td><td>One task still holds most rows</td><td>Fix the skew instead of adding machines</td></tr>
+  </table></div>
+</section>
+
+<section id="traps">
+  <div class="sec-num">Don't confuse these</div>
+  <h2>Skew traps</h2>
+  <div class="grid2">
+    <div class="card trap"><span class="tag">Max vs 75th percentile</span><p>Compare the slowest task with the 75th percentile, not with the average.</p></div>
+    <div class="card trap"><span class="tag">Skew vs slow stage</span><p>If every task is slow, it is not skew. Look at I/O, spill or the code.</p></div>
+    <div class="card trap"><span class="tag">AQE is for joins</span><p>Its skew handling splits partitions in shuffle joins only.</p></div>
+    <div class="card trap"><span class="tag">More machines</span><p>Do not fix skew; they only help when work is spread evenly.</p></div>
+  </div>
+</section>
+
+<section id="quiz">
+  <div class="sec-num">Check yourself</div>
+  <h2>Quiz</h2>
+  <div class="quiz">
+    <fieldset>
+      <legend>1. A stage's 75th percentile task time is 20 seconds and its Max is 4 minutes. What does that suggest?</legend>
+      <label><input type="radio" data-correct> Data skew</label>
+      <label><input type="radio"> Too few executors</label>
+      <label><input type="radio"> A healthy stage</label>
+      <p class="explain" hidden>Max is far more than 50% above the 75th percentile.</p>
+    </fieldset>
+    <fieldset>
+      <legend>2. Why does adding executors not fix skew?</legend>
+      <label><input type="radio"> Executors cannot run joins</label>
+      <label><input type="radio" data-correct> The hot key's rows still sit in one partition, handled by one task</label>
+      <label><input type="radio"> AQE turns off with more executors</label>
+      <p class="explain" hidden>One task runs on one core, however big the cluster.</p>
+    </fieldset>
+    <fieldset>
+      <legend>3. What does salting do?</legend>
+      <label><input type="radio"> Removes the hot key</label>
+      <label><input type="radio" data-correct> Splits one key's rows across several partitions with an extra random column</label>
+      <label><input type="radio"> Compresses the data</label>
+      <p class="explain" hidden>The join then uses the key plus the salt.</p>
+    </fieldset>
+    <fieldset>
+      <legend>4. In the demo, with the flagship at 60%, what did AQE skew join do?</legend>
+      <label><input type="radio"> Nothing</label>
+      <label><input type="radio" data-correct> Split the huge partition into several smaller tasks and cut the stage time</label>
+      <label><input type="radio"> Moved the flagship rows to the driver</label>
+      <p class="explain" hidden>The partition was over 5 times the median and over 256 MB, so AQE split it.</p>
+    </fieldset>
+  </div>
+</section>
+
+<section id="wrap">
+  <div class="sec-num">Wrap up</div>
+  <h2>Key takeaways</h2>
+  <ul>
+    <li>Skew: one key has far more rows, so one task runs far longer.</li>
+    <li>Spot it: Max task duration 50% or more above the 75th percentile.</li>
+    <li>Fixes: AQE skew join (default on, shuffle joins), salting, filtering useless keys, broadcasting a small side.</li>
+    <li>More machines or more partitions do not fix skew.</li>
+  </ul>
+  <h3>Glossary terms used</h3>
+  <p><a href="../../glossary.html#data-skew">data skew</a> · <a href="../../glossary.html#salting">salting</a> · <a href="../../glossary.html#aqe">AQE</a> · <a href="../../glossary.html#shuffle">shuffle</a> · <a href="../../glossary.html#partition">partition</a> · <a href="../../glossary.html#spark-ui">Spark UI</a></p>
+  <h3>Official docs</h3>
+  <ul>
+    <li><a href="https://docs.databricks.com/aws/en/optimizations/spark-ui-guide/long-spark-stage-page">Skew and spill (Spark UI guide)</a></li>
+    <li><a href="https://docs.databricks.com/aws/en/optimizations/aqe">Adaptive query execution</a></li>
+  </ul>
+  <p class="cap">Last verified: 17 November 2026</p>
+</section>
+
+</main>
+
+<script>
+(function () {
+  var C = window.Course, $ = function (id) { return document.getElementById(id); }, L = $('kLog');
+  var TOTAL = 8192, P = 8; // MB, partitions
+  $('kHot').oninput = function () { $('kHotV').textContent = this.value; };
+  function median(a) { var s = a.slice().sort(function (x, y) { return x - y; }), m = s.length >> 1; return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2; }
+  function pct(a, p) { var s = a.slice().sort(function (x, y) { return x - y; }); return s[Math.min(s.length - 1, Math.ceil(p * s.length) - 1)]; }
+  $('kGo').onclick = function () {
+    var hot = +$('kHot').value / 100, salt = +$('kSalt').value, aqe = $('kAqe').checked;
+    var hotMB = TOTAL * hot, rest = (TOTAL - hotMB) / P;
+    var parts = []; for (var i = 0; i < P; i++) parts.push(rest);
+    if (salt > 1) { for (var j = 0; j < salt; j++) parts[j % P] += hotMB / salt; } else parts[0] += hotMB;
+    var notes = [];
+    if (aqe) {
+      var med = median(parts), split = [];
+      parts.forEach(function (mb, i) {
+        if (mb > 5 * med && mb > 256) { var n = Math.ceil(mb / med); for (var k = 0; k < n; k++) split.push(mb / n); notes.push('partition ' + (i + 1) + ' (' + Math.round(mb) + ' MB) split into ' + n + ' tasks'); }
+        else split.push(mb);
+      });
+      parts = split;
+    }
+    var secs = parts.map(function (mb) { return Math.max(1, Math.round(mb / 64)); });
+    var max = Math.max.apply(null, secs), p75 = pct(secs, 0.75), skewed = max >= p75 * 1.5;
+    $('kTasks').innerHTML = secs.slice(0, 12).map(function (s, i) { return '<div class="item' + (s === max && skewed ? ' hot' : '') + '"><span>task ' + (i + 1) + '</span><span>' + s + ' s ' + new Array(Math.min(30, Math.ceil(s / 4)) + 1).join('#') + '</span></div>'; }).join('') + (secs.length > 12 ? '<div class="item off">and ' + (secs.length - 12) + ' more tasks</div>' : '');
+    $('kSum').innerHTML = '<div class="item">tasks: ' + secs.length + '</div><div class="item">75th percentile: ' + p75 + ' s</div><div class="item">Max: ' + max + ' s</div><div class="big">stage ' + max + ' s</div>';
+    C.bump($('kSum'));
+    if (notes.length) C.log(L, 'ok', 'AQE skew join: ' + notes.join('; ') + '.');
+    else if (aqe) C.log(L, 'skip', 'AQE checked the partitions: none was over 5x the median and 256 MB, so nothing was split.');
+    if (salt > 1) C.log(L, 'ok', 'Salting spread the flagship store over ' + salt + ' partitions (the stores side was copied ' + salt + ' times).');
+    C.log(L, skewed ? 'bad' : 'ok', 'Max ' + max + ' s vs 75th percentile ' + p75 + ' s: ' + (skewed ? 'Max is ' + Math.round((max / p75 - 1) * 100) + '% higher. Skewed.' : 'within 50%. No skew.') + ' Stage took ' + max + ' s.');
+  };
+  $('kReset').onclick = function () { L.innerHTML = ''; };
+})();
+</script>
+</body>
+</html>

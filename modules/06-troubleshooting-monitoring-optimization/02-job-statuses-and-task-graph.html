@@ -1,0 +1,284 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>06-02 Job statuses and finding upstream blockers · DE Associate course</title>
+<link rel="stylesheet" href="../../assets/course.css">
+<script src="../../assets/course.js"></script>
+</head>
+<body data-lesson="06-02">
+
+<aside class="disclaimer" aria-label="Disclaimer"><strong>Learning resource only.</strong> This is an independent, unofficial study guide made for learning purposes. It is not affiliated with, endorsed by or sponsored by Databricks. Databricks features change often, so always check the details in the <a href="https://docs.databricks.com">official Databricks documentation</a> and the official exam guide on databricks.com before relying on anything here. Databricks and related names are trademarks of their respective owners.</aside>
+
+<main class="wrap">
+
+<header class="hero">
+  <div class="eyebrow">Module 06 · Troubleshooting, Monitoring and Optimization · Lesson 2 of 12</div>
+  <h1>Job statuses and finding upstream blockers</h1>
+  <p class="lede">When a job goes red, many tasks can look broken at once. Usually only one of them actually failed; the rest are just waiting on it. This lesson shows how to read the statuses and walk back to the real cause.</p>
+  <dl class="where">
+    <div><dt>Module</dt><dd>06 Troubleshooting, Monitoring and Optimization (10% of the exam)</dd></div>
+    <div><dt>Exam objective</dt><dd>6.2 Read job and task statuses in the Jobs UI and follow the task graph to the task that held the others back.</dd></div>
+    <div><dt>Time to read</dt><dd>About 13 minutes</dd></div>
+    <div><dt>Before this</dt><dd><a href="../04-lakeflow-jobs/03-dependencies-and-dag.html">04-03 Dependencies and the task graph</a> and <a href="01-run-history-and-baselines.html">06-01 Run history</a></dd></div>
+  </dl>
+</header>
+
+<section id="idea">
+  <div class="sec-num">The idea</div>
+  <h2>One real failure, many knock-on statuses</h2>
+  <p>A job's tasks form a <a href="../../glossary.html#dag">task graph</a>. A task normally waits until the tasks before it succeed. If one task fails, the tasks after it never start. They get the status <a href="../../glossary.html#upstream-failed">Upstream failed</a>, which means "I did not run because something before me failed".</p>
+  <p>Statuses you will see for a whole run:</p>
+  <ul>
+    <li><strong>Queued, Pending, Running, Canceling</strong>: the run is not finished yet.</li>
+    <li><strong>Succeeded</strong>: every task succeeded.</li>
+    <li><strong>Succeeded with failures</strong>: some tasks failed, but every <a href="../../glossary.html#leaf-task">leaf task</a> (a task with nothing after it) succeeded.</li>
+    <li><strong>Failed</strong>: at least one leaf task failed (or did not run because of an upstream failure).</li>
+    <li><strong>Timed Out</strong>: the run passed its timeout. <strong>Canceled</strong>: someone stopped it. <strong>Skipped</strong>: the run did not start, for example because the maximum number of concurrent runs was reached.</li>
+  </ul>
+  <p>Extra task statuses come from each task's <a href="../../glossary.html#run-if">Run if</a> setting. <strong>Excluded</strong> means the task's condition was not met, so it was left out on purpose (for example an alert task set to run only if something failed). <strong>Upstream canceled</strong> means a task before it was canceled.</p>
+  <div class="analogy">
+    <span class="tag">Everyday analogy</span>
+    <p><strong>The bakery delivery van.</strong> The flour delivery is late (the real failure). So the dough is not made, so the bread is not baked, so the shop shelves stay empty. Three things look wrong, but only one actually broke. You fix the flour, not the shelves.</p>
+  </div>
+</section>
+
+<section id="how">
+  <div class="sec-num">How it works</div>
+  <h2>Walk back along the graph</h2>
+  <div class="stage">
+    <svg viewBox="0 0 360 240" role="img" aria-label="Two ingest tasks feed clean_sales, which feeds build_gold, which feeds refresh_dashboard. ingest_stores failed. Everything after it shows Upstream failed. An arrow walks back from refresh_dashboard to ingest_stores.">
+      <defs><path id="sb1" d="M300 205 L300 175 L190 175 L190 145 L190 115 L70 115 L70 85"/></defs>
+      <g class="wire"><path d="M70 60 V90 H190"/><path d="M190 60 V90"/><path d="M190 90 V100"/><path d="M190 130 V160"/><path d="M190 190 H260"/></g>
+      <rect class="box-soft" x="10" y="30" width="120" height="30" rx="6"/><text class="mono" x="70" y="50" text-anchor="middle">ingest_orders</text>
+      <rect class="box-acc" x="140" y="30" width="110" height="30" rx="6"/><text class="mono" x="195" y="50" text-anchor="middle">ingest_stores ✕</text>
+      <rect class="box" x="130" y="100" width="120" height="30" rx="6"/><text class="mono" x="190" y="120" text-anchor="middle">clean_sales</text>
+      <rect class="box" x="130" y="160" width="120" height="30" rx="6"/><text class="mono" x="190" y="180" text-anchor="middle">build_gold</text>
+      <rect class="box" x="230" y="200" width="125" height="30" rx="6"/><text class="mono" x="292" y="220" text-anchor="middle">refresh_dashboard</text>
+      <text class="t-m" x="262" y="120">upstream failed</text>
+      <text class="t-m" x="262" y="180">upstream failed</text>
+      <g class="mover"><circle r="5" class="dot"><animateMotion dur="3.5s" repeatCount="indefinite"><mpath href="#sb1"/></animateMotion></circle></g>
+    </svg>
+    <p class="cap">Start at the red end of the graph and step back until you reach the first task that actually Failed. Its error is the one to read.</p>
+  </div>
+</section>
+
+<section id="demo">
+  <div class="sec-num">Try it</div>
+  <h2>Break a task, then find it</h2>
+  <p>Choose which task fails, run the job, then use "Find the blocker". <code>notify_team</code> is set to Run if "At least one failed", so it only runs when something went wrong. Try switching <code>refresh_dashboard</code> to "All done" to see Succeeded with failures.</p>
+  <div class="stage">
+    <div class="ctrls">
+      <label>Task that fails <select id="sFail">
+        <option value="">none</option><option>ingest_orders</option><option>ingest_stores</option><option>clean_sales</option><option>build_gold</option><option>refresh_dashboard</option>
+      </select></label>
+      <label>refresh_dashboard Run if <select id="sRunIf"><option value="all_ok">All succeeded</option><option value="all_done">All done</option></select></label>
+      <button id="sGo" type="button" class="primary">Run job</button>
+      <button id="sFind" type="button">Find the blocker</button>
+      <button id="sRepair" type="button">Fix it and repair run</button>
+      <button id="sReset" type="button">Clear log</button>
+    </div>
+    <div class="panes">
+      <div class="pane"><h4>Task statuses</h4><div id="sTasks"></div></div>
+      <div class="pane"><h4>Run status</h4><div id="sRun"></div></div>
+    </div>
+    <div class="log" id="sLog" role="log" aria-label="What happened"></div>
+  </div>
+</section>
+
+<section id="code">
+  <div class="sec-num">Code</div>
+  <h2>Find failed task runs in SQL</h2>
+  <p>In the UI, open the failed run and use the Graph view. To search many runs at once, query the task run system table.</p>
+<pre><code><span class="c-c">-- Which tasks of the bakery_sales job failed in the last 7 days, and how?</span>
+SELECT run_id,
+       task_key,
+       result_state,          <span class="c-c">-- set only on the last row of each task run</span>
+       termination_code,
+       period_end_time
+FROM system.lakeflow.job_task_run_timeline
+WHERE job_id = '123456789'                       <span class="c-c">-- made-up id</span>
+  AND period_start_time &gt;= current_date() - INTERVAL 7 DAYS
+  AND result_state IS NOT NULL
+  AND result_state &lt;&gt; 'SUCCEEDED'
+ORDER BY period_end_time DESC;</code></pre>
+<pre><code><span class="c-c"># The same job, defined in a bundle: an alert task that runs only when something fails</span>
+tasks:
+  - task_key: build_gold
+    depends_on: [{ task_key: clean_sales }]
+  - task_key: notify_team
+    depends_on: [{ task_key: build_gold }]
+    run_if: AT_LEAST_ONE_FAILED</code></pre>
+  <p class="note">The system tables spell it <code>CANCELLED</code> (two Ls) while the UI says Canceled. Check the value names on the system table page.</p>
+</section>
+
+<section id="whatif">
+  <div class="sec-num">What if I change this?</div>
+  <h2>Settings and their effects on statuses</h2>
+  <div class="tbl"><table class="whatif">
+    <tr><th>Change</th><th>Effect</th></tr>
+    <tr><td>Run if "All succeeded" (default)</td><td>The task runs only if everything before it succeeded; otherwise it shows Upstream failed.</td></tr>
+    <tr><td>Run if "All done"</td><td>The task runs once everything before it finished, whatever the result. Useful for cleanup.</td></tr>
+    <tr><td>Run if "At least one failed"</td><td>The task runs only when something before it failed; otherwise it is Excluded.</td></tr>
+    <tr><td>A middle task fails but every leaf succeeds</td><td>The run shows Succeeded with failures.</td></tr>
+    <tr><td>A leaf task fails or is upstream failed</td><td>The run shows Failed.</td></tr>
+    <tr><td>Repair run</td><td>Re-runs failed, canceled and skipped tasks and the tasks after them. Tasks that already succeeded are kept.</td></tr>
+  </table></div>
+</section>
+
+<section id="compare">
+  <div class="sec-num">Compare</div>
+  <h2>"Didn't succeed" statuses side by side</h2>
+  <div class="tbl"><table>
+    <tr><th>Status</th><th>Did this task run?</th><th>Where the real problem is</th></tr>
+    <tr><td>Failed</td><td>Yes, and it errored</td><td>Here. Read this task's output.</td></tr>
+    <tr><td>Upstream failed</td><td>No</td><td>In a task before it</td></tr>
+    <tr><td>Upstream canceled</td><td>No</td><td>A task before it was canceled</td></tr>
+    <tr><td>Excluded</td><td>No, on purpose</td><td>Nowhere: its Run if condition was not met</td></tr>
+    <tr><td>Timed Out</td><td>Yes, until it was stopped</td><td>Here, or the timeout is too short</td></tr>
+  </table></div>
+</section>
+
+<section id="scenarios">
+  <div class="sec-num">Real life</div>
+  <h2>Statuses in practice</h2>
+  <div class="tbl"><table>
+    <tr><th>Scenario</th><th>What happens</th><th>Fix</th></tr>
+    <tr><td>Five tasks are red after a night run</td><td>Four are Upstream failed; one Failed</td><td>Open the one that Failed; fix it; repair the run</td></tr>
+    <tr><td>The run is green but a side report is missing</td><td>Succeeded with failures: a non-leaf task failed</td><td>Check the matrix view for red cells even on green runs</td></tr>
+    <tr><td>The alert task shows Excluded every night</td><td>Nothing failed, so it was not needed</td><td>Nothing to fix; that is the point of the alert</td></tr>
+    <tr><td>Repair re-ran a task that writes rows</td><td>It might write some rows twice if it is not idempotent</td><td>Make tasks safe to re-run (MERGE, overwrite)</td></tr>
+  </table></div>
+</section>
+
+<section id="traps">
+  <div class="sec-num">Don't confuse these</div>
+  <h2>Status traps</h2>
+  <div class="grid2">
+    <div class="card trap"><span class="tag">Failed vs Upstream failed</span><p>Only Failed tasks have an error worth reading. Upstream failed tasks never ran.</p></div>
+    <div class="card trap"><span class="tag">Excluded is not a failure</span><p>It counts as success for other tasks' Run if checks.</p></div>
+    <div class="card trap"><span class="tag">Leaf tasks decide</span><p>The run result comes from the tasks at the end of the graph.</p></div>
+    <div class="card trap"><span class="tag">Repair needs 2+ tasks</span><p>For a single-task job, just run it again.</p></div>
+  </div>
+</section>
+
+<section id="quiz">
+  <div class="sec-num">Check yourself</div>
+  <h2>Quiz</h2>
+  <div class="quiz">
+    <fieldset>
+      <legend>1. A task shows Upstream failed. What should you do first?</legend>
+      <label><input type="radio"> Read that task's error output</label>
+      <label><input type="radio" data-correct> Walk back the graph to the task that actually Failed</label>
+      <label><input type="radio"> Increase its timeout</label>
+      <p class="explain" hidden>An Upstream failed task never ran, so it has no error of its own.</p>
+    </fieldset>
+    <fieldset>
+      <legend>2. A middle task failed, but both leaf tasks succeeded. What is the run status?</legend>
+      <label><input type="radio"> Failed</label>
+      <label><input type="radio" data-correct> Succeeded with failures</label>
+      <label><input type="radio"> Skipped</label>
+      <p class="explain" hidden>The run result follows the leaf tasks. Some tasks failed, so it is not a plain Succeeded.</p>
+    </fieldset>
+    <fieldset>
+      <legend>3. What does a repair run re-run?</legend>
+      <label><input type="radio"> Every task from the start</label>
+      <label><input type="radio" data-correct> The failed, canceled and skipped tasks and the tasks after them</label>
+      <label><input type="radio"> Only the leaf tasks</label>
+      <p class="explain" hidden>Tasks that succeeded are kept, which saves time and compute.</p>
+    </fieldset>
+    <fieldset>
+      <legend>4. In the demo, with nothing failing, what status did notify_team get?</legend>
+      <label><input type="radio"> Failed</label>
+      <label><input type="radio"> Upstream failed</label>
+      <label><input type="radio" data-correct> Excluded</label>
+      <p class="explain" hidden>Its condition "At least one failed" was not met, so it was left out on purpose.</p>
+    </fieldset>
+  </div>
+</section>
+
+<section id="wrap">
+  <div class="sec-num">Wrap up</div>
+  <h2>Key takeaways</h2>
+  <ul>
+    <li>Upstream failed means "did not run because of an earlier task". Find the task that actually Failed.</li>
+    <li>The run result follows the leaf tasks: Failed, Succeeded, or Succeeded with failures.</li>
+    <li>Excluded is intentional, set by a task's Run if condition.</li>
+    <li>Repair run re-runs only what did not succeed, plus what comes after it.</li>
+  </ul>
+  <h3>Glossary terms used</h3>
+  <p><a href="../../glossary.html#upstream-failed">Upstream failed</a> · <a href="../../glossary.html#leaf-task">leaf task</a> · <a href="../../glossary.html#repair-run">repair run</a> · <a href="../../glossary.html#run-if">Run if</a> · <a href="../../glossary.html#dag">task graph (DAG)</a></p>
+  <h3>Official docs</h3>
+  <ul>
+    <li><a href="https://docs.databricks.com/aws/en/jobs/monitor">Monitoring and observability for Lakeflow Jobs</a></li>
+    <li><a href="https://docs.databricks.com/aws/en/jobs/run-if">Run tasks conditionally (Run if)</a></li>
+    <li><a href="https://docs.databricks.com/aws/en/jobs/repair-job-failures">Troubleshoot and repair job failures</a></li>
+    <li><a href="https://docs.databricks.com/aws/en/admin/system-tables/jobs">Jobs system table reference</a></li>
+  </ul>
+  <p class="cap">Last verified: 17 November 2026</p>
+</section>
+
+</main>
+
+<script>
+(function () {
+  var C = window.Course, $ = function (id) { return document.getElementById(id); }, L = $('sLog');
+  var T = [
+    { k: 'ingest_orders', deps: [], cond: 'all_ok' },
+    { k: 'ingest_stores', deps: [], cond: 'all_ok' },
+    { k: 'clean_sales', deps: ['ingest_orders', 'ingest_stores'], cond: 'all_ok' },
+    { k: 'build_gold', deps: ['clean_sales'], cond: 'all_ok' },
+    { k: 'refresh_dashboard', deps: ['build_gold'], cond: 'all_ok' },
+    { k: 'notify_team', deps: ['build_gold'], cond: 'one_failed' }
+  ];
+  var LEAVES = ['refresh_dashboard', 'notify_team'], st = {}, ran = false;
+  function bad(s) { return s === 'Failed' || s === 'Upstream failed'; }
+  function compute(fail) {
+    var out = {};
+    T.forEach(function (t) {
+      var cond = t.k === 'refresh_dashboard' ? $('sRunIf').value : t.cond, ds = t.deps.map(function (d) { return out[d]; });
+      var anyBad = ds.some(bad), run;
+      if (cond === 'all_ok') run = !anyBad; else if (cond === 'all_done') run = true; else run = anyBad;
+      out[t.k] = !run ? (cond === 'one_failed' ? 'Excluded' : 'Upstream failed') : (t.k === fail ? 'Failed' : 'Succeeded');
+    });
+    return out;
+  }
+  function runStatus(s) {
+    if (LEAVES.some(function (k) { return bad(s[k]); })) return 'Failed';
+    if (T.some(function (t) { return bad(s[t.k]); })) return 'Succeeded with failures';
+    return 'Succeeded';
+  }
+  function chip(s) { return '<span class="chip ' + (s === 'Succeeded' ? 'ok' : s === 'Excluded' ? '' : 'bad') + '">' + s + '</span>'; }
+  function draw() {
+    $('sTasks').innerHTML = T.map(function (t) { return '<div class="item"><span>' + t.k + '</span>' + (ran ? chip(st[t.k]) : '<span class="chip">not run</span>') + '</div>'; }).join('');
+    $('sRun').innerHTML = ran ? '<div class="big">' + runStatus(st) + '</div><div class="item">decided by leaf tasks: ' + LEAVES.join(', ') + '</div>' : '<div class="item off">no run yet</div>';
+  }
+  $('sGo').onclick = function () {
+    st = compute($('sFail').value); ran = true; draw(); C.bump($('sRun'));
+    var ups = T.filter(function (t) { return st[t.k] === 'Upstream failed'; }).length;
+    C.log(L, runStatus(st) === 'Succeeded' ? 'ok' : 'bad', 'Run finished: ' + runStatus(st) + '. Failed: ' + T.filter(function (t) { return st[t.k] === 'Failed'; }).length + ', Upstream failed: ' + ups + ', Excluded: ' + T.filter(function (t) { return st[t.k] === 'Excluded'; }).length + '.');
+  };
+  $('sFind').onclick = function () {
+    if (!ran) { C.log(L, 'skip', 'Run the job first.'); return; }
+    var f = T.filter(function (t) { return st[t.k] === 'Failed'; })[0];
+    if (!f) { C.log(L, 'ok', 'No task Failed. Nothing is blocking this run.'); return; }
+    var path = [], cur = f.k;
+    T.slice().reverse().forEach(function (t) { if (st[t.k] === 'Upstream failed') path.push(t.k); });
+    C.log(L, 'bad', 'Walked back from ' + (path.length ? path.join(' to ') + ' to ' : '') + cur + '. The blocker is ' + cur + ': open its output and read the error.');
+  };
+  $('sRepair').onclick = function () {
+    if (!ran || runStatus(st) === 'Succeeded') { C.log(L, 'skip', 'Nothing to repair.'); return; }
+    var redo = T.filter(function (t) { return bad(st[t.k]); }).map(function (t) { return t.k; });
+    T.forEach(function (t) { if (t.deps.some(function (d) { return redo.indexOf(d) > -1; }) && redo.indexOf(t.k) < 0) redo.push(t.k); });
+    var kept = T.length - redo.length;
+    $('sFail').value = ''; st = compute(''); draw(); C.bump($('sRun'));
+    C.log(L, 'ok', 'Fixed the cause. Repair run re-ran ' + redo.length + ' task(s): ' + redo.join(', ') + '. Kept ' + kept + ' task(s) that had already succeeded. Run is now ' + runStatus(st) + '.');
+  };
+  $('sRunIf').onchange = function () { if (ran) $('sGo').click(); };
+  $('sReset').onclick = function () { L.innerHTML = ''; };
+  draw();
+})();
+</script>
+</body>
+</html>
