@@ -147,9 +147,9 @@ Objectives:
 
 | Status | Lesson | File | Objective | Prerequisites |
 |---|---|---|---|---|
-| [ ] | 05-01 Git basics for beginners: repo, branch, commit, pull request | `01-git-basics.html` | 5.1 | none |
-| [ ] | 05-02 Databricks Git folders: clone, create and switch branches | `02-git-folders.html` | 5.1 | 05-01, 00-07 |
-| [ ] | 05-03 Commit, push, pull requests and merge conflicts | `03-commit-push-pull-request.html` | 5.1 | 05-02 |
+| [x] | 05-01 Git basics for beginners: repo, branch, commit, pull request | `01-git-basics.html` | 5.1 | none |
+| [x] | 05-02 Databricks Git folders: clone, create and switch branches | `02-git-folders.html` | 5.1 | 05-01, 00-07 |
+| [x] | 05-03 Commit, push, pull requests and merge conflicts | `03-commit-push-pull-request.html` | 5.1 | 05-02 |
 | [ ] | 05-04 What are Declarative Automation Bundles? | `04-what-are-bundles.html` | 5.3 | 05-01, 04-01 |
 | [ ] | 05-05 Targets: dev, test and prod | `05-bundle-targets.html` | 5.2, 5.3 | 05-04 |
 | [ ] | 05-06 Variables and overrides | `06-bundle-variables-overrides.html` | 5.2 | 05-05 |

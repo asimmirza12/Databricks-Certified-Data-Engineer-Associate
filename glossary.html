@@ -41,6 +41,7 @@
     <div id="avro"><dt>Avro</dt><dd>A row-based binary file format that stores its schema with the data. Common for messages in streaming systems. <span class="cap">First used in 00-03.</span></dd></div>
     <div id="batch"><dt>Batch</dt><dd>Processing a collected pile of data in one go, at intervals. <span class="cap">First used in 00-04.</span></dd></div>
     <div id="binaryfile"><dt>binaryFile</dt><dd>A file format that reads each file as one row with its path, modification time, length and raw content. Used for unstructured files. <span class="cap">First used in 02-12.</span></dd></div>
+    <div id="branch"><dt>Branch</dt><dd>A separate line of commits, used to make a change without touching the main line. <span class="cap">First used in 05-01.</span></dd></div>
     <div id="branching"><dt>Branching</dt><dd>Choosing one of several routes through a job, so that only one path runs. <span class="cap">First used in 04-06.</span></dd></div>
     <div id="broadcast-join"><dt>Broadcast join</dt><dd>A join in which a small table is copied to every executor, so the large table does not need to be shuffled. <span class="cap">First used in 03-05.</span></dd></div>
     <div id="bronze"><dt>Bronze</dt><dd>The layer that holds raw data exactly as it arrived. <span class="cap">First used in 00-10.</span></dd></div>
@@ -51,6 +52,7 @@
     <div id="check-constraint"><dt>CHECK constraint</dt><dd>A table constraint that refuses any write where a stated condition is not true. <span class="cap">First used in 03-16.</span></dd></div>
     <div id="checkpoint"><dt>Checkpoint</dt><dd>Two meanings. (1) In streaming: a saved bookmark of how far an incremental or streaming job has read, so the next run continues from there. (2) In a Delta transaction log: a Parquet file that sums up the table's state at one version, so readers need not replay every commit. <span class="cap">First used in 00-04.</span></dd></div>
     <div id="classic-compute-plane"><dt>Classic compute plane</dt><dd>Compute that runs on machines in your own cloud account and network. <span class="cap">First used in 01-01.</span></dd></div>
+    <div id="clone"><dt>Clone</dt><dd>Copying a remote repository to a local or workspace folder. <span class="cap">First used in 05-02.</span></dd></div>
     <div id="cluster"><dt>Cluster</dt><dd>A group of computers working together as one: a driver plus executors. Also the older name for a classic compute resource on Databricks. <span class="cap">First used in 00-05.</span></dd></div>
     <div id="coalesce"><dt>coalesce</dt><dd>A function that returns the first of its arguments that is not NULL. <span class="cap">First used in 03-02.</span></dd></div>
     <div id="column"><dt>Column</dt><dd>One named fact that every row in a table has, such as price. All values in a column share a data type. <span class="cap">First used in 00-02.</span></dd></div>
@@ -79,6 +81,7 @@
     <div id="deduplication"><dt>Deduplication</dt><dd>Removing repeated rows so that each thing is kept once. Whether rows are copies depends on the columns you compare. <span class="cap">First used in 03-10.</span></dd></div>
     <div id="delta-lake"><dt>Delta Lake</dt><dd>An open-source table format: Parquet data files plus a transaction log. The default format for tables on Databricks. <span class="cap">First used in 00-08.</span></dd></div>
     <div id="task-dependency"><dt>Dependency (task)</dt><dd>A link that makes one task wait for another, set with depends_on. <span class="cap">First used in 04-03.</span></dd></div>
+    <div id="detached-head"><dt>Detached HEAD</dt><dd>A state where Git is not on any branch. Changes made there can be lost unless a branch is created first. <span class="cap">First used in 05-02.</span></dd></div>
     <div id="dimension-table"><dt>Dimension table</dt><dd>A table that describes the things a fact refers to, such as shops, products or dates. <span class="cap">First used in 03-15.</span></dd></div>
     <div id="directory-listing"><dt>Directory listing</dt><dd>Auto Loader's default way of finding new files: asking cloud storage for the folder's contents and comparing with its checkpoint. <span class="cap">First used in 02-06.</span></dd></div>
     <div id="driver"><dt>Driver</dt><dd>The one computer in a Spark cluster that plans the work and hands tasks to the executors. <span class="cap">First used in 00-05.</span></dd></div>
@@ -98,6 +101,8 @@
     <div id="file-notification"><dt>File notification</dt><dd>A way for Auto Loader to find new files from messages sent by cloud storage, without listing the folder. <span class="cap">First used in 02-06.</span></dd></div>
     <div id="filter"><dt>Filter</dt><dd>A transformation that keeps only the rows for which a condition is true. <span class="cap">First used in 03-08.</span></dd></div>
     <div id="for-each-task"><dt>For each task</dt><dd>A job task that runs one nested task once for each item in a list. Each run is an iteration. <span class="cap">First used in 04-07.</span></dd></div>
+    <div id="git"><dt>Git</dt><dd>A version control system that records every change to a set of files, with who made it and why. <span class="cap">First used in 05-01.</span></dd></div>
+    <div id="git-folder"><dt>Git folder</dt><dd>A repository cloned into a Databricks workspace folder. Formerly called a Databricks Repo. <span class="cap">First used in 05-02.</span></dd></div>
     <div id="gold"><dt>Gold</dt><dd>The layer that holds data shaped for one particular use, usually summaries for reports and dashboards. <span class="cap">First used in 00-10.</span></dd></div>
     <div id="governance"><dt>Governance</dt><dd>The rules and tools that control who can see or change which data, and that keep a record of it. <span class="cap">First used in 00-01.</span></dd></div>
     <div id="grain"><dt>Grain</dt><dd>What one row of a table represents, such as one sale line or one shop per day. <span class="cap">First used in 03-15.</span></dd></div>
@@ -133,6 +138,7 @@
     <div id="materialized-view"><dt>Materialized view</dt><dd>A table-like object that stores the results of a query and is refreshed to match its source. <span class="cap">First used in 03-14.</span></dd></div>
     <div id="medallion-architecture"><dt>Medallion architecture</dt><dd>A pattern of organising tables in three layers of rising quality: bronze, silver and gold. <span class="cap">First used in 00-10.</span></dd></div>
     <div id="merge"><dt>MERGE</dt><dd>A SQL statement that updates rows which already exist and inserts rows which do not, in one commit. Often called an upsert. <span class="cap">First used in 01-02.</span></dd></div>
+    <div id="merge-conflict"><dt>Merge conflict</dt><dd>A stop in a merge that happens when the same lines changed differently on both branches. Someone must choose which version to keep. <span class="cap">First used in 05-03.</span></dd></div>
     <div id="metastore"><dt>Metastore</dt><dd>The top-level container in Unity Catalog, normally one per cloud region. Workspaces are attached to it. <span class="cap">First used in 00-09.</span></dd></div>
     <div id="metric-view"><dt>Metric view</dt><dd>A Unity Catalog object that defines business measures once, for consistent use in reports and dashboards. <span class="cap">First used in 03-14.</span></dd></div>
     <div id="micro-batch"><dt>Micro-batch</dt><dd>A very small batch. By default Spark streams by running many micro-batches one after another. <span class="cap">First used in 00-04.</span></dd></div>
@@ -161,10 +167,14 @@
     <div id="prefix"><dt>Prefix</dt><dd>The beginning of an object key, used like a folder path to select a group of objects. <span class="cap">First used in 00-06.</span></dd></div>
     <div id="primary-key"><dt>Primary key</dt><dd>A column or set of columns that is meant to identify each row. On Unity Catalog tables it is informational and not enforced. <span class="cap">First used in 03-16.</span></dd></div>
     <div id="privilege"><dt>Privilege</dt><dd>A permission to do one kind of thing to one object, such as <code>SELECT</code> on a table. Given with <code>GRANT</code>, removed with <code>REVOKE</code>. <span class="cap">First used in 00-09.</span></dd></div>
+    <div id="pull-request"><dt>Pull request</dt><dd>A request to review a branch and merge it into another, usually main. Created on the Git host. <span class="cap">First used in 05-01.</span></dd></div>
+    <div id="push"><dt>Push</dt><dd>Sending local commits to the remote branch. <span class="cap">First used in 05-03.</span></dd></div>
     <div id="pyspark"><dt>PySpark</dt><dd>The Python way of using Apache Spark. <span class="cap">First used in 00-01.</span></dd></div>
     <div id="quartz-cron"><dt>Quartz cron expression</dt><dd>A six-field timetable notation (seconds, minutes, hours, day-of-month, month, day-of-week) used for job schedules. Day-of-month and day-of-week cannot both be set; one uses ?. <span class="cap">First used in 04-08.</span></dd></div>
     <div id="rate-limit"><dt>Rate limit</dt><dd>A cap on how many requests an API accepts in a period. Exceeding it brings a "slow down" response. <span class="cap">First used in 02-10.</span></dd></div>
     <div id="read-files"><dt>read_files</dt><dd>A SQL function that reads files from a path and returns them as rows, so files can be queried or loaded into a table. <span class="cap">First used in 02-02.</span></dd></div>
+    <div id="remote"><dt>Remote</dt><dd>A copy of a repository on a shared server, such as GitHub or Azure DevOps. <span class="cap">First used in 05-01.</span></dd></div>
+    <div id="repository"><dt>Repository (repo)</dt><dd>A project and its complete history of commits. <span class="cap">First used in 05-01.</span></dd></div>
     <div id="rescued-data"><dt>Rescued data column</dt><dd>A spare column, <code>_rescued_data</code>, where Auto Loader keeps data that did not fit the schema: new columns, wrong types, wrong letter case. <span class="cap">First used in 02-07.</span></dd></div>
     <div id="rest-api"><dt>REST API</dt><dd>A common way for programs to request data from a web address. The answer usually comes back as JSON. <span class="cap">First used in 02-10.</span></dd></div>
     <div id="retry"><dt>Retry</dt><dd>An automatic second or later attempt at a failed task, within a limit set by max_retries. <span class="cap">First used in 04-04.</span></dd></div>

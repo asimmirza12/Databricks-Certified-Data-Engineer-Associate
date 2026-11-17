@@ -1,0 +1,243 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>05-01 Git basics for beginners · DE Associate course</title>
+<link rel="stylesheet" href="../../assets/course.css">
+<script src="../../assets/course.js"></script>
+</head>
+<body data-lesson="05-01">
+
+<aside class="disclaimer" aria-label="Disclaimer"><strong>Learning resource only.</strong> This is an independent, unofficial study guide made for learning purposes. It is not affiliated with, endorsed by or sponsored by Databricks. Databricks features change often, so always check the details in the <a href="https://docs.databricks.com">official Databricks documentation</a> and the official exam guide on databricks.com before relying on anything here. Databricks and related names are trademarks of their respective owners.</aside>
+
+<main class="wrap">
+
+<header class="hero">
+  <div class="eyebrow">Module 05 · Implementing CI/CD · Lesson 1 of 10</div>
+  <h1>Git basics for beginners</h1>
+  <p class="lede">Your notebooks and pipelines are code. Code that many people change needs a shared history, a way to try changes safely, and a way to review them. Git provides all three. This lesson covers the words and ideas; the next lessons apply them in Databricks.</p>
+  <dl class="where">
+    <div><dt>Module</dt><dd>05 Implementing CI/CD (10% of the exam)</dd></div>
+    <div><dt>Exam objective</dt><dd>5.1 Manage your code development workflow within the Databricks workspace, including branches, commits, pushes and pull requests. This lesson covers the Git ideas the workflow depends on.</dd></div>
+    <div><dt>Time to read</dt><dd>About 12 minutes</dd></div>
+    <div><dt>Before this</dt><dd><a href="../00-foundations/07-what-is-databricks.html">00-07 What is Databricks?</a></dd></div>
+  </dl>
+</header>
+
+<section id="idea">
+  <div class="sec-num">The idea</div>
+  <h2>A history you can read, branch and undo</h2>
+  <p><a href="../../glossary.html#git">Git</a> is a version control system. It records every change to a set of files, who made it and why, so you can look back, compare, and return to any earlier state.</p>
+  <p>The core words are:</p>
+  <ul>
+    <li>A <a href="../../glossary.html#repository">repository</a> (repo) is the project: its files and their full history.</li>
+    <li>A <a href="../../glossary.html#commit">commit</a> is one saved snapshot of changes, with a message describing it.</li>
+    <li>A <a href="../../glossary.html#branch">branch</a> is a separate line of commits. You start a branch to try a change without touching the main line.</li>
+    <li>A <a href="../../glossary.html#remote">remote</a> is a copy of the repo on a shared server, such as GitHub or Azure DevOps. Pushing sends your commits there; pulling brings others' commits here.</li>
+    <li>A <a href="../../glossary.html#pull-request">pull request</a> (PR) asks for your branch to be reviewed and merged into another, usually the main branch.</li>
+  </ul>
+  <div class="analogy">
+    <span class="tag">Everyday analogy</span>
+    <p><strong>Writing a book with a team, with tracked changes.</strong> The manuscript is the repository. Each saved set of edits is a commit, with a note saying what changed. A draft chapter you rewrite separately is a branch. The publisher's shared copy is the remote. Sending your chapter to the editor for approval is the pull request. Nothing is lost, and any earlier draft can be read again.</p>
+  </div>
+</section>
+
+<section id="how">
+  <div class="sec-num">How it works</div>
+  <h2>Commits form a chain, and branches are pointers into it</h2>
+  <div class="stage">
+    <svg class="tall" viewBox="0 0 360 330" role="img" aria-label="A main branch of three commits. A feature branch starts from the second commit, adds two commits, then is merged back into main as a new commit.">
+      <defs><path id="gb1" d="M60 80 H300"/><path id="gb2" d="M120 80 C 150 150, 180 150, 210 150"/><path id="gb3" d="M210 150 H300"/></defs>
+      <g class="wire"><use href="#gb1"/><use href="#gb2"/><use href="#gb3"/></g>
+      <g class="mover"><circle r="5" class="dot-ok"><animateMotion dur="2.4s" repeatCount="indefinite"><mpath href="#gb2"/></animateMotion></circle></g>
+      <text class="t-b" x="10" y="60">main</text>
+      <circle cx="60" cy="80" r="8" class="dot"/><circle cx="120" cy="80" r="8" class="dot"/><circle cx="300" cy="80" r="8" class="dot"/>
+      <text class="t-m" x="60" y="104" text-anchor="middle">c1</text><text class="t-m" x="120" y="104" text-anchor="middle">c2</text><text class="t-m" x="300" y="104" text-anchor="middle">c5 merge</text>
+      <text class="t-b" x="10" y="180">feature</text>
+      <circle cx="180" cy="150" r="8" class="dot-ok"/><circle cx="210" cy="150" r="8" class="dot-ok"/><circle cx="270" cy="150" r="0" class="dot-ok"/>
+      <text class="t-m" x="180" y="176" text-anchor="middle">c3</text><text class="t-m" x="210" y="176" text-anchor="middle">c4</text>
+      <rect class="box-soft" x="10" y="220" width="340" height="92" rx="8"/>
+      <text class="t-b" x="24" y="244">Each commit points to the one before it.</text>
+      <text class="t-m" x="24" y="266">A branch name is only a pointer to its latest commit.</text>
+      <text class="t-m" x="24" y="288">Merging adds a new commit that joins two lines.</text>
+    </svg>
+    <p class="cap">Commit c3 and c4 exist only on the feature branch until it is merged. main is unchanged until then.</p>
+  </div>
+  <h3>The everyday loop</h3>
+  <ol>
+    <li><strong>Pull</strong> the latest commits from the remote.</li>
+    <li><strong>Branch</strong> to start a change on its own line.</li>
+    <li><strong>Commit</strong> the change with a clear message.</li>
+    <li><strong>Push</strong> the branch to the remote.</li>
+    <li><strong>Open a pull request</strong>, get it reviewed, then merge.</li>
+  </ol>
+</section>
+
+<section id="demo">
+  <div class="sec-num">Try it</div>
+  <h2>Follow a change through the history</h2>
+  <p>Make commits on main and on a feature branch, then merge. Watch which commits each branch can see.</p>
+  <div class="stage">
+    <div class="ctrls">
+      <button id="gMain" type="button">Commit on main</button>
+      <button id="gBranch" type="button">Create branch feature</button>
+      <button id="gFeat" type="button" class="primary">Commit on feature</button>
+      <button id="gMerge" type="button">Merge feature into main</button>
+      <button id="gReset" type="button">Reset</button>
+    </div>
+    <div class="panes">
+      <div class="pane"><h4>main</h4><pre class="filetext" id="pMain"></pre></div>
+      <div class="pane"><h4>feature</h4><pre class="filetext" id="pFeat"></pre></div>
+    </div>
+    <div class="log" id="dLog" role="log" aria-label="What happened"></div>
+  </div>
+</section>
+
+<section id="code">
+  <div class="sec-num">Code</div>
+  <h2>The same steps on the command line</h2>
+  <p>Databricks does most of this for you, but the commands show what happens underneath.</p>
+<pre><code>git clone https://github.com/example/bakery-pipelines.git    <span class="c-c"># copy the repo to your machine</span>
+git checkout -b feature/add-shop-codes                    <span class="c-c"># start a branch</span>
+git add pipelines/load_orders.py                          <span class="c-c"># stage the changed file</span>
+git commit -m "Add shop code check to order load"         <span class="c-c"># save a commit with a message</span>
+git push -u origin feature/add-shop-codes                 <span class="c-c"># send the branch to the remote</span>
+git switch main && git pull                               <span class="c-c"># return to main and fetch its latest commits</span></code></pre>
+  <p class="note">The commands are shown for understanding. In the Databricks workspace you use the Git dialog, covered in lessons 05-02 and 05-03.</p>
+</section>
+
+<section id="whatif">
+  <div class="sec-num">What if I change this?</div>
+  <h2>Choices that change the history</h2>
+  <div class="tbl"><table class="whatif">
+    <tr><th>Change</th><th>Effect</th></tr>
+    <tr><td>Commit straight to main, with no branch</td><td>Unreviewed work goes into the shared line. Hard to undo if it breaks something.</td></tr>
+    <tr><td>Write a vague message such as "fix"</td><td>Nobody can tell later why the change was made. History becomes hard to use.</td></tr>
+    <tr><td>Forget to pull before starting</td><td>Your branch starts from an old main, and merging later is harder.</td></tr>
+    <tr><td>Commit a secret password in a file</td><td>It is now in the history, even if deleted later. Rotate the secret; do not rely on deleting the commit.</td></tr>
+    <tr><td>Make the branch long-lived and never merge it</td><td>It drifts far from main, and merging it becomes a painful task.</td></tr>
+  </table></div>
+</section>
+
+<section id="compare">
+  <div class="sec-num">Compare</div>
+  <h2>The words side by side</h2>
+  <div class="tbl"><table>
+    <tr><th>Word</th><th>What it is</th><th>Where it lives</th></tr>
+    <tr><td>Commit</td><td>One saved set of changes</td><td>In the repository history</td></tr>
+    <tr><td>Branch</td><td>A named pointer to a line of commits</td><td>Locally and on the remote</td></tr>
+    <tr><td>Push</td><td>Sending commits to the remote</td><td>From your copy to the shared server</td></tr>
+    <tr><td>Pull</td><td>Fetching and combining others' commits</td><td>From the shared server to your copy</td></tr>
+    <tr><td>Pull request</td><td>A request to review and merge a branch</td><td>On the Git host, such as GitHub or Azure DevOps</td></tr>
+  </table></div>
+</section>
+
+<section id="scenarios">
+  <div class="sec-num">Real life</div>
+  <h2>Git in a data team</h2>
+  <div class="tbl"><table>
+    <tr><th>Scenario</th><th>What happens</th><th>Fix</th></tr>
+    <tr><td>A bad change to the silver job breaks the nightly run</td><td>It went straight to main</td><td>Revert the merge commit, then require pull requests for main</td></tr>
+    <tr><td>Two engineers edit the same pipeline file</td><td>Their branches overlap</td><td>Coordinate, then resolve the merge conflict (lesson 05-03)</td></tr>
+    <tr><td>A notebook with a connection password was pushed</td><td>The secret is in the history</td><td>Rotate the password first, then remove it from the history with the team's policy</td></tr>
+  </table></div>
+</section>
+
+<section id="traps">
+  <div class="sec-num">Don't confuse these</div>
+  <h2>Git traps</h2>
+  <div class="grid2">
+    <div class="card trap"><span class="tag">Commit vs push</span><p>A commit is saved on your machine. A push sends it to the shared remote. Nobody else sees a commit until it is pushed.</p></div>
+    <div class="card trap"><span class="tag">Branch vs repository</span><p>A repository is the whole project and its history. A branch is one line within it.</p></div>
+    <div class="card trap"><span class="tag">Pull request vs merge</span><p>A pull request is the request and its review. The merge is the act of combining the branches.</p></div>
+    <div class="card trap"><span class="tag">Git vs GitHub</span><p>Git is the tool. GitHub, Azure DevOps and others host repositories and pull requests.</p></div>
+  </div>
+</section>
+
+<section id="quiz">
+  <div class="sec-num">Check yourself</div>
+  <h2>Quiz</h2>
+  <div class="quiz">
+    <fieldset>
+      <legend>1. What does a commit record?</legend>
+      <label><input type="radio"> The whole repository copied</label>
+      <label><input type="radio" data-correct> One saved set of changes, with a message</label>
+      <label><input type="radio"> A pull request</label>
+      <p class="explain" hidden>A commit is one snapshot of changes plus its message and author.</p>
+    </fieldset>
+    <fieldset>
+      <legend>2. Why start a branch for a change?</legend>
+      <label><input type="radio" data-correct> So the change can be tried and reviewed without touching main</label>
+      <label><input type="radio"> Branches make the code run faster</label>
+      <label><input type="radio"> Branches delete old commits</label>
+      <p class="explain" hidden>A branch isolates the change until it is reviewed and merged.</p>
+    </fieldset>
+    <fieldset>
+      <legend>3. In the demo, which commits did main contain after the feature was merged?</legend>
+      <label><input type="radio"> Only the feature commits</label>
+      <label><input type="radio" data-correct> Its own commits, plus the feature commits and a merge commit</label>
+      <label><input type="radio"> None</label>
+      <p class="explain" hidden>Merging brings the feature's commits into main and records a merge commit.</p>
+    </fieldset>
+    <fieldset>
+      <legend>4. What does a push do?</legend>
+      <label><input type="radio"> Downloads commits from the remote</label>
+      <label><input type="radio" data-correct> Sends your commits to the remote</label>
+      <label><input type="radio"> Deletes the branch</label>
+      <p class="explain" hidden>Push sends local commits to the shared remote. Pull fetches from it.</p>
+    </fieldset>
+  </div>
+</section>
+
+<section id="wrap">
+  <div class="sec-num">Wrap up</div>
+  <h2>Key takeaways</h2>
+  <ul>
+    <li>Git records history as commits. Branches are separate lines of commits.</li>
+    <li>Push sends commits to the remote. Pull fetches them.</li>
+    <li>Work on a branch and review it in a pull request before it reaches main.</li>
+    <li>A secret that was committed stays in the history: rotate it.</li>
+  </ul>
+  <h3>Glossary terms used</h3>
+  <p><a href="../../glossary.html#git">Git</a> · <a href="../../glossary.html#repository">repository</a> · <a href="../../glossary.html#commit">commit</a> · <a href="../../glossary.html#branch">branch</a> · <a href="../../glossary.html#remote">remote</a> · <a href="../../glossary.html#pull-request">pull request</a></p>
+  <h3>Official docs</h3>
+  <ul>
+    <li><a href="https://docs.databricks.com/aws/en/repos">Databricks Git folders</a></li>
+    <li><a href="https://docs.databricks.com/aws/en/repos/ci-cd">CI/CD with Databricks Git folders</a></li>
+  </ul>
+  <p class="cap">Last verified: 16 November 2026</p>
+</section>
+
+</main>
+
+<script>
+(function () {
+  var C = window.Course, $ = function (id) { return document.getElementById(id); }, L = $('dLog');
+  var s;
+  function draw() {
+    $('pMain').textContent = s.main.join('\n');
+    $('pFeat').textContent = s.feat ? s.feat.join('\n') : '(no feature branch yet)';
+  }
+  $('gMain').onclick = function () { s.main.push('c' + (s.n++) + ' on main'); C.log(L, 'ok', 'Committed on main.'); draw(); };
+  $('gBranch').onclick = function () {
+    if (s.feat) { C.log(L, 'skip', 'The feature branch already exists.'); return; }
+    s.feat = s.main.slice(); C.log(L, 'ok', 'Branch feature created from main. It starts with the same commits.'); draw();
+  };
+  $('gFeat').onclick = function () {
+    if (!s.feat) { C.log(L, 'bad', 'Create the feature branch first.'); return; }
+    s.feat.push('c' + (s.n++) + ' on feature'); C.log(L, 'ok', 'Committed on feature. Main does not show it yet.'); draw();
+  };
+  $('gMerge').onclick = function () {
+    if (!s.feat) { C.log(L, 'bad', 'There is no feature branch to merge.'); return; }
+    var added = s.feat.filter(function (c) { return s.main.indexOf(c) < 0; });
+    if (!added.length) { C.log(L, 'skip', 'Nothing new on feature to merge.'); return; }
+    s.main = s.main.concat(added, ['merge commit: feature into main']);
+    C.log(L, 'ok', 'Merged feature into main: ' + added.length + ' commit(s) added, plus a merge commit.'); draw();
+  };
+  $('gReset').onclick = function () { s = { n: 1, main: ['c0 initial'], feat: null }; L.innerHTML = ''; C.log(L, 'skip', 'A new repository with one commit on main.'); draw(); };
+  $('gReset').onclick();
+})();
+</script>
+</body>
+</html>

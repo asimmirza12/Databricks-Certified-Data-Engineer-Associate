@@ -73,9 +73,9 @@
     ["11", "choosing-triggers", "Time-based or data-driven? Choosing a trigger", 1]
   ]},
   {n:"05", slug:"ci-cd", title:"Implementing CI/CD", weight:10, lessons:[
-    ["01", "git-basics", "Git basics for beginners: repo, branch, commit, pull request", 0],
-    ["02", "git-folders", "Databricks Git folders: clone, create and switch branches", 0],
-    ["03", "commit-push-pull-request", "Commit, push, pull requests and merge conflicts", 0],
+    ["01", "git-basics", "Git basics for beginners: repo, branch, commit, pull request", 1],
+    ["02", "git-folders", "Databricks Git folders: clone, create and switch branches", 1],
+    ["03", "commit-push-pull-request", "Commit, push, pull requests and merge conflicts", 1],
     ["04", "what-are-bundles", "What are Declarative Automation Bundles?", 0],
     ["05", "bundle-targets", "Targets: dev, test and prod", 0],
     ["06", "bundle-variables-overrides", "Variables and overrides", 0],

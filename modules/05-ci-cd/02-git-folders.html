@@ -1,0 +1,235 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>05-02 Databricks Git folders · DE Associate course</title>
+<link rel="stylesheet" href="../../assets/course.css">
+<script src="../../assets/course.js"></script>
+</head>
+<body data-lesson="05-02">
+
+<aside class="disclaimer" aria-label="Disclaimer"><strong>Learning resource only.</strong> This is an independent, unofficial study guide made for learning purposes. It is not affiliated with, endorsed by or sponsored by Databricks. Databricks features change often, so always check the details in the <a href="https://docs.databricks.com">official Databricks documentation</a> and the official exam guide on databricks.com before relying on anything here. Databricks and related names are trademarks of their respective owners.</aside>
+
+<main class="wrap">
+
+<header class="hero">
+  <div class="eyebrow">Module 05 · Implementing CI/CD · Lesson 2 of 10</div>
+  <h1>Databricks Git folders: clone, create and switch branches</h1>
+  <p class="lede">A Git folder links a folder in your workspace to a Git repository. The notebooks inside are real files under version control, and you can branch, commit and sync them without leaving Databricks.</p>
+  <dl class="where">
+    <div><dt>Module</dt><dd>05 Implementing CI/CD (10% of the exam)</dd></div>
+    <div><dt>Exam objective</dt><dd>5.1 Manage your code development workflow within the Databricks workspace UI, including creating and switching between branches in Databricks Git folders (formerly Databricks Repos). This lesson covers cloning, creating and switching.</dd></div>
+    <div><dt>Time to read</dt><dd>About 13 minutes</dd></div>
+    <div><dt>Before this</dt><dd><a href="01-git-basics.html">05-01 Git basics for beginners</a></dd></div>
+  </dl>
+</header>
+
+<section id="idea">
+  <div class="sec-num">The idea</div>
+  <h2>A repository inside the workspace</h2>
+  <p>A <a href="../../glossary.html#git-folder">Git folder</a> is the Databricks name for a repository cloned into your workspace. It was formerly called a Databricks Repo. You clone it once, then work on its notebooks and files like any folder.</p>
+  <p>Three operations cover most daily work:</p>
+  <ul>
+    <li><strong>Clone</strong>: copy a remote repository into a Git folder. You provide the repository's URL and your Git provider credentials.</li>
+    <li><strong>Create a branch</strong>: start a new line of work from an existing branch, usually main. In the Git dialog, you name the branch and choose its base.</li>
+    <li><strong>Switch a branch</strong>: change which branch the folder's files show. The files change to match that branch.</li>
+  </ul>
+  <p>Databricks recommends that each developer works on their own branch. Shared folders need care, because switching branch changes what the folder shows to everyone who uses it.</p>
+  <div class="analogy">
+    <span class="tag">Everyday analogy</span>
+    <p><strong>A shared bookshelf with a sheet of alternate editions.</strong> The shelf (the Git folder) holds the books you read. A branch is an alternate edition of the same book: same title, a different set of revisions. Switching editions swaps the pages on the shelf. If three readers share the shelf, swapping editions changes it for all three, so each reader should have an edition of their own.</p>
+  </div>
+</section>
+
+<section id="how">
+  <div class="sec-num">How it works</div>
+  <h2>One folder, one repository, many branches</h2>
+  <div class="stage">
+    <svg class="tall" viewBox="0 0 360 330" role="img" aria-label="A remote repository on the left is cloned into a Git folder in the workspace. Inside the Git folder, the branch selector switches between main and feature, and each branch shows its own notebooks.">
+      <defs><path id="gf1" d="M120 80 H160"/><path id="gf2" d="M240 180 V218"/></defs>
+      <g class="wire"><use href="#gf1"/><use href="#gf2"/></g>
+      <g class="mover"><circle r="5" class="dot"><animateMotion dur="1.4s" repeatCount="indefinite"><mpath href="#gf1"/></animateMotion></circle></g>
+      <rect class="box-soft" x="8" y="50" width="112" height="60" rx="8"/><text class="t-b" x="64" y="76" text-anchor="middle">Remote</text><text class="t-m" x="64" y="94" text-anchor="middle">GitHub repo</text>
+      <rect class="box-acc" x="160" y="22" width="192" height="216" rx="10"/>
+      <text class="t-b" x="256" y="46" text-anchor="middle">Git folder in the workspace</text>
+      <rect class="box" x="176" y="60" width="160" height="34" rx="6"/><text class="mono" x="186" y="82">branch: main</text>
+      <rect class="box" x="176" y="102" width="160" height="34" rx="6"/><text class="mono" x="186" y="124">branch: feature/x</text>
+      <text class="t-m" x="256" y="154" text-anchor="middle">switching changes the files shown</text>
+      <rect class="box" x="176" y="170" width="160" height="56" rx="6"/><text class="mono" x="186" y="192">load_orders.py</text><text class="mono" x="186" y="212">build_gold.py</text>
+      <rect class="box-soft" x="60" y="218" width="260" height="90" rx="8"/>
+      <text class="t-b" x="74" y="242">Steps</text>
+      <text class="t-m" x="74" y="262">1. Clone the repository URL into a Git folder</text>
+      <text class="t-m" x="74" y="280">2. Create a branch from main</text>
+      <text class="t-m" x="74" y="298">3. Switch branch to change what the folder shows</text>
+    </svg>
+    <p class="cap">The folder holds one repository's files. Each branch in it is a different set of files.</p>
+  </div>
+  <h3>Setting up credentials</h3>
+  <p>Cloning and pushing need your Git provider credentials, stored in the Databricks Git credentials settings. The provider decides what the token must allow. Keep tokens out of notebooks; they belong in the credentials settings, or in a secret.</p>
+</section>
+
+<section id="demo">
+  <div class="sec-num">Try it</div>
+  <h2>Clone, branch and switch</h2>
+  <p>Clone a repository, create a branch, and switch between branches. Watch which notebooks the folder shows on each branch.</p>
+  <div class="stage">
+    <div class="ctrls">
+      <button id="fClone" type="button" class="primary">Clone the repository</button>
+      <button id="fNew" type="button">Create branch feature/shop-codes from main</button>
+      <label class="tog">Switch to: <select id="fSwitch"><option value="main">main</option><option value="feature/shop-codes">feature/shop-codes</option></select></label>
+      <button id="fGo" type="button">Switch</button>
+      <button id="fReset" type="button">Reset</button>
+    </div>
+    <div class="panes">
+      <div class="pane"><h4>Git folder: current branch</h4><div class="big" id="fCur">-</div><p class="cap" id="fWhy"></p></div>
+      <div class="pane"><h4>Notebooks shown</h4><pre class="filetext" id="fFiles"></pre></div>
+    </div>
+    <div class="log" id="dLog" role="log" aria-label="What happened"></div>
+  </div>
+</section>
+
+<section id="code">
+  <div class="sec-num">Code</div>
+  <h2>The same operations, as Git commands</h2>
+  <p>The Git folder dialog runs commands like these for you:</p>
+<pre><code>git clone https://github.com/example/bakery-pipelines.git    <span class="c-c"># what "clone" does</span>
+git switch -c feature/shop-codes main                     <span class="c-c"># what "create branch from main" does</span>
+git switch main                                           <span class="c-c"># what "switch branch" does</span></code></pre>
+  <p class="note">You can also list Git folders from code with the Databricks CLI or the Repos API, which is the basis for CI/CD in lesson 05-04 onward. Check the current command names in the Databricks CLI reference.</p>
+</section>
+
+<section id="whatif">
+  <div class="sec-num">What if I change this?</div>
+  <h2>Branch operations and their effects</h2>
+  <div class="tbl"><table class="whatif">
+    <tr><th>Change</th><th>Effect</th></tr>
+    <tr><td>Create a branch from main instead of from another feature branch</td><td>The new branch has only main's commits. Use this as the default starting point.</td></tr>
+    <tr><td>Switch branch in a folder that others also use</td><td>The folder changes for everyone who uses it. Give each person their own Git folder.</td></tr>
+    <tr><td>Switch branch with uncommitted edits</td><td>Your edits may be lost or blocked. Commit or discard first, and check what the UI reports.</td></tr>
+    <tr><td>Navigate away while the folder is in a detached HEAD state</td><td>Changes made there are not on any branch and can be lost. Create a branch before editing.</td></tr>
+    <tr><td>Add a new folder outside the sparse checkout pattern</td><td>The commit and push fail with an error. Check the folder's sparse checkout settings.</td></tr>
+  </table></div>
+</section>
+
+<section id="compare">
+  <div class="sec-num">Compare</div>
+  <h2>Git folders against notebooks alone</h2>
+  <div class="tbl"><table>
+    <tr><th></th><th>Notebook in a plain workspace folder</th><th>Notebook in a Git folder</th></tr>
+    <tr><td>History</td><td>Workspace versions only</td><td>Full Git history, shared with the team</td></tr>
+    <tr><td>Branches</td><td>None</td><td>Create and switch branches</td></tr>
+    <tr><td>Review</td><td>No pull request</td><td>Pull request on the Git host</td></tr>
+    <tr><td>Deploy to other environments</td><td>Copy by hand</td><td>Automated from the repository (Module 05)</td></tr>
+  </table></div>
+</section>
+
+<section id="scenarios">
+  <div class="sec-num">Real life</div>
+  <h2>Git folders in a team</h2>
+  <div class="tbl"><table>
+    <tr><th>Scenario</th><th>What happens</th><th>Fix</th></tr>
+    <tr><td>A teammate's work vanished after they switched branch in the shared folder</td><td>The folder was shared, and the switch changed it for everyone</td><td>Use a personal Git folder per developer</td></tr>
+    <tr><td>Edits disappeared after navigating away</td><td>They were made in a detached HEAD state</td><td>Create a branch before editing; commit often</td></tr>
+    <tr><td>A dashboard disappeared after switching branch</td><td>The dashboard does not exist on the target branch</td><td>Keep dashboards on the branch that defines them, and check before switching</td></tr>
+  </table></div>
+</section>
+
+<section id="traps">
+  <div class="sec-num">Don't confuse these</div>
+  <h2>Git folder traps</h2>
+  <div class="grid2">
+    <div class="card trap"><span class="tag">Git folder vs repository</span><p>The Git folder is the workspace copy. The repository is the remote project it is linked to.</p></div>
+    <div class="card trap"><span class="tag">Repos vs Git folders</span><p>Repos is the former name. Git folders is the current name. Exam questions may use either.</p></div>
+    <div class="card trap"><span class="tag">Switching vs creating</span><p>Create makes a new branch. Switch changes which existing branch the folder shows.</p></div>
+    <div class="card trap"><span class="tag">Shared vs personal folder</span><p>A shared folder is one copy for everyone. A personal folder is yours, and switching it affects only you.</p></div>
+  </div>
+</section>
+
+<section id="quiz">
+  <div class="sec-num">Check yourself</div>
+  <h2>Quiz</h2>
+  <div class="quiz">
+    <fieldset>
+      <legend>1. What is a Databricks Git folder?</legend>
+      <label><input type="radio"> A backup of the workspace</label>
+      <label><input type="radio" data-correct> A repository cloned into the workspace, with its branches</label>
+      <label><input type="radio"> A cluster configuration</label>
+      <p class="explain" hidden>A Git folder links a remote repository to a folder in the workspace.</p>
+    </fieldset>
+    <fieldset>
+      <legend>2. What does "switch branch" do in a Git folder?</legend>
+      <label><input type="radio"> Deletes the current branch</label>
+      <label><input type="radio" data-correct> Changes which branch's files the folder shows</label>
+      <label><input type="radio"> Copies the branch to the workspace</label>
+      <p class="explain" hidden>Switching changes the files shown to match the chosen branch.</p>
+    </fieldset>
+    <fieldset>
+      <legend>3. Why should each developer have their own Git folder?</legend>
+      <label><input type="radio"> Shared folders are slower</label>
+      <label><input type="radio" data-correct> Switching branch in a shared folder changes it for everyone</label>
+      <label><input type="radio"> Git folders cannot be shared</label>
+      <p class="explain" hidden>A branch switch affects every user of that folder.</p>
+    </fieldset>
+    <fieldset>
+      <legend>4. In the demo, what did switching to feature/shop-codes show?</legend>
+      <label><input type="radio"> The same files as main</label>
+      <label><input type="radio" data-correct> The files as they are on the feature branch</label>
+      <label><input type="radio"> Nothing at all</label>
+      <p class="explain" hidden>Each branch holds its own versions of the files, and switching shows them.</p>
+    </fieldset>
+  </div>
+</section>
+
+<section id="wrap">
+  <div class="sec-num">Wrap up</div>
+  <h2>Key takeaways</h2>
+  <ul>
+    <li>A Git folder is a repository inside the workspace (formerly a Databricks Repo).</li>
+    <li>Clone to copy, create a branch from main, and switch to change what the folder shows.</li>
+    <li>Use one Git folder per developer, so switching does not affect others.</li>
+    <li>Create a branch before editing, so nothing is left in a detached HEAD state.</li>
+  </ul>
+  <h3>Glossary terms used</h3>
+  <p><a href="../../glossary.html#git-folder">Git folder</a> · <a href="../../glossary.html#branch">branch</a> · <a href="../../glossary.html#repository">repository</a> · <a href="../../glossary.html#clone">clone</a> · <a href="../../glossary.html#detached-head">detached HEAD</a></p>
+  <h3>Official docs</h3>
+  <ul>
+    <li><a href="https://docs.databricks.com/aws/en/repos/git-operations-with-repos">Create and manage Git folders</a></li>
+    <li><a href="https://docs.databricks.com/aws/en/repos/limits">Git folder limits and reference</a></li>
+  </ul>
+  <p class="cap">Last verified: 16 November 2026</p>
+</section>
+
+</main>
+
+<script>
+(function () {
+  var C = window.Course, $ = function (id) { return document.getElementById(id); }, L = $('dLog');
+  var FILES = { main: ['load_orders.py', 'build_gold.py'], 'feature/shop-codes': ['load_orders.py', 'build_gold.py', 'check_shop_codes.py'] };
+  var s;
+  function draw() {
+    $('fCur').textContent = s.cloned ? s.branch : 'not cloned';
+    $('fFiles').textContent = s.cloned ? FILES[s.branch].join('\n') : '(clone the repository first)';
+    $('fWhy').textContent = s.cloned ? (s.branch === 'main' ? 'Showing the main branch.' : 'Showing the feature branch: its files differ from main.') : '';
+  }
+  $('fClone').onclick = function () {
+    if (s.cloned) { C.log(L, 'skip', 'Already cloned.'); return; }
+    s.cloned = true; s.branch = 'main'; C.log(L, 'ok', 'Cloned the repository. The folder shows main.'); draw();
+  };
+  $('fNew').onclick = function () {
+    if (!s.cloned) { C.log(L, 'bad', 'Clone the repository first.'); return; }
+    if (s.created) { C.log(L, 'skip', 'The branch already exists: switch to it instead.'); return; }
+    s.created = true; C.log(L, 'ok', 'Created feature/shop-codes from main. It starts with the same files.'); draw();
+  };
+  $('fGo').onclick = function () {
+    if (!s.cloned) { C.log(L, 'bad', 'Clone the repository first.'); return; }
+    var to = $('fSwitch').value;
+    if (to === 'feature/shop-codes' && !s.created) { C.log(L, 'bad', 'That branch has not been created yet.'); return; }
+    s.branch = to; C.log(L, 'ok', 'Switched to ' + to + '.'); draw();
+  };
+  $('fReset').onclick = function () { s = { cloned: false, created: false, branch: null }; L.innerHTML = ''; C.log(L, 'skip', 'No Git folder yet.'); draw(); };
+  $('fReset').onclick();
+})();
+</script>
+</body>
+</html>

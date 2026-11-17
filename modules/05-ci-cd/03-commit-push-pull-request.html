@@ -1,0 +1,250 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>05-03 Commit, push, pull requests and merge conflicts · DE Associate course</title>
+<link rel="stylesheet" href="../../assets/course.css">
+<script src="../../assets/course.js"></script>
+</head>
+<body data-lesson="05-03">
+
+<aside class="disclaimer" aria-label="Disclaimer"><strong>Learning resource only.</strong> This is an independent, unofficial study guide made for learning purposes. It is not affiliated with, endorsed by or sponsored by Databricks. Databricks features change often, so always check the details in the <a href="https://docs.databricks.com">official Databricks documentation</a> and the official exam guide on databricks.com before relying on anything here. Databricks and related names are trademarks of their respective owners.</aside>
+
+<main class="wrap">
+
+<header class="hero">
+  <div class="eyebrow">Module 05 · Implementing CI/CD · Lesson 3 of 10</div>
+  <h1>Commit, push, pull requests and merge conflicts</h1>
+  <p class="lede">You have a branch and your changes. Now you save them, share them, ask for review, and bring them into main. Along the way two things can go wrong: a change can be pushed to the wrong place, or two people can change the same lines. This lesson covers both.</p>
+  <dl class="where">
+    <div><dt>Module</dt><dd>05 Implementing CI/CD (10% of the exam)</dd></div>
+    <div><dt>Exam objective</dt><dd>5.1 Manage your code development workflow in the Databricks workspace: committing and pushing changes, creating pull requests, and handling merges using Databricks Git integration.</dd></div>
+    <div><dt>Time to read</dt><dd>About 14 minutes</dd></div>
+    <div><dt>Before this</dt><dd><a href="01-git-basics.html">05-01 Git basics</a> · <a href="02-git-folders.html">05-02 Git folders</a></dd></div>
+  </dl>
+</header>
+
+<section id="idea">
+  <div class="sec-num">The idea</div>
+  <h2>Save, share, review, merge</h2>
+  <p>In a Git folder, the workflow is:</p>
+  <ol>
+    <li><strong>Commit</strong>: save your changed notebooks and files as one commit. A commit message is required, and should say what changed and why.</li>
+    <li><strong>Push</strong>: send the commit to the remote branch. The Git dialog offers this as Commit and push.</li>
+    <li><strong>Create a pull request</strong>: ask for the branch to be reviewed and merged. You create it on your Git host, such as GitHub or Azure DevOps. After a push, the Git folder can show a link to open it.</li>
+    <li><strong>Merge</strong>: combine the branch into main, once it is approved.</li>
+  </ol>
+  <p>Databricks recommends that you do not commit straight to main when your permissions allow a branch. If you lack permission to commit to the default branch, create a new branch, push it, and open a pull request.</p>
+  <div class="analogy">
+    <span class="tag">Everyday analogy</span>
+    <p><strong>Submitting a homework essay.</strong> You save the draft as a final version with a note ("added the results section"). You hand it in to the teacher. The teacher checks it and, once it is approved, it goes into the class file. If a classmate wrote a different ending to the same paragraph, the teacher must choose which words stay: that is a merge conflict.</p>
+  </div>
+</section>
+
+<section id="how">
+  <div class="sec-num">How it works</div>
+  <h2>A change through to main</h2>
+  <div class="stage">
+    <svg class="tall" viewBox="0 0 360 340" role="img" aria-label="A feature branch is committed, pushed to the remote, reviewed in a pull request, and merged into main. A merge conflict stops the merge until resolved.">
+      <defs><path id="pr1" d="M180 60 V92"/><path id="pr2" d="M180 140 V172"/><path id="pr3" d="M180 220 V252"/></defs>
+      <g class="wire"><use href="#pr1"/><use href="#pr2"/><use href="#pr3"/></g>
+      <g class="mover">
+        <circle r="5" class="dot"><animateMotion dur="1.2s" repeatCount="indefinite"><mpath href="#pr1"/></animateMotion></circle>
+        <circle r="5" class="dot"><animateMotion dur="1.2s" begin="-0.4s" repeatCount="indefinite"><mpath href="#pr2"/></animateMotion></circle>
+        <circle r="5" class="dot-ok"><animateMotion dur="1.2s" begin="-0.8s" repeatCount="indefinite"><mpath href="#pr3"/></animateMotion></circle>
+      </g>
+      <rect class="box" x="60" y="10" width="240" height="50" rx="8"/><text class="t-b" x="180" y="32" text-anchor="middle">Commit on feature</text><text class="t-m" x="180" y="50" text-anchor="middle">message required</text>
+      <rect class="box" x="60" y="92" width="240" height="48" rx="8"/><text class="t-b" x="180" y="114" text-anchor="middle">Push to the remote</text><text class="t-m" x="180" y="130" text-anchor="middle">branch now visible to the team</text>
+      <rect class="box" x="60" y="172" width="240" height="48" rx="8"/><text class="t-b" x="180" y="194" text-anchor="middle">Pull request: review</text><text class="t-m" x="180" y="210" text-anchor="middle">on the Git host</text>
+      <rect class="box-acc" x="60" y="252" width="240" height="60" rx="8"/><text class="t-b" x="180" y="274" text-anchor="middle">Merge into main</text><text class="t-m" x="180" y="292" text-anchor="middle">a conflict pauses it until resolved</text>
+      <text class="t-m" x="180" y="330" text-anchor="middle">Each step can be done from the Git folder or the Git host.</text>
+    </svg>
+    <p class="cap">The steps are in order. Each one depends on the one before.</p>
+  </div>
+  <h3>When a merge conflicts</h3>
+  <p>A conflict happens when the same lines changed differently on both branches. Git cannot choose, so it stops and marks the file. In the Git folder you then:</p>
+  <ul>
+    <li>edit the file to keep the parts you want, and resolve each conflict; or</li>
+    <li>choose <em>Keep all current changes</em> or <em>Take all incoming changes</em> for the whole file.</li>
+  </ul>
+  <p>Then <strong>Continue Merge</strong> finishes the merge. <strong>Abort</strong> cancels it and returns the branch to how it was before. Databricks recommends merge over rebase for newcomers, because merge does not rewrite commit history.</p>
+  <h3>What a commit does not change</h3>
+  <p>Committing, pushing and creating a branch do not change your notebook's state. A pull, or a switch that alters the notebook source, can. The docs warn that such an operation may drop cell outputs, comments, version history or widgets. Dashboards are different: switching branch can remove a dashboard that does not exist on the target branch.</p>
+</section>
+
+<section id="demo">
+  <div class="sec-num">Try it</div>
+  <h2>Resolve a merge conflict</h2>
+  <p>Two branches changed the same line of <code>load_orders.py</code>. Choose how to resolve the conflict, then finish or abort the merge.</p>
+  <div class="stage">
+    <div class="ctrls">
+      <label class="tog"><input type="checkbox" id="mConflict" checked> Both branches changed the same line</label>
+      <button id="mMerge" type="button" class="primary">Merge feature into main</button>
+      <button id="mKeepCur" type="button">Keep all current changes</button>
+      <button id="mTakeIn" type="button">Take all incoming changes</button>
+      <button id="mContinue" type="button">Continue merge</button>
+      <button id="mAbort" type="button">Abort</button>
+      <button id="mReset" type="button">Reset</button>
+    </div>
+    <div class="panes">
+      <div class="pane"><h4>main (current)</h4><pre class="filetext" id="mCur"></pre></div>
+      <div class="pane"><h4>feature (incoming)</h4><pre class="filetext" id="mInc"></pre></div>
+      <div class="pane"><h4>Result on main</h4><pre class="filetext" id="mRes"></pre><p class="cap" id="mWhy"></p></div>
+    </div>
+    <div class="log" id="dLog" role="log" aria-label="What happened"></div>
+  </div>
+</section>
+
+<section id="code">
+  <div class="sec-num">Code</div>
+  <h2>The same steps as Git commands</h2>
+<pre><code>git commit -m "Use shop code from the lookup table"    <span class="c-c"># commit: a message is required</span>
+git push -u origin feature/shop-codes                  <span class="c-c"># push: share the branch</span>
+<span class="c-c"># ...open the pull request on the Git host, get it reviewed, then:</span>
+git switch main && git pull                            <span class="c-c"># update main first</span>
+git merge feature/shop-codes                           <span class="c-c"># merge; a conflict stops here</span>
+<span class="c-c"># on a conflict, edit the file, then:</span>
+git add pipelines/load_orders.py && git commit         <span class="c-c"># finish the merge</span></code></pre>
+  <p class="note">Your Git host may require a passing check or an approval before merging. Those rules belong to the host, not to Git itself.</p>
+</section>
+
+<section id="whatif">
+  <div class="sec-num">What if I change this?</div>
+  <h2>Choices at merge time</h2>
+  <div class="tbl"><table class="whatif">
+    <tr><th>Change</th><th>Effect</th></tr>
+    <tr><td>Keep all current changes on a conflicting file</td><td>The main version wins. The feature branch's work on that file is dropped from the merge.</td></tr>
+    <tr><td>Take all incoming changes</td><td>The feature version wins. Main's work on that file is dropped from the merge.</td></tr>
+    <tr><td>Abort the merge</td><td>Nothing is merged. The branch returns to its state before the merge.</td></tr>
+    <tr><td>Use rebase instead of merge</td><td>The history is rewritten, which needs force pushes on shared branches. Newcomers should prefer merge.</td></tr>
+    <tr><td>Pull, with cell outputs and widgets in a notebook that changed</td><td>The notebook state may be lost, including outputs, comments and widgets.</td></tr>
+    <tr><td>Commit with a vague message</td><td>The history no longer explains the change. Reviewers and later readers lose context.</td></tr>
+  </table></div>
+</section>
+
+<section id="compare">
+  <div class="sec-num">Compare</div>
+  <h2>Operations and what they touch</h2>
+  <div class="tbl"><table>
+    <tr><th>Operation</th><th>Changes the notebook state?</th><th>Changes the history?</th><th>Reversible?</th></tr>
+    <tr><td>Commit</td><td>No</td><td>Adds a commit</td><td>Yes, with a later commit</td></tr>
+    <tr><td>Push</td><td>No</td><td>Shares commits remotely</td><td>Harder once others pull</td></tr>
+    <tr><td>Create branch</td><td>No</td><td>Adds a pointer</td><td>Yes</td></tr>
+    <tr><td>Pull or branch switch</td><td>Can change it</td><td>Brings others' commits in</td><td>Check first</td></tr>
+    <tr><td>Merge</td><td>Yes, when the files change</td><td>Adds a merge commit</td><td>Abort, or revert</td></tr>
+  </table></div>
+</section>
+
+<section id="scenarios">
+  <div class="sec-num">Real life</div>
+  <h2>Workflow problems</h2>
+  <div class="tbl"><table>
+    <tr><th>Scenario</th><th>What happens</th><th>Fix</th></tr>
+    <tr><td>The merge stops with conflict markers in the pipeline file</td><td>Two people changed the same lines</td><td>Resolve the lines with the right logic, then Continue Merge</td></tr>
+    <tr><td>A pull wiped the outputs in a notebook a colleague was reviewing</td><td>A pull changed the notebook source</td><td>Commit before pulling; keep a copy of important outputs</td></tr>
+    <tr><td>A branch was pushed with a commit message "wip"</td><td>The reviewer cannot see what changed</td><td>Rewrite the message before review, or explain it in the pull request</td></tr>
+    <tr><td>A merge is attempted directly on main with no review</td><td>No one checked the change</td><td>Protect main on the Git host so merges need a pull request</td></tr>
+  </table></div>
+</section>
+
+<section id="traps">
+  <div class="sec-num">Don't confuse these</div>
+  <h2>Workflow traps</h2>
+  <div class="grid2">
+    <div class="card trap"><span class="tag">Abort vs Continue</span><p>Abort cancels the merge and restores the branch. Continue finishes it, after conflicts are resolved.</p></div>
+    <div class="card trap"><span class="tag">Keep current vs take incoming</span><p>"Current" is the branch you are on. "Incoming" is the branch being merged in.</p></div>
+    <div class="card trap"><span class="tag">Commit vs push</span><p>Committing saves locally. Pushing shares. A commit is invisible to others until pushed.</p></div>
+    <div class="card trap"><span class="tag">Pull request vs merge</span><p>The pull request is the review. The merge is the change to main. The review should come first.</p></div>
+  </div>
+</section>
+
+<section id="quiz">
+  <div class="sec-num">Check yourself</div>
+  <h2>Quiz</h2>
+  <div class="quiz">
+    <fieldset>
+      <legend>1. Which step makes your commit visible to the team?</legend>
+      <label><input type="radio"> Committing</label>
+      <label><input type="radio" data-correct> Pushing</label>
+      <label><input type="radio"> Switching branch</label>
+      <p class="explain" hidden>Commit saves locally. Push sends the commit to the shared remote.</p>
+    </fieldset>
+    <fieldset>
+      <legend>2. What causes a merge conflict?</legend>
+      <label><input type="radio"> Two branches with different names</label>
+      <label><input type="radio" data-correct> The same lines changed differently on both branches</label>
+      <label><input type="radio"> Committing without a message</label>
+      <p class="explain" hidden>Git stops when it cannot choose between two changes to the same lines.</p>
+    </fieldset>
+    <fieldset>
+      <legend>3. In the demo, which button cancelled the merge and restored the branch?</legend>
+      <label><input type="radio"> Continue merge</label>
+      <label><input type="radio"> Keep all current changes</label>
+      <label><input type="radio" data-correct> Abort</label>
+      <p class="explain" hidden>Abort cancels the merge and returns the branch to its state before the merge.</p>
+    </fieldset>
+    <fieldset>
+      <legend>4. Which operation can change a notebook's cell outputs and widgets?</legend>
+      <label><input type="radio"> Committing</label>
+      <label><input type="radio" data-correct> A pull or a branch switch that alters the notebook source</label>
+      <label><input type="radio"> Creating a branch</label>
+      <p class="explain" hidden>Git operations that alter the notebook source can drop outputs, comments, version history and widgets.</p>
+    </fieldset>
+  </div>
+</section>
+
+<section id="wrap">
+  <div class="sec-num">Wrap up</div>
+  <h2>Key takeaways</h2>
+  <ul>
+    <li>Commit with a clear message, then push to share the branch.</li>
+    <li>Open a pull request on the Git host, and review before merging.</li>
+    <li>A conflict stops the merge. Resolve it, then Continue; or Abort to go back.</li>
+    <li>Commit before pulling. Pulls and branch switches can change notebook state.</li>
+  </ul>
+  <p class="note">That completes the first three lessons of Module 05. Lesson 05-04 starts the Declarative Automation Bundles that promote this work across environments.</p>
+  <h3>Glossary terms used</h3>
+  <p><a href="../../glossary.html#commit">commit</a> · <a href="../../glossary.html#push">push</a> · <a href="../../glossary.html#pull-request">pull request</a> · <a href="../../glossary.html#merge">merge</a> · <a href="../../glossary.html#merge-conflict">merge conflict</a> · <a href="../../glossary.html#git-folder">Git folder</a></p>
+  <h3>Official docs</h3>
+  <ul>
+    <li><a href="https://docs.databricks.com/aws/en/repos/git-operations-with-repos">Create and manage Git folders</a></li>
+    <li><a href="https://docs.databricks.com/aws/en/repos/ci-cd">CI/CD with Databricks Git folders</a></li>
+    <li><a href="https://docs.databricks.com/aws/en/repos/errors-troubleshooting">Troubleshooting errors for Git folders</a></li>
+  </ul>
+  <p class="cap">Last verified: 16 November 2026</p>
+</section>
+
+</main>
+
+<script>
+(function () {
+  var C = window.Course, $ = function (id) { return document.getElementById(id); }, L = $('dLog');
+  var CUR = 'load_orders: lookup = orders.shop_id   # main version', INC = 'load_orders: lookup = shops.code          # feature version';
+  var st;
+  function draw(note) {
+    $('mCur').textContent = CUR; $('mInc').textContent = INC;
+    $('mRes').textContent = st.res;
+    $('mWhy').textContent = note || '';
+  }
+  $('mMerge').onclick = function () {
+    if (!$('mConflict').checked) { st.res = INC; st.status = 'merged'; C.log(L, 'ok', 'Merged cleanly: no conflict.'); draw('Merged with no conflict.'); return; }
+    st.status = 'conflict'; st.res = '<<<<<<< current\n' + CUR + '\n=======\n' + INC + '\n>>>>>>> incoming';
+    C.log(L, 'bad', 'Merge conflict on load_orders.py. The merge is paused.'); draw('Pick a resolution, then Continue merge, or Abort.');
+  };
+  $('mKeepCur').onclick = function () { if (st.status !== 'conflict') { C.log(L, 'skip', 'No conflict to resolve.'); return; } st.res = CUR; st.resolved = 'current'; C.log(L, 'ok', 'Kept all current changes for this file.'); draw('Main version chosen.'); };
+  $('mTakeIn').onclick = function () { if (st.status !== 'conflict') { C.log(L, 'skip', 'No conflict to resolve.'); return; } st.res = INC; st.resolved = 'incoming'; C.log(L, 'ok', 'Took all incoming changes for this file.'); draw('Feature version chosen.'); };
+  $('mContinue').onclick = function () {
+    if (st.status === 'conflict' && !st.resolved) { C.log(L, 'bad', 'Resolve the conflict first.'); return; }
+    if (st.status === 'idle') { C.log(L, 'skip', 'Start the merge first.'); return; }
+    st.status = 'done'; C.log(L, 'ok', 'Continue merge: the merge commit is created with the chosen version.'); draw('Merge finished.');
+  };
+  $('mAbort').onclick = function () {
+    st = { status: 'idle', res: CUR, resolved: null }; C.log(L, 'skip', 'Aborted. The branch is back to how it was before the merge.'); draw('Merge cancelled.');
+  };
+  $('mReset').onclick = function () { st = { status: 'idle', res: CUR, resolved: null }; L.innerHTML = ''; C.log(L, 'skip', 'Ready to merge feature into main.'); draw(''); };
+  $('mReset').onclick();
+})();
+</script>
+</body>
+</html>
