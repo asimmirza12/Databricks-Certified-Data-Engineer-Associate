@@ -1,0 +1,293 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>04-03 Dependencies and the task graph · DE Associate course</title>
+<link rel="stylesheet" href="../../assets/course.css">
+<script src="../../assets/course.js"></script>
+</head>
+<body data-lesson="04-03">
+
+<aside class="disclaimer" aria-label="Disclaimer"><strong>Learning resource only.</strong> This is an independent, unofficial study guide made for learning purposes. It is not affiliated with, endorsed by or sponsored by Databricks. Databricks features change often, so always check the details in the <a href="https://docs.databricks.com">official Databricks documentation</a> and the official exam guide on databricks.com before relying on anything here. Databricks and related names are trademarks of their respective owners.</aside>
+
+<main class="wrap">
+
+<header class="hero">
+  <div class="eyebrow">Module 04 · Working with Lakeflow Jobs · Lesson 3 of 11</div>
+  <h1>Dependencies and the task graph (DAG)</h1>
+  <p class="lede">Tasks are not a simple list. They form a graph: some wait for others, some run side by side, and each one decides whether to run based on how the tasks before it finished. The graph is the job's real logic.</p>
+  <dl class="where">
+    <div><dt>Module</dt><dd>04 Working with Lakeflow Jobs (16% of the exam)</dd></div>
+    <div><dt>Exam objective</dt><dd>4.2 Configure common tasks and their dependencies using Lakeflow Jobs and its DAG-based task graph. This lesson covers dependencies and the run-if rules.</dd></div>
+    <div><dt>Time to read</dt><dd>About 13 minutes</dd></div>
+    <div><dt>Before this</dt><dd><a href="01-jobs-tasks-runs.html">04-01 Jobs, tasks and runs</a> · <a href="02-task-types.html">04-02 Task types</a></dd></div>
+  </dl>
+</header>
+
+<section id="idea">
+  <div class="sec-num">The idea</div>
+  <h2>A directed acyclic graph</h2>
+  <p>A job's tasks form a <a href="../../glossary.html#dag">DAG</a>: a directed acyclic graph. Directed means each dependency points one way, from a task that must come first to a task that waits. Acyclic means there are no loops back: no task can wait, directly or indirectly, for itself.</p>
+  <p>A <a href="../../glossary.html#task-dependency">dependency</a> is written as <code>depends_on</code>. A task that lists another in <code>depends_on</code> waits for it. Tasks with no dependency between them can run at the same time.</p>
+  <p>Two things decide whether a downstream task runs. The first is whether the upstream tasks finished. The second is its <a href="../../glossary.html#run-if">Run if</a> condition. The default is <strong>All succeeded</strong>: the task runs only if every task it depends on succeeded.</p>
+  <p>The Run if options are:</p>
+  <ul>
+    <li><strong>All succeeded</strong> (default): every upstream task succeeded.</li>
+    <li><strong>At least one succeeded</strong>: one or more upstream tasks succeeded.</li>
+    <li><strong>None failed</strong>: no upstream task failed. Skipped tasks do not count as failures.</li>
+    <li><strong>All done</strong>: every upstream task has finished, whatever its result.</li>
+    <li><strong>At least one failed</strong>: one or more upstream tasks failed. Used for alerts and clean-up.</li>
+    <li><strong>All failed</strong>: every upstream task failed.</li>
+  </ul>
+  <div class="analogy">
+    <span class="tag">Everyday analogy</span>
+    <p><strong>Building a house.</strong> The roof cannot go on until the walls are up, so the roof depends on the walls. The plumber and the electrician can work at the same time, since neither waits for the other. And the inspector visits only when the building work is done, whether or not every job went smoothly. The dependencies are the arrows. The Run if rule is the inspector's rule: "only if everything before me passed", or "whether or not anything passed".</p>
+  </div>
+</section>
+
+<section id="how">
+  <div class="sec-num">How it works</div>
+  <h2>A graph, and what each run-if rule does</h2>
+  <div class="stage">
+    <svg class="tall" viewBox="0 0 360 330" role="img" aria-label="Two load tasks run in parallel. A combine task waits for both. An alert task also waits for both, and runs only if one failed.">
+      <defs><path id="g1" d="M90 84 C 90 110, 130 116, 150 132"/><path id="g2" d="M270 84 C 270 110, 230 116, 210 132"/><path id="g3" d="M180 178 V210"/><path id="g4" d="M270 178 C 270 200, 300 210, 300 250"/></defs>
+      <g class="wire"><use href="#g1"/><use href="#g2"/><use href="#g3"/><use href="#g4"/></g>
+      <g class="mover">
+        <circle r="5" class="dot-ok"><animateMotion dur="1.6s" repeatCount="indefinite"><mpath href="#g1"/></animateMotion></circle>
+        <circle r="5" class="dot-ok"><animateMotion dur="1.6s" begin="-0.4s" repeatCount="indefinite"><mpath href="#g2"/></animateMotion></circle>
+        <circle r="5" class="dot"><animateMotion dur="1.4s" begin="-0.8s" repeatCount="indefinite"><mpath href="#g3"/></animateMotion></circle>
+      </g>
+      <rect class="box-soft" x="20" y="22" width="130" height="62" rx="8"/><text class="t-b" x="85" y="46" text-anchor="middle">load_orders</text><text class="t-m" x="85" y="64" text-anchor="middle">no dependencies</text>
+      <rect class="box-soft" x="210" y="22" width="130" height="62" rx="8"/><text class="t-b" x="275" y="46" text-anchor="middle">load_shops</text><text class="t-m" x="275" y="64" text-anchor="middle">runs in parallel</text>
+      <rect class="box" x="100" y="132" width="160" height="46" rx="8"/><text class="t-b" x="180" y="152" text-anchor="middle">combine</text><text class="t-m" x="180" y="170" text-anchor="middle">run if: All succeeded</text>
+      <rect class="box" x="100" y="210" width="160" height="50" rx="8"/><text class="t-b" x="180" y="230" text-anchor="middle">build_gold</text><text class="t-m" x="180" y="248" text-anchor="middle">waits for combine</text>
+      <rect class="box" x="236" y="250" width="116" height="60" rx="8"/><text class="t-b" x="294" y="272" text-anchor="middle">alert</text><text class="t-m" x="294" y="290" text-anchor="middle">run if: At least one failed</text>
+      <text class="t-m" x="10" y="326">Arrows point from the task that must finish first to the task that waits.</text>
+    </svg>
+    <p class="cap">The arrow from alert to the two loads is hidden here for space. In a real job alert would depend on both loads, and would run only if one of them failed.</p>
+  </div>
+  <h3>What happens to a task whose condition is not met</h3>
+  <p>For the success-based rules, the task is marked <strong>Upstream failed</strong>. For the failure-based rules, it is marked <strong>Excluded</strong>. Either way it does not run, and the tasks that depend on it follow the same logic.</p>
+</section>
+
+<section id="demo">
+  <div class="sec-num">Try it</div>
+  <h2>Fail a load and see what runs</h2>
+  <p>Choose which loads fail, and the Run if rule of <code>combine</code> and <code>alert</code>. Watch which tasks run and why.</p>
+  <div class="stage">
+    <div class="ctrls">
+      <label class="tog"><input type="checkbox" id="fA"> load_orders fails</label>
+      <label class="tog"><input type="checkbox" id="fB"> load_shops fails</label>
+      <label class="tog">combine run if: <select id="rComb">
+        <option value="ALL_SUCCESS">All succeeded</option>
+        <option value="AT_LEAST_ONE_SUCCESS">At least one succeeded</option>
+        <option value="NONE_FAILED">None failed</option>
+        <option value="ALL_DONE">All done</option>
+      </select></label>
+      <label class="tog">alert run if: <select id="rAlert">
+        <option value="AT_LEAST_ONE_FAILED">At least one failed</option>
+        <option value="ALL_FAILED">All failed</option>
+        <option value="ALL_DONE">All done</option>
+      </select></label>
+    </div>
+    <div class="panes">
+      <div class="pane"><h4>Task outcomes</h4><div id="pOut"></div></div>
+      <div class="pane"><h4>Why</h4><p class="cap" id="pWhy"></p></div>
+    </div>
+    <div class="log" id="dLog" role="log" aria-label="What happened"></div>
+  </div>
+</section>
+
+<section id="code">
+  <div class="sec-num">Code</div>
+  <h2>Dependencies and run-if in a job</h2>
+<pre><code><span class="c-k">tasks</span>:
+  - <span class="c-k">task_key</span>: load_orders
+    <span class="c-k">notebook_task</span>: {notebook_path: /Workspace/bakery/load_orders}
+
+  - <span class="c-k">task_key</span>: load_shops
+    <span class="c-k">notebook_task</span>: {notebook_path: /Workspace/bakery/load_shops}
+
+  - <span class="c-k">task_key</span>: combine
+    <span class="c-k">depends_on</span>:                              <span class="c-c"># waits for both loads</span>
+      - {task_key: load_orders}
+      - {task_key: load_shops}
+    <span class="c-k">run_if</span>: ALL_SUCCESS                      <span class="c-c"># the default; shown for clarity</span>
+    <span class="c-k">notebook_task</span>: {notebook_path: /Workspace/bakery/combine}
+
+  - <span class="c-k">task_key</span>: alert
+    <span class="c-k">depends_on</span>:
+      - {task_key: load_orders}
+      - {task_key: load_shops}
+    <span class="c-k">run_if</span>: AT_LEAST_ONE_FAILED             <span class="c-c"># runs only when a load failed</span>
+    <span class="c-k">notebook_task</span>: {notebook_path: /Workspace/bakery/notify_team}</code></pre>
+  <p class="note">The graph must stay acyclic. A job that makes task A wait for B while B waits for A is rejected. Check the exact key names for run-if in the bundle reference before use.</p>
+</section>
+
+<section id="whatif">
+  <div class="sec-num">What if I change this?</div>
+  <h2>Each dependency and rule</h2>
+  <div class="tbl"><table class="whatif">
+    <tr><th>Change</th><th>Effect</th></tr>
+    <tr><td>Remove a <code>depends_on</code> entry</td><td>The task may start before its input is ready. Often the cause of "file not found" errors.</td></tr>
+    <tr><td>Add a dependency that creates a loop</td><td>The job is invalid. No run can start, because each task would wait for itself.</td></tr>
+    <tr><td>Leave <code>combine</code> on All succeeded and one load fails</td><td>Combine is marked Upstream failed and does not run. Nothing is combined.</td></tr>
+    <tr><td>Set <code>combine</code> to None failed</td><td>Combine runs if the failed load was the only problem and nothing actually failed. Skipped tasks do not block it. Use with care: it runs on partial input.</td></tr>
+    <tr><td>Set <code>combine</code> to All done</td><td>Combine runs whatever the loads did, even if both failed. Only sensible for clean-up tasks.</td></tr>
+    <tr><td>Set <code>alert</code> to All failed</td><td>The alert runs only if every load failed. A single failure does not alert anyone.</td></tr>
+    <tr><td>Set <code>alert</code> to At least one failed</td><td>The alert runs on any failure. The usual choice for notifications.</td></tr>
+  </table></div>
+</section>
+
+<section id="compare">
+  <div class="sec-num">Compare</div>
+  <h2>The six Run if rules</h2>
+  <div class="tbl"><table>
+    <tr><th>Rule</th><th>Runs when</th><th>Typical use</th></tr>
+    <tr><td>All succeeded (default)</td><td>Every upstream succeeded</td><td>Normal steps that need all their input</td></tr>
+    <tr><td>At least one succeeded</td><td>One or more upstream succeeded</td><td>Combining optional sources</td></tr>
+    <tr><td>None failed</td><td>No upstream failed; skipped ones are fine</td><td>Steps that tolerate skipped upstream work</td></tr>
+    <tr><td>All done</td><td>Every upstream finished, any result</td><td>Clean-up, release of resources</td></tr>
+    <tr><td>At least one failed</td><td>One or more upstream failed</td><td>Alerts on any failure</td></tr>
+    <tr><td>All failed</td><td>Every upstream failed</td><td>Escalation only when everything broke</td></tr>
+  </table></div>
+  <h3>Parallel or sequential?</h3>
+  <div class="grid2">
+    <div class="card"><span class="tag">Parallel</span><p>Tasks with no dependency between them run at the same time. Faster, if they are independent.</p></div>
+    <div class="card"><span class="tag">Sequential</span><p>A chain of dependencies runs one after another. Needed when each step uses the last one's output.</p></div>
+  </div>
+</section>
+
+<section id="scenarios">
+  <div class="sec-num">Real life</div>
+  <h2>Graphs in practice</h2>
+  <div class="tbl"><table>
+    <tr><th>Scenario</th><th>What happens</th><th>Fix</th></tr>
+    <tr><td>A report ran before the load finished and showed half the data</td><td>A dependency was missing from the graph</td><td>Add the dependency on the load task</td></tr>
+    <tr><td>Nobody was told the nightly job failed</td><td>No alert task existed, so nothing ran on failure</td><td>Add an alert task with At least one failed</td></tr>
+    <tr><td>A clean-up step did not run after a failure, leaving temporary tables behind</td><td>It was set to All succeeded</td><td>Set it to All done</td></tr>
+    <tr><td>The job now fails on every run with a cycle error</td><td>Someone made two tasks wait for each other</td><td>Remove the dependency that closes the loop</td></tr>
+  </table></div>
+</section>
+
+<section id="traps">
+  <div class="sec-num">Don't confuse these</div>
+  <h2>Graph traps</h2>
+  <div class="grid2">
+    <div class="card trap"><span class="tag">Upstream failed vs Excluded</span><p>Both mean "did not run". Upstream failed follows a success-based rule. Excluded follows a failure-based rule.</p></div>
+    <div class="card trap"><span class="tag">None failed vs All succeeded</span><p>None failed tolerates skipped tasks. All succeeded does not. The difference matters after a skip.</p></div>
+    <div class="card trap"><span class="tag">Dependency vs schedule</span><p>A dependency orders tasks inside one run. A schedule decides when a run starts. They are separate.</p></div>
+    <div class="card trap"><span class="tag">DAG vs loop</span><p>A DAG has no loops between tasks. A For each task repeats one task over a list inside one step: lesson 04-07.</p></div>
+  </div>
+</section>
+
+<section id="quiz">
+  <div class="sec-num">Check yourself</div>
+  <h2>Quiz</h2>
+  <div class="quiz">
+    <fieldset>
+      <legend>1. What does the default Run if rule, All succeeded, do?</legend>
+      <label><input type="radio"> Runs the task whatever its upstream tasks did</label>
+      <label><input type="radio" data-correct> Runs only if every upstream task succeeded</label>
+      <label><input type="radio"> Runs if at least one upstream task failed</label>
+      <p class="explain" hidden>All succeeded is the default: every upstream task must have succeeded.</p>
+    </fieldset>
+    <fieldset>
+      <legend>2. In the demo, one load failed and combine was on All succeeded. What happened to combine?</legend>
+      <label><input type="radio"> It ran with the data it had</label>
+      <label><input type="radio" data-correct> It was marked Upstream failed and did not run</label>
+      <label><input type="radio"> It was marked Excluded</label>
+      <p class="explain" hidden>A success-based rule that is not met gives Upstream failed.</p>
+    </fieldset>
+    <fieldset>
+      <legend>3. Which rule runs a clean-up task whatever the earlier tasks did?</legend>
+      <label><input type="radio"> All succeeded</label>
+      <label><input type="radio"> At least one failed</label>
+      <label><input type="radio" data-correct> All done</label>
+      <p class="explain" hidden>All done waits for every upstream task to finish, then runs, whatever their result.</p>
+    </fieldset>
+    <fieldset>
+      <legend>4. Which rule is the usual choice for an alert that fires on any failure?</legend>
+      <label><input type="radio"> All failed</label>
+      <label><input type="radio" data-correct> At least one failed</label>
+      <label><input type="radio"> None failed</label>
+      <p class="explain" hidden>At least one failed runs as soon as any upstream task failed. All failed needs every one to fail.</p>
+    </fieldset>
+    <fieldset>
+      <legend>5. What is a DAG in Lakeflow Jobs?</legend>
+      <label><input type="radio"> A list of tasks run in the order written</label>
+      <label><input type="radio" data-correct> A directed graph of tasks and dependencies with no loops</label>
+      <label><input type="radio"> A table of run results</label>
+      <p class="explain" hidden>Tasks are nodes and depends_on entries are arrows. No task may wait for itself.</p>
+    </fieldset>
+  </div>
+</section>
+
+<section id="wrap">
+  <div class="sec-num">Wrap up</div>
+  <h2>Key takeaways</h2>
+  <ul>
+    <li>Tasks form a directed acyclic graph through <code>depends_on</code>.</li>
+    <li>Tasks with no path between them can run in parallel.</li>
+    <li>Run if decides whether a task runs, based on how its upstream tasks finished.</li>
+    <li>Success-based rules skip with Upstream failed. Failure-based rules skip with Excluded.</li>
+    <li>Use At least one failed for alerts and All done for clean-up.</li>
+  </ul>
+  <h3>Glossary terms used</h3>
+  <p><a href="../../glossary.html#dag">DAG</a> · <a href="../../glossary.html#task-dependency">dependency</a> · <a href="../../glossary.html#run-if">Run if</a> · <a href="../../glossary.html#task">task</a> · <a href="../../glossary.html#lakeflow-jobs">Lakeflow Jobs</a></p>
+  <h3>Official docs</h3>
+  <ul>
+    <li><a href="https://docs.databricks.com/aws/en/jobs/run-if">Configure task dependencies</a></li>
+    <li><a href="https://docs.databricks.com/aws/en/jobs/control-flow">Control the flow of tasks within Lakeflow Jobs</a></li>
+  </ul>
+  <p class="cap">Last verified: 16 November 2026</p>
+</section>
+
+</main>
+
+<script>
+(function () {
+  var C = window.Course, $ = function (id) { return document.getElementById(id); }, L = $('dLog');
+  var SUCCESS_BASED = ['ALL_SUCCESS', 'AT_LEAST_ONE_SUCCESS', 'NONE_FAILED'];
+  var NAME = { ALL_SUCCESS: 'All succeeded', AT_LEAST_ONE_SUCCESS: 'At least one succeeded', NONE_FAILED: 'None failed', ALL_DONE: 'All done', AT_LEAST_ONE_FAILED: 'At least one failed', ALL_FAILED: 'All failed' };
+  /* Upstream of combine: load_orders and load_shops. Returns true when the rule says run. */
+  function runs(rule, st) {
+    var s = st.filter(function (x) { return x === 'Succeeded'; }).length, f = st.filter(function (x) { return x === 'Failed'; }).length;
+    if (rule === 'ALL_SUCCESS') return s === st.length;
+    if (rule === 'AT_LEAST_ONE_SUCCESS') return s >= 1;
+    if (rule === 'NONE_FAILED') return f === 0;
+    if (rule === 'ALL_DONE') return true;
+    if (rule === 'AT_LEAST_ONE_FAILED') return f >= 1;
+    if (rule === 'ALL_FAILED') return f === st.length;
+    return false;
+  }
+  function outcome(rule, st) {
+    if (runs(rule, st)) return 'Succeeded (ran)';
+    return SUCCESS_BASED.indexOf(rule) >= 0 ? 'Upstream failed' : 'Excluded';
+  }
+  function run() {
+    var a = $('fA').checked ? 'Failed' : 'Succeeded', b = $('fB').checked ? 'Failed' : 'Succeeded', up = [a, b];
+    var comb = $('rComb').value, alert = $('rAlert').value;
+    var rows = [
+      { task: 'load_orders', condition: 'no dependencies', outcome: a },
+      { task: 'load_shops', condition: 'no dependencies', outcome: b },
+      { task: 'combine', condition: NAME[comb], outcome: outcome(comb, up) },
+      { task: 'alert', condition: NAME[alert], outcome: outcome(alert, up) }
+    ];
+    $('pOut').innerHTML = C.table(rows);
+    var why = [];
+    why.push('combine: ' + (runs(comb, up) ? 'its rule was met.' : 'its rule was not met, so it did not run.'));
+    why.push('alert: ' + (runs(alert, up) ? 'its rule was met, so it ran.' : 'its rule was not met, so it did not run.'));
+    $('pWhy').textContent = why.join(' ');
+    var bad = rows.some(function (r) { return r.outcome !== 'Succeeded' && r.outcome !== 'Succeeded (ran)' && r.outcome.indexOf('ran') < 0 && r.outcome !== 'Succeeded'; });
+    C.log(L, /ran|Succeeded/.test(rows[2].outcome) ? 'ok' : 'skip', 'combine ' + rows[2].outcome + '; alert ' + rows[3].outcome + '.');
+    C.bump($('pOut'));
+  }
+  ['fA', 'fB'].forEach(function (id) { $(id).onchange = run; });
+  ['rComb', 'rAlert'].forEach(function (id) { $(id).onchange = run; });
+  run();
+})();
+</script>
+</body>
+</html>

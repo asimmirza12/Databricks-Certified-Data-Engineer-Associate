@@ -1,0 +1,255 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>04-02 Task types in Lakeflow Jobs · DE Associate course</title>
+<link rel="stylesheet" href="../../assets/course.css">
+<script src="../../assets/course.js"></script>
+</head>
+<body data-lesson="04-02">
+
+<aside class="disclaimer" aria-label="Disclaimer"><strong>Learning resource only.</strong> This is an independent, unofficial study guide made for learning purposes. It is not affiliated with, endorsed by or sponsored by Databricks. Databricks features change often, so always check the details in the <a href="https://docs.databricks.com">official Databricks documentation</a> and the official exam guide on databricks.com before relying on anything here. Databricks and related names are trademarks of their respective owners.</aside>
+
+<main class="wrap">
+
+<header class="hero">
+  <div class="eyebrow">Module 04 · Working with Lakeflow Jobs · Lesson 2 of 11</div>
+  <h1>Task types in Lakeflow Jobs</h1>
+  <p class="lede">A task does one kind of work. The kind decides what the task runs, which compute it uses and how you configure it. The main types match the things you have already built in this course.</p>
+  <dl class="where">
+    <div><dt>Module</dt><dd>04 Working with Lakeflow Jobs (16% of the exam)</dd></div>
+    <div><dt>Exam objective</dt><dd>4.2 Configure common tasks (notebook, SQL query, dashboard and pipeline) and their dependencies using Lakeflow Jobs. This lesson covers the task types.</dd></div>
+    <div><dt>Time to read</dt><dd>About 12 minutes</dd></div>
+    <div><dt>Before this</dt><dd><a href="01-jobs-tasks-runs.html">04-01 Jobs, tasks and runs</a></dd></div>
+  </dl>
+</header>
+
+<section id="idea">
+  <div class="sec-num">The idea</div>
+  <h2>Pick the task type by what the work is</h2>
+  <p>Every task has a type. The type says what runs inside it:</p>
+  <ul>
+    <li><a href="../../glossary.html#notebook-task">Notebook task</a>: runs a notebook you wrote, in Python, SQL, Scala or R. Use it for code you need to run with logic and steps.</li>
+    <li><a href="../../glossary.html#sql-task">SQL task</a>: runs a SQL query, or a saved file of SQL, on a SQL warehouse. Use it for SQL work that feeds reports.</li>
+    <li><a href="../../glossary.html#dashboard-task">Dashboard task</a>: refreshes a dashboard, so its figures are current when people open it.</li>
+    <li><a href="../../glossary.html#pipeline-task">Pipeline task</a>: runs a Lakeflow Spark Declarative Pipeline (formerly Delta Live Tables), so the transformation is part of the job.</li>
+  </ul>
+  <p>Other types exist for Python scripts, wheels, JAR files and control flow such as If/else and For each. Check the task-type list in the docs for the version you use: the set grows over time.</p>
+  <div class="analogy">
+    <span class="tag">Everyday analogy</span>
+    <p><strong>A toolkit, with one tool per job.</strong> A cook uses a knife for chopping, an oven for baking and a thermometer for checking. Each tool has its own instructions. The same meal needs all three, in order. A notebook task is the knife: flexible, for any work with code. A SQL task is a measuring jug: exact, for one kind of quantity. A pipeline task is a ready-made oven program: it knows its own steps.</p>
+  </div>
+</section>
+
+<section id="how">
+  <div class="sec-num">How it works</div>
+  <h2>Type decides what runs, and where</h2>
+  <div class="stage">
+    <svg class="tall" viewBox="0 0 360 330" role="img" aria-label="Four task types, each running on a suitable compute: notebook on a cluster or serverless compute, SQL on a SQL warehouse, dashboard refresh on a SQL warehouse, pipeline on the pipeline's own compute.">
+      <defs><path id="t0" d="M180 46 V70"/></defs>
+      <g class="wire"><use href="#t0"/></g>
+      <g class="mover"><circle r="5" class="dot"><animateMotion dur="1.2s" repeatCount="indefinite"><mpath href="#t0"/></animateMotion></circle></g>
+      <rect class="box-soft" x="60" y="6" width="240" height="40" rx="8"/><text class="t-b" x="180" y="30" text-anchor="middle">Job: the plan</text>
+      <g class="box">
+        <rect x="8" y="70" width="166" height="92" rx="8"/><text class="t-b" x="91" y="92" text-anchor="middle">Notebook task</text><text class="t-m" x="91" y="110" text-anchor="middle">runs your code</text><text class="t-m" x="91" y="126" text-anchor="middle">serverless or classic</text><text class="t-m" x="91" y="144" text-anchor="middle">compute</text>
+        <rect x="186" y="70" width="166" height="92" rx="8"/><text class="t-b" x="269" y="92" text-anchor="middle">SQL task</text><text class="t-m" x="269" y="110" text-anchor="middle">runs a query</text><text class="t-m" x="269" y="126" text-anchor="middle">on a SQL warehouse</text>
+        <rect x="8" y="180" width="166" height="92" rx="8"/><text class="t-b" x="91" y="202" text-anchor="middle">Dashboard task</text><text class="t-m" x="91" y="220" text-anchor="middle">refreshes a dashboard</text><text class="t-m" x="91" y="236" text-anchor="middle">on a SQL warehouse</text>
+        <rect x="186" y="180" width="166" height="92" rx="8"/><text class="t-b" x="269" y="202" text-anchor="middle">Pipeline task</text><text class="t-m" x="269" y="220" text-anchor="middle">runs a declarative</text><text class="t-m" x="269" y="236" text-anchor="middle">pipeline</text>
+      </g>
+      <text class="t-m" x="180" y="306" text-anchor="middle">The compute each type uses follows from the type. Check the docs for the options allowed.</text>
+    </svg>
+    <p class="cap">Four common types. Each does one kind of work and needs a compatible compute.</p>
+  </div>
+  <h3>Choosing a type</h3>
+  <div class="grid2">
+    <div class="card"><span class="tag">Code with logic</span><p>A notebook task. It can loop, branch, call functions and read files.</p></div>
+    <div class="card"><span class="tag">SQL for reporting</span><p>A SQL task on a SQL warehouse. Simple to read and review.</p></div>
+    <div class="card"><span class="tag">Keep a report fresh</span><p>A dashboard task, run after the tables it reads are updated.</p></div>
+    <div class="card"><span class="tag">A transformation pipeline</span><p>A pipeline task, so the pipeline's own rules and retries apply.</p></div>
+  </div>
+</section>
+
+<section id="demo">
+  <div class="sec-num">Try it</div>
+  <h2>Match the work to a task type</h2>
+  <p>Choose a piece of work. The checker suggests a task type and the compute it needs, and flags a mismatch.</p>
+  <div class="stage">
+    <div class="ctrls">
+      <label class="tog">Work: <select id="dWork">
+        <option value="py">Python that reads files and loops over a list</option>
+        <option value="sql">A SQL aggregation for a weekly report</option>
+        <option value="dash">Refresh the sales dashboard after the load</option>
+        <option value="pipe">A declarative pipeline that cleans bronze into silver</option>
+        <option value="sqlnb">SQL typed into a notebook as a task</option>
+      </select></label>
+      <label class="tog">Task type used: <select id="dUse">
+        <option value="nb">Notebook task</option>
+        <option value="sql">SQL task</option>
+        <option value="dash">Dashboard task</option>
+        <option value="pipe">Pipeline task</option>
+      </select></label>
+      <button id="dGo" type="button" class="primary">Check</button>
+    </div>
+    <div class="panes">
+      <div class="pane"><h4>Suggested type</h4><div class="big" id="pSug">-</div><p class="cap" id="pCompute"></p></div>
+      <div class="pane"><h4>Verdict</h4><div class="big" id="pVerdict">-</div><p class="cap" id="pWhy"></p></div>
+    </div>
+    <div class="log" id="dLog" role="log" aria-label="What happened"></div>
+  </div>
+</section>
+
+<section id="code">
+  <div class="sec-num">Code</div>
+  <h2>Two task types, written as a job</h2>
+<pre><code><span class="c-k">name</span>: weekly_sales_report
+<span class="c-k">tasks</span>:
+  - <span class="c-k">task_key</span>: build_weekly_totals
+    <span class="c-c"># A SQL task: a query run on a SQL warehouse.</span>
+    <span class="c-k">sql_task</span>:
+      <span class="c-k">warehouse_id</span>: <span class="c-s">"abc123def456"</span>        <span class="c-c"># the SQL warehouse to use</span>
+      <span class="c-k">query</span>:
+        <span class="c-k">query_id</span>: <span class="c-s">"a1b2c3"</span>               <span class="c-c"># a saved query in the workspace</span>
+
+  - <span class="c-k">task_key</span>: refresh_dashboard
+    <span class="c-c"># A dashboard task: refreshes the dashboard after the query above.</span>
+    <span class="c-k">depends_on</span>:
+      - <span class="c-k">task_key</span>: build_weekly_totals
+    <span class="c-k">dashboard_task</span>:
+      <span class="c-k">dashboard_id</span>: <span class="c-s">"sales-overview"</span>
+
+  - <span class="c-k">task_key</span>: profile_silver
+    <span class="c-c"># A notebook task: Python code with logic of its own.</span>
+    <span class="c-k">notebook_task</span>:
+      <span class="c-k">notebook_path</span>: /Workspace/bakery/profile_silver</code></pre>
+  <p class="note">Field names are illustrative and vary by version: check the task reference for exact keys and IDs before using them. The pattern to remember is one type per task, and the type decides the keys.</p>
+</section>
+
+<section id="whatif">
+  <div class="sec-num">What if I change this?</div>
+  <h2>Changing a task's type or settings</h2>
+  <div class="tbl"><table class="whatif">
+    <tr><th>Change</th><th>Effect</th></tr>
+    <tr><td>Move a SQL task's query into a notebook task</td><td>The same work now runs as code. You gain logic and loops, and lose the simple SQL review and warehouse sizing.</td></tr>
+    <tr><td>Point a SQL task at a smaller SQL warehouse</td><td>Cheaper, but queries may queue or run slower.</td></tr>
+    <tr><td>Run a dashboard refresh before the tables it reads are rebuilt</td><td>The dashboard shows old figures. Add a dependency so it waits.</td></tr>
+    <tr><td>Use a notebook task to run a pipeline's code directly</td><td>The pipeline's rules, quality checks and retry behaviour are bypassed. Use a pipeline task.</td></tr>
+    <tr><td>Change a notebook task's compute from classic to serverless</td><td>Startup is faster and the settings you can choose are fewer. Check the language and library limits first.</td></tr>
+  </table></div>
+</section>
+
+<section id="compare">
+  <div class="sec-num">Compare</div>
+  <h2>The main task types</h2>
+  <div class="tbl"><table>
+    <tr><th></th><th>Notebook</th><th>SQL</th><th>Dashboard</th><th>Pipeline</th></tr>
+    <tr><td>Runs</td><td>Code in a notebook</td><td>A query or SQL file</td><td>A dashboard refresh</td><td>A declarative pipeline</td></tr>
+    <tr><td>Compute</td><td>Serverless or classic</td><td>SQL warehouse</td><td>SQL warehouse</td><td>The pipeline's own compute</td></tr>
+    <tr><td>Strength</td><td>Full logic and libraries</td><td>Simple and reviewable</td><td>Fresh figures for readers</td><td>Quality rules built in</td></tr>
+    <tr><td>Typical use</td><td>Ingestion code, complex steps</td><td>Weekly totals</td><td>Last step of a report job</td><td>Bronze to silver to gold</td></tr>
+  </table></div>
+</section>
+
+<section id="scenarios">
+  <div class="sec-num">Real life</div>
+  <h2>Choosing the wrong type</h2>
+  <div class="tbl"><table>
+    <tr><th>Scenario</th><th>What happens</th><th>Fix</th></tr>
+    <tr><td>A nightly job builds the same SQL report in a notebook, with a long string of SQL</td><td>Hard to review, and it needs a notebook compute</td><td>A SQL task on a SQL warehouse</td></tr>
+    <tr><td>A pipeline's tables are rebuilt by a notebook that copies its code</td><td>Quality rules run only in the pipeline, not the copy</td><td>Use a pipeline task</td></tr>
+    <tr><td>A dashboard shows stale figures every Monday</td><td>The refresh runs before the load finishes</td><td>Make the dashboard task depend on the load task</td></tr>
+    <tr><td>A small query runs on a large all-purpose cluster in a job</td><td>Wrong compute for a scheduled task, at high cost</td><td>Run it on a SQL warehouse or serverless compute</td></tr>
+  </table></div>
+</section>
+
+<section id="traps">
+  <div class="sec-num">Don't confuse these</div>
+  <h2>Task type traps</h2>
+  <div class="grid2">
+    <div class="card trap"><span class="tag">SQL task vs SQL in a notebook</span><p>A SQL task runs on a SQL warehouse and is configured as a task. SQL cells in a notebook run on the notebook's compute.</p></div>
+    <div class="card trap"><span class="tag">Dashboard task vs dashboard</span><p>A dashboard is what readers look at. A dashboard task refreshes it as part of a job.</p></div>
+    <div class="card trap"><span class="tag">Pipeline task vs notebook</span><p>A pipeline task runs a declarative pipeline with its own quality rules. A notebook does not get those rules.</p></div>
+  </div>
+</section>
+
+<section id="quiz">
+  <div class="sec-num">Check yourself</div>
+  <h2>Quiz</h2>
+  <div class="quiz">
+    <fieldset>
+      <legend>1. Which task type is right for a SQL query that feeds a weekly report?</legend>
+      <label><input type="radio"> Notebook task on all-purpose compute</label>
+      <label><input type="radio" data-correct> SQL task on a SQL warehouse</label>
+      <label><input type="radio"> Pipeline task with no tables</label>
+      <p class="explain" hidden>A SQL task runs queries on a SQL warehouse, the usual home for reporting SQL.</p>
+    </fieldset>
+    <fieldset>
+      <legend>2. Which task type refreshes a dashboard as part of a job?</legend>
+      <label><input type="radio"> SQL task</label>
+      <label><input type="radio" data-correct> Dashboard task</label>
+      <label><input type="radio"> Notebook task</label>
+      <p class="explain" hidden>The dashboard task refreshes the dashboard as one step.</p>
+    </fieldset>
+    <fieldset>
+      <legend>3. Why run a declarative pipeline as a pipeline task rather than from a notebook?</legend>
+      <label><input type="radio"> Pipelines cannot run from notebooks at all</label>
+      <label><input type="radio" data-correct> So the pipeline's own quality rules and retries apply</label>
+      <label><input type="radio"> Pipeline tasks are cheaper</label>
+      <p class="explain" hidden>A pipeline task keeps the pipeline's behaviour intact. Running its code from a notebook can bypass it.</p>
+    </fieldset>
+    <fieldset>
+      <legend>4. In the demo, a SQL aggregation was typed into a notebook task. What did the checker say?</legend>
+      <label><input type="radio"> It is fine as a notebook task</label>
+      <label><input type="radio" data-correct> A SQL task on a SQL warehouse is the better fit</label>
+      <label><input type="radio"> It cannot run at all</label>
+      <p class="explain" hidden>The work is a SQL query, so a SQL task suits it best.</p>
+    </fieldset>
+  </div>
+</section>
+
+<section id="wrap">
+  <div class="sec-num">Wrap up</div>
+  <h2>Key takeaways</h2>
+  <ul>
+    <li>Each task has one type that decides what runs.</li>
+    <li>Notebook for code with logic. SQL for queries on a SQL warehouse. Dashboard to refresh a report. Pipeline for a declarative pipeline.</li>
+    <li>The type also decides the compute the task needs.</li>
+    <li>Use the type that keeps the work's own rules and checks in force.</li>
+  </ul>
+  <h3>Glossary terms used</h3>
+  <p><a href="../../glossary.html#task">task</a> · <a href="../../glossary.html#notebook-task">notebook task</a> · <a href="../../glossary.html#sql-task">SQL task</a> · <a href="../../glossary.html#dashboard-task">dashboard task</a> · <a href="../../glossary.html#pipeline-task">pipeline task</a> · <a href="../../glossary.html#sql-warehouse">SQL warehouse</a></p>
+  <h3>Official docs</h3>
+  <ul>
+    <li><a href="https://docs.databricks.com/aws/en/jobs/configure-task">Configure and edit tasks in Lakeflow Jobs</a></li>
+    <li><a href="https://docs.databricks.com/aws/en/dev-tools/bundles/job-task-types">Job task types in Declarative Automation Bundles</a></li>
+  </ul>
+  <p class="cap">Last verified: 16 November 2026. The SQL, dashboard and pipeline task keys were not confirmed against the current reference; verify in the docs before use.</p>
+</section>
+
+</main>
+
+<script>
+(function () {
+  var C = window.Course, $ = function (id) { return document.getElementById(id); }, L = $('dLog');
+  var WORK = {
+    py:    { best: 'nb',   name: 'Notebook task', compute: 'serverless or classic compute', why: 'Python with loops and file reading needs code with logic.' },
+    sql:   { best: 'sql',  name: 'SQL task', compute: 'a SQL warehouse', why: 'A SQL aggregation is best on a SQL warehouse, where it is simple to review.' },
+    dash:  { best: 'dash', name: 'Dashboard task', compute: 'a SQL warehouse', why: 'Refreshing a dashboard is what the dashboard task is for.' },
+    pipe:  { best: 'pipe', name: 'Pipeline task', compute: "the pipeline's own compute", why: 'A declarative pipeline keeps its quality rules when run as a pipeline task.' },
+    sqlnb: { best: 'sql',  name: 'SQL task', compute: 'a SQL warehouse', why: 'SQL typed into a notebook runs on notebook compute. A SQL task suits it better.' }
+  };
+  var TYPE = { nb: 'Notebook task', sql: 'SQL task', dash: 'Dashboard task', pipe: 'Pipeline task' };
+  $('dGo').onclick = function () {
+    var w = WORK[$('dWork').value], use = $('dUse').value;
+    $('pSug').textContent = w.name; $('pCompute').textContent = 'Compute: ' + w.compute + '.';
+    var ok = use === w.best || (w.best === 'nb' && use === 'nb');
+    $('pVerdict').textContent = ok ? 'Good fit' : 'Mismatch';
+    $('pWhy').textContent = w.why + (ok ? '' : ' You chose ' + TYPE[use] + ' instead.');
+    C.log(L, ok ? 'ok' : 'bad', $('dWork').selectedOptions[0].text + ' as ' + TYPE[use] + ': ' + (ok ? 'good fit' : 'mismatch, suggested ' + w.name) + '.');
+    C.bump($('pSug'));
+  };
+  $('dGo').onclick();
+})();
+</script>
+</body>
+</html>

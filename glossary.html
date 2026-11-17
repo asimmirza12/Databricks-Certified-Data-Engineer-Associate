@@ -65,6 +65,8 @@
     <div id="copy-into"><dt>COPY INTO</dt><dd>A SQL command that loads files from a folder into a table and skips files it has already loaded. <span class="cap">First used in 02-04.</span></dd></div>
     <div id="cross-join"><dt>Cross join</dt><dd>A join with no key that pairs every row of one table with every row of the other. <span class="cap">First used in 03-05.</span></dd></div>
     <div id="csv"><dt>CSV</dt><dd>Comma-separated values. A plain-text format with one record per line and commas between values. It stores no data types. <span class="cap">First used in 00-03.</span></dd></div>
+    <div id="dag"><dt>DAG (directed acyclic graph)</dt><dd>A set of tasks joined by one-way dependencies, with no loops. The shape of a job's task graph. <span class="cap">First used in 04-03.</span></dd></div>
+    <div id="dashboard-task"><dt>Dashboard task</dt><dd>A job task that refreshes a dashboard. <span class="cap">First used in 04-02.</span></dd></div>
     <div id="data-engineer"><dt>Data engineer</dt><dd>The person who builds and looks after data pipelines, so that correct data arrives on time for everyone else. <span class="cap">First used in 00-01.</span></dd></div>
     <div id="data-engineering"><dt>Data engineering</dt><dd>The work of collecting data, storing it, cleaning it and delivering it in a usable shape. <span class="cap">First used in 00-01.</span></dd></div>
     <div id="data-type"><dt>Data type</dt><dd>The kind of value a column may hold, such as a whole number (INT), text (STRING), a decimal number (DECIMAL) or a date. <span class="cap">First used in 00-02.</span></dd></div>
@@ -74,6 +76,7 @@
     <div id="dbu"><dt>DBU (Databricks Unit)</dt><dd>A standard unit of processing power used for one hour. Databricks charges by DBUs used multiplied by a price per DBU. <span class="cap">First used in 01-05.</span></dd></div>
     <div id="deduplication"><dt>Deduplication</dt><dd>Removing repeated rows so that each thing is kept once. Whether rows are copies depends on the columns you compare. <span class="cap">First used in 03-10.</span></dd></div>
     <div id="delta-lake"><dt>Delta Lake</dt><dd>An open-source table format: Parquet data files plus a transaction log. The default format for tables on Databricks. <span class="cap">First used in 00-08.</span></dd></div>
+    <div id="task-dependency"><dt>Dependency (task)</dt><dd>A link that makes one task wait for another, set with depends_on. <span class="cap">First used in 04-03.</span></dd></div>
     <div id="dimension-table"><dt>Dimension table</dt><dd>A table that describes the things a fact refers to, such as shops, products or dates. <span class="cap">First used in 03-15.</span></dd></div>
     <div id="directory-listing"><dt>Directory listing</dt><dd>Auto Loader's default way of finding new files: asking cloud storage for the folder's contents and comparing with its checkpoint. <span class="cap">First used in 02-06.</span></dd></div>
     <div id="driver"><dt>Driver</dt><dd>The one computer in a Spark cluster that plans the work and hands tasks to the executors. <span class="cap">First used in 00-05.</span></dd></div>
@@ -104,12 +107,14 @@
     <div id="ingestion-pipeline"><dt>Ingestion pipeline</dt><dd>The part of a managed connector that loads data into destination streaming tables. It runs on serverless compute on a schedule. <span class="cap">First used in 02-08.</span></dd></div>
     <div id="inner-join"><dt>Inner join</dt><dd>A join that keeps only rows that have a match in both tables. <span class="cap">First used in 03-04.</span></dd></div>
     <div id="jdbc"><dt>JDBC</dt><dd>A long-established standard that lets programs built on Java technology, including Spark, connect to databases through a driver. <span class="cap">First used in 02-09.</span></dd></div>
+    <div id="job"><dt>Job</dt><dd>The definition of an automated workflow: its tasks, their order, its schedule and settings. <span class="cap">First used in 04-01.</span></dd></div>
     <div id="jobs-compute"><dt>Jobs compute</dt><dd>Classic compute created for one job run and removed when the run ends. It has a lower price per DBU than all-purpose compute. <span class="cap">First used in 01-04.</span></dd></div>
     <div id="join"><dt>Join</dt><dd>Combining two tables by matching rows on a key, and putting their columns side by side. <span class="cap">First used in 03-04.</span></dd></div>
     <div id="join-key"><dt>Join key</dt><dd>The column or columns whose values must match for two rows to be joined. <span class="cap">First used in 03-04.</span></dd></div>
     <div id="json"><dt>JSON</dt><dd>A plain-text format in which every value carries its label. It can hold nested data, so it suits semi-structured data. <span class="cap">First used in 00-03.</span></dd></div>
     <div id="object-key"><dt>Key (object key)</dt><dd>The full name of an object in a bucket, such as <code>orders/2026/11/16/north.csv</code>. <span class="cap">First used in 00-06.</span></dd></div>
     <div id="lakeflow-connect"><dt>Lakeflow Connect</dt><dd>The Databricks family of ingestion tools. It has managed connectors and standard connectors. <span class="cap">First used in 02-01.</span></dd></div>
+    <div id="lakeflow-jobs"><dt>Lakeflow Jobs</dt><dd>The Databricks orchestrator for running tasks in order, on a schedule, with a record of each run. Formerly Databricks Workflows. <span class="cap">First used in 04-01.</span></dd></div>
     <div id="lakehouse-federation"><dt>Lakehouse Federation</dt><dd>A Databricks feature for querying an outside database in place, as if its tables were in Unity Catalog, without copying the data. <span class="cap">First used in 02-09.</span></dd></div>
     <div id="latency"><dt>Latency</dt><dd>The delay between something happening and it showing up in your tables. <span class="cap">First used in 00-04.</span></dd></div>
     <div id="lazy-evaluation"><dt>Lazy evaluation</dt><dd>Spark's habit of only recording steps in a plan, and doing no work until a result is asked for. <span class="cap">First used in 00-05.</span></dd></div>
@@ -128,6 +133,7 @@
     <div id="nested"><dt>Nested data</dt><dd>Data inside other data, such as a customer record inside an order record. <span class="cap">First used in 02-11.</span></dd></div>
     <div id="not-null"><dt>NOT NULL</dt><dd>A table constraint that refuses any write where the column has no value. <span class="cap">First used in 03-16.</span></dd></div>
     <div id="notebook"><dt>Notebook</dt><dd>A document made of cells of code and notes. You run a cell and see its result directly underneath. <span class="cap">First used in 00-07.</span></dd></div>
+    <div id="notebook-task"><dt>Notebook task</dt><dd>A job task that runs a notebook. <span class="cap">First used in 04-02.</span></dd></div>
     <div id="null"><dt>NULL</dt><dd>A marker meaning "no value" or "unknown". It is not zero and not empty text. <span class="cap">First used in 00-02.</span></dd></div>
     <div id="object"><dt>Object</dt><dd>One stored file in object storage, together with its key. <span class="cap">First used in 00-06.</span></dd></div>
     <div id="object-storage"><dt>Object storage</dt><dd>A cloud service that stores files cheaply and without a practical size limit. Amazon S3, Azure Data Lake Storage and Google Cloud Storage are examples. <span class="cap">First used in 00-06.</span></dd></div>
@@ -143,6 +149,7 @@
     <div id="partner-connect"><dt>Partner Connect</dt><dd>A workspace page that sets up connections to other companies' data tools, including ingestion products. <span class="cap">First used in 02-13.</span></dd></div>
     <div id="photon"><dt>Photon</dt><dd>A faster engine for running SQL and DataFrame code on Databricks. <span class="cap">First used in 01-04.</span></dd></div>
     <div id="pipeline"><dt>Pipeline (data pipeline)</dt><dd>A chain of steps that moves data from its source to the people who use it, and runs repeatedly without manual work. On Databricks the word can also mean the product Lakeflow Spark Declarative Pipelines. <span class="cap">First used in 00-01.</span></dd></div>
+    <div id="pipeline-task"><dt>Pipeline task</dt><dd>A job task that runs a Lakeflow Spark Declarative Pipeline. <span class="cap">First used in 04-02.</span></dd></div>
     <div id="pool"><dt>Pool</dt><dd>A set of idle, ready machines kept waiting so that classic compute drawing from it starts faster. <span class="cap">First used in 01-04.</span></dd></div>
     <div id="prefix"><dt>Prefix</dt><dd>The beginning of an object key, used like a folder path to select a group of objects. <span class="cap">First used in 00-06.</span></dd></div>
     <div id="primary-key"><dt>Primary key</dt><dd>A column or set of columns that is meant to identify each row. On Unity Catalog tables it is informational and not enforced. <span class="cap">First used in 03-16.</span></dd></div>
@@ -153,6 +160,8 @@
     <div id="rescued-data"><dt>Rescued data column</dt><dd>A spare column, <code>_rescued_data</code>, where Auto Loader keeps data that did not fit the schema: new columns, wrong types, wrong letter case. <span class="cap">First used in 02-07.</span></dd></div>
     <div id="rest-api"><dt>REST API</dt><dd>A common way for programs to request data from a web address. The answer usually comes back as JSON. <span class="cap">First used in 02-10.</span></dd></div>
     <div id="row"><dt>Row</dt><dd>One record in a table: one order, one customer, one event. <span class="cap">First used in 00-02.</span></dd></div>
+    <div id="run"><dt>Run</dt><dd>One execution of a job, with a record of the status and timing of each task. <span class="cap">First used in 04-01.</span></dd></div>
+    <div id="run-if"><dt>Run if</dt><dd>The rule that decides whether a task runs, based on how its upstream tasks finished. The default is All succeeded. <span class="cap">First used in 04-03.</span></dd></div>
     <div id="schema"><dt>Schema</dt><dd>Two meanings. (1) The list of column names and data types of one table. (2) In Unity Catalog, a container inside a catalog that holds tables, views and volumes. Also called a database. <span class="cap">First used in 00-02.</span></dd></div>
     <div id="schema-enforcement"><dt>Schema enforcement</dt><dd>The default behaviour of a Delta table: a write whose columns or types do not match the table is refused. <span class="cap">First used in 01-02.</span></dd></div>
     <div id="schema-evolution"><dt>Schema evolution</dt><dd>Deliberately letting a table's schema change during a write, for example adding a new column with the <code>mergeSchema</code> option. <span class="cap">First used in 01-02.</span></dd></div>
@@ -171,6 +180,7 @@
     <div id="snapshot"><dt>Snapshot (full load)</dt><dd>A complete copy of a source taken at one moment. A snapshot load replaces everything in the target each time. <span class="cap">First used in 02-01.</span></dd></div>
     <div id="source"><dt>Source</dt><dd>Any place data comes from: an app's database, a file, a website, a sensor. <span class="cap">First used in 00-01.</span></dd></div>
     <div id="sql"><dt>SQL</dt><dd>Structured Query Language. The standard language for asking questions of tables and changing them. <span class="cap">First used in 00-01.</span></dd></div>
+    <div id="sql-task"><dt>SQL task</dt><dd>A job task that runs a SQL query or saved SQL file on a SQL warehouse. <span class="cap">First used in 04-02.</span></dd></div>
     <div id="sql-warehouse"><dt>SQL warehouse</dt><dd>Compute built for running SQL, used by the SQL editor, dashboards and reporting tools. <span class="cap">First used in 00-07.</span></dd></div>
     <div id="standard-connector"><dt>Standard connector</dt><dd>An ingestion building block, such as Auto Loader, that you configure and run inside your own pipeline or job. <span class="cap">First used in 02-03.</span></dd></div>
     <div id="star-schema"><dt>Star schema</dt><dd>A layout with one fact table in the middle and dimension tables around it. <span class="cap">First used in 03-15.</span></dd></div>
@@ -182,6 +192,7 @@
     <div id="structured-streaming"><dt>Structured Streaming</dt><dd>The part of Apache Spark that processes data which keeps arriving, using the same DataFrame code as batch. <span class="cap">First used in 00-04.</span></dd></div>
     <div id="system-tables"><dt>System tables</dt><dd>Tables in the built-in <code>system</code> catalog that record how the platform is used: audit events, lineage, billing and more. <span class="cap">First used in 01-03.</span></dd></div>
     <div id="table"><dt>Table</dt><dd>Data arranged in rows and columns, with a schema that every row must fit. <span class="cap">First used in 00-02.</span></dd></div>
+    <div id="task"><dt>Task</dt><dd>One step inside a job, such as one notebook, one query or one pipeline. <span class="cap">First used in 04-01.</span></dd></div>
     <div id="temp-view"><dt>Temporary view</dt><dd>A name given to a DataFrame so that SQL in the same session can use it. It is not stored in the catalog and disappears with the session. <span class="cap">First used in 03-01.</span></dd></div>
     <div id="three-level-namespace"><dt>Three-level namespace</dt><dd>The naming scheme <code>catalog.schema.object</code> used for everything in Unity Catalog. <span class="cap">First used in 00-09.</span></dd></div>
     <div id="time-travel"><dt>Time travel</dt><dd>Reading a Delta table as it was at an earlier version or time. <span class="cap">First used in 00-08.</span></dd></div>

@@ -122,9 +122,9 @@ Objectives:
 
 | Status | Lesson | File | Objective | Prerequisites |
 |---|---|---|---|---|
-| [ ] | 04-01 Lakeflow Jobs: jobs, tasks and runs | `01-jobs-tasks-runs.html` | 4.2 | 00-01, 01-04 |
-| [ ] | 04-02 Task types: notebook, SQL query, dashboard, pipeline | `02-task-types.html` | 4.2 | 04-01 |
-| [ ] | 04-03 Dependencies and the task graph (DAG) | `03-dependencies-and-dag.html` | 4.2 | 04-02 |
+| [x] | 04-01 Lakeflow Jobs: jobs, tasks and runs | `01-jobs-tasks-runs.html` | 4.2 | 00-01, 01-04 |
+| [x] | 04-02 Task types: notebook, SQL query, dashboard, pipeline | `02-task-types.html` | 4.2 | 04-01 |
+| [x] | 04-03 Dependencies and the task graph (DAG) | `03-dependencies-and-dag.html` | 4.2 | 04-02 |
 | [ ] | 04-04 Retries | `04-retries.html` | 4.1 | 04-03 |
 | [ ] | 04-05 Parameters and task values | `05-parameters-and-task-values.html` | 4.1 | 04-03 |
 | [ ] | 04-06 Branching: if/else and run-if conditions | `06-branching.html` | 4.1 | 04-05 |

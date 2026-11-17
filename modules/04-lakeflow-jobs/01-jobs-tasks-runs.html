@@ -1,0 +1,244 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>04-01 Lakeflow Jobs: jobs, tasks and runs · DE Associate course</title>
+<link rel="stylesheet" href="../../assets/course.css">
+<script src="../../assets/course.js"></script>
+</head>
+<body data-lesson="04-01">
+
+<aside class="disclaimer" aria-label="Disclaimer"><strong>Learning resource only.</strong> This is an independent, unofficial study guide made for learning purposes. It is not affiliated with, endorsed by or sponsored by Databricks. Databricks features change often, so always check the details in the <a href="https://docs.databricks.com">official Databricks documentation</a> and the official exam guide on databricks.com before relying on anything here. Databricks and related names are trademarks of their respective owners.</aside>
+
+<main class="wrap">
+
+<header class="hero">
+  <div class="eyebrow">Module 04 · Working with Lakeflow Jobs · Lesson 1 of 11</div>
+  <h1>Lakeflow Jobs: jobs, tasks and runs</h1>
+  <p class="lede">So far you have written code that runs when you press a button. A job is how that code runs on its own: on a timetable, in order, and with a record of every time it ran.</p>
+  <dl class="where">
+    <div><dt>Module</dt><dd>04 Working with Lakeflow Jobs (16% of the exam)</dd></div>
+    <div><dt>Exam objective</dt><dd>4.2 Configure common tasks (notebook, SQL query, dashboard and pipeline) and their dependencies using Lakeflow Jobs and its DAG-based task graph. This lesson covers the vocabulary: job, task and run.</dd></div>
+    <div><dt>Time to read</dt><dd>About 11 minutes</dd></div>
+    <div><dt>Before this</dt><dd><a href="../00-foundations/07-what-is-databricks.html">00-07 What is Databricks?</a> · <a href="../01-databricks-platform/06-choosing-compute.html">01-06 Choosing compute</a></dd></div>
+  </dl>
+</header>
+
+<section id="idea">
+  <div class="sec-num">The idea</div>
+  <h2>A job holds tasks. Each time it runs, it makes a run.</h2>
+  <p><a href="../../glossary.html#lakeflow-jobs">Lakeflow Jobs</a> is the Databricks orchestrator. It was formerly called Databricks Workflows. Orchestration means running steps in the right order at the right time, and recording what happened.</p>
+  <p>The vocabulary has three levels:</p>
+  <ul>
+    <li>A <a href="../../glossary.html#job">job</a> is the definition: its name, its tasks, its schedule and its settings.</li>
+    <li>A <a href="../../glossary.html#task">task</a> is one step inside a job. It is one notebook, one SQL query, one pipeline and so on.</li>
+    <li>A <a href="../../glossary.html#run">run</a> is one execution of the job. Every scheduled start, or manual start, creates a new run. The run records the start time, end time, status and output of each task.</li>
+  </ul>
+  <p>A job can have one task or hundreds. The job defines the plan once. Runs are the record of each time the plan was carried out.</p>
+  <div class="analogy">
+    <span class="tag">Everyday analogy</span>
+    <p><strong>A recipe card, a cook and a meal log.</strong> The recipe card lists the steps: chop, fry, serve. Each step is a task. The card is the job. Every time you cook from it you create a meal, and the kitchen log records when it was cooked, how long each step took and whether it went well. The log entry is the run. The card is written once; the log grows with every meal.</p>
+  </div>
+</section>
+
+<section id="how">
+  <div class="sec-num">How it works</div>
+  <h2>Definition, run, and the record of tasks</h2>
+  <div class="stage">
+    <svg class="tall" viewBox="0 0 360 330" role="img" aria-label="A job definition holds tasks. A schedule or a manual start creates a run. Each run records the status of each task.">
+      <defs><path id="j1" d="M180 84 V116"/><path id="j2" d="M180 200 V232"/></defs>
+      <g class="wire"><use href="#j1"/><use href="#j2"/></g>
+      <g class="mover">
+        <circle r="5" class="dot"><animateMotion dur="1.4s" repeatCount="indefinite"><mpath href="#j1"/></animateMotion></circle>
+        <circle r="5" class="dot-ok"><animateMotion dur="1.4s" begin="-0.7s" repeatCount="indefinite"><mpath href="#j2"/></animateMotion></circle>
+      </g>
+      <rect class="box-soft" x="10" y="8" width="340" height="36" rx="8"/><text class="t-b" x="180" y="30" text-anchor="middle">Trigger: 02:00 every night, or a manual Run now</text>
+      <rect class="box-acc" x="50" y="116" width="260" height="84" rx="8"/><text class="t-b" x="180" y="138" text-anchor="middle">JOB: ingest_bakery_nightly</text><text class="t-m" x="180" y="158" text-anchor="middle">definition: 3 tasks, their order, settings</text><text class="t-m" x="180" y="178" text-anchor="middle">written once, used for every run</text>
+      <rect class="box" x="30" y="232" width="300" height="88" rx="8"/><text class="t-b" x="180" y="254" text-anchor="middle">RUN #184 · 16 Nov · 02:00</text>
+      <text class="mono" x="46" y="278">load_orders      Succeeded   2 min</text>
+      <text class="mono" x="46" y="298">build_gold       Succeeded   4 min</text>
+      <text class="mono" x="46" y="314">refresh_report   Failed      1 min</text>
+    </svg>
+    <p class="cap">The job is the plan. The run is the record of one carrying-out. Failures are recorded against the task that failed, not against the whole job.</p>
+  </div>
+  <h3>What a run records</h3>
+  <div class="grid3">
+    <div class="card"><span class="tag">When</span><p>The start and end time, and how long each task took. Used to spot slow runs.</p></div>
+    <div class="card"><span class="tag">How</span><p>What started it: the schedule, a file arriving, a table changing, or a person.</p></div>
+    <div class="card"><span class="tag">Outcome</span><p>Each task's status, and the error message for any that failed.</p></div>
+  </div>
+  <p>You can see the history of every run in the job's run history. Module 06 uses it to spot slowdowns.</p>
+</section>
+
+<section id="demo">
+  <div class="sec-num">Try it</div>
+  <h2>Run a job and read its history</h2>
+  <p>Start the nightly job. Choose whether the middle task fails, then run again. Watch how each run records each task separately.</p>
+  <div class="stage">
+    <div class="ctrls">
+      <label class="tog"><input type="checkbox" id="jFail"> build_gold fails this time</label>
+      <button id="dRun" type="button" class="primary">Run now</button>
+      <button id="dReset" type="button">Clear history</button>
+    </div>
+    <div class="panes">
+      <div class="pane"><h4>Job definition</h4><pre class="filetext" id="pDef"></pre></div>
+      <div class="pane"><h4>Run history</h4><div id="pHist"></div><p class="cap" id="pWhy"></p></div>
+    </div>
+    <div class="log" id="dLog" role="log" aria-label="What happened"></div>
+  </div>
+</section>
+
+<section id="code">
+  <div class="sec-num">Code</div>
+  <h2>Describing a job</h2>
+  <p>A job can be created in the UI, which writes the same description behind the form. Here is the definition in the form used by Declarative Automation Bundles, which Module 05 covers:</p>
+<pre><code><span class="c-k">name</span>: ingest_bakery_nightly
+<span class="c-k">schedule</span>:
+  <span class="c-k">quartz_cron_expression</span>: <span class="c-s">"0 0 2 * * ?"</span>     <span class="c-c"># every night at 02:00</span>
+  <span class="c-k">timezone_id</span>: <span class="c-s">"Europe/London"</span>
+<span class="c-k">tasks</span>:
+  - <span class="c-k">task_key</span>: load_orders
+    <span class="c-k">notebook_task</span>:
+      <span class="c-k">notebook_path</span>: /Workspace/bakery/load_orders
+  - <span class="c-k">task_key</span>: build_gold
+    <span class="c-k">depends_on</span>:
+      - <span class="c-k">task_key</span>: load_orders
+    <span class="c-k">notebook_task</span>:
+      <span class="c-k">notebook_path</span>: /Workspace/bakery/build_gold</code></pre>
+  <p>Each task has a <code>task_key</code>, a name unique inside the job. Runs refer to tasks by that key, so renaming a key changes the history view.</p>
+</section>
+
+<section id="whatif">
+  <div class="sec-num">What if I change this?</div>
+  <h2>Settings that shape a job and its runs</h2>
+  <div class="tbl"><table class="whatif">
+    <tr><th>Change</th><th>Effect</th></tr>
+    <tr><td>Add a second task</td><td>The job now has two steps. Each run records both separately.</td></tr>
+    <tr><td>Rename a <code>task_key</code></td><td>Earlier runs show under the old name. Dependencies that name the key must be updated too.</td></tr>
+    <tr><td>Change the schedule</td><td>Future runs follow the new timetable. Runs already recorded are unchanged.</td></tr>
+    <tr><td>Start a run by hand</td><td>A run is created outside the schedule and recorded the same way.</td></tr>
+    <tr><td>One task fails</td><td>That task is marked failed in the run. Whether the others still run depends on dependencies (lesson 04-03).</td></tr>
+    <tr><td>Remove a task from the job definition</td><td>Future runs no longer include it. The history of earlier runs still shows it.</td></tr>
+  </table></div>
+</section>
+
+<section id="compare">
+  <div class="sec-num">Compare</div>
+  <h2>Job, task and run</h2>
+  <div class="tbl"><table>
+    <tr><th></th><th>Job</th><th>Task</th><th>Run</th></tr>
+    <tr><td>What it is</td><td>The definition</td><td>One step inside it</td><td>One execution</td></tr>
+    <tr><td>How many</td><td>One per workflow</td><td>One or more per job</td><td>One per start</td></tr>
+    <tr><td>Changed by</td><td>Editing the definition</td><td>Editing the definition</td><td>Never edited: it is a record</td></tr>
+    <tr><td>Where to look</td><td>The Jobs page</td><td>Inside the job</td><td>The job's run history</td></tr>
+  </table></div>
+  <h3>Lakeflow Jobs and the other Lakeflow parts</h3>
+  <div class="grid3">
+    <div class="card"><span class="tag">Connect</span><p>Ingests data (Module 02). Its ingestion pipelines can be run by a job.</p></div>
+    <div class="card"><span class="tag">Declarative Pipelines</span><p>Transforms data (formerly Delta Live Tables). A job can run a pipeline as one of its tasks.</p></div>
+    <div class="card"><span class="tag">Jobs</span><p>Orchestrates the rest: order, schedule, retries and history.</p></div>
+  </div>
+</section>
+
+<section id="scenarios">
+  <div class="sec-num">Real life</div>
+  <h2>Questions a job answers</h2>
+  <div class="tbl"><table>
+    <tr><th>Scenario</th><th>What happens</th><th>Fix</th></tr>
+    <tr><td>The morning report shows yesterday's numbers</td><td>The nightly job failed. The run history shows which task.</td><td>Open the failed run, read the task's error, fix and rerun</td></tr>
+    <tr><td>Two people run the same notebook by hand and get different results</td><td>Hand runs are not recorded as job runs, and the notebook was not run in the same order</td><td>Put the notebook into a job so every run is recorded the same way</td></tr>
+    <tr><td>A job has been slowing down over two months</td><td>Nobody looked at the run durations</td><td>Compare run times in the run history (Module 06)</td></tr>
+    <tr><td>Someone edited the job and the next run failed</td><td>The new definition has an error</td><td>Restore the earlier definition, or fix it. The failed run keeps its record.</td></tr>
+  </table></div>
+</section>
+
+<section id="traps">
+  <div class="sec-num">Don't confuse these</div>
+  <h2>Vocabulary traps</h2>
+  <div class="grid2">
+    <div class="card trap"><span class="tag">Job vs run</span><p>The job is the plan. A run is one carrying-out of it. Editing a job does not change past runs.</p></div>
+    <div class="card trap"><span class="tag">Task vs notebook</span><p>A notebook is code. A task is the job's step that runs it. One notebook can be used by several tasks.</p></div>
+    <div class="card trap"><span class="tag">Workflows vs Lakeflow Jobs</span><p>Same product. Lakeflow Jobs is the current name; Workflows is the former name. Exam questions may use either.</p></div>
+    <div class="card trap"><span class="tag">task_key vs task name</span><p>The task_key is the identifier used in dependencies and runs. Display names are for people.</p></div>
+  </div>
+</section>
+
+<section id="quiz">
+  <div class="sec-num">Check yourself</div>
+  <h2>Quiz</h2>
+  <div class="quiz">
+    <fieldset>
+      <legend>1. What is a run?</legend>
+      <label><input type="radio"> The job's definition</label>
+      <label><input type="radio" data-correct> One execution of a job, with a record of each task</label>
+      <label><input type="radio"> A single notebook cell</label>
+      <p class="explain" hidden>A run is created each time the job starts, whether by schedule or by hand.</p>
+    </fieldset>
+    <fieldset>
+      <legend>2. Which of these is a task?</legend>
+      <label><input type="radio"> The schedule</label>
+      <label><input type="radio" data-correct> One notebook step inside the job</label>
+      <label><input type="radio"> The run history</label>
+      <p class="explain" hidden>A task is one step of a job. The schedule and the history belong to the job.</p>
+    </fieldset>
+    <fieldset>
+      <legend>3. You edit a job so a task is removed. What happens to the history of earlier runs?</legend>
+      <label><input type="radio"> It is deleted</label>
+      <label><input type="radio" data-correct> It is kept, and still shows that task</label>
+      <label><input type="radio"> It is rewritten to match the new job</label>
+      <p class="explain" hidden>Runs are a record. Editing the definition affects future runs only.</p>
+    </fieldset>
+    <fieldset>
+      <legend>4. In the demo, when build_gold failed, what did the run history show?</legend>
+      <label><input type="radio"> The whole job failed with no detail</label>
+      <label><input type="radio" data-correct> That run shows the failed task, and the others with their own status</label>
+      <label><input type="radio"> Nothing was recorded</label>
+      <p class="explain" hidden>Each task's status is recorded inside the run, so failures can be traced to the task.</p>
+    </fieldset>
+  </div>
+</section>
+
+<section id="wrap">
+  <div class="sec-num">Wrap up</div>
+  <h2>Key takeaways</h2>
+  <ul>
+    <li>Lakeflow Jobs (formerly Workflows) orchestrates tasks.</li>
+    <li>A job is the definition. A task is one step. A run is one execution.</li>
+    <li>Each run records every task's status, timing and error.</li>
+    <li>Editing a job affects future runs, not past ones.</li>
+  </ul>
+  <h3>Glossary terms used</h3>
+  <p><a href="../../glossary.html#lakeflow-jobs">Lakeflow Jobs</a> · <a href="../../glossary.html#job">job</a> · <a href="../../glossary.html#task">task</a> · <a href="../../glossary.html#run">run</a> · <a href="../../glossary.html#orchestration">orchestration</a></p>
+  <h3>Official docs</h3>
+  <ul>
+    <li><a href="https://docs.databricks.com/aws/en/jobs/">Lakeflow Jobs</a></li>
+    <li><a href="https://docs.databricks.com/aws/en/jobs/configure-task">Configure and edit tasks</a></li>
+  </ul>
+  <p class="cap">Last verified: 16 November 2026</p>
+</section>
+
+</main>
+
+<script>
+(function () {
+  var C = window.Course, $ = function (id) { return document.getElementById(id); }, L = $('dLog');
+  var runs = [];
+  $('pDef').textContent = 'job: ingest_bakery_nightly\nschedule: 02:00 daily\n\ntasks:\n  load_orders   (notebook)\n  build_gold    (notebook)  depends on load_orders\n  refresh_report (notebook) depends on build_gold';
+  function draw() {
+    $('pHist').innerHTML = runs.length ? C.table(runs.map(function (r) { return { run: r.n, started: r.at, load_orders: r.load, build_gold: r.build, refresh_report: r.refresh, job: r.job }; })) : '<p class="cap">No runs yet.</p>';
+  }
+  $('dRun').onclick = function () {
+    var n = runs.length + 184, fail = $('jFail').checked, at = ['Mon 02:00', 'Tue 02:00', 'Wed 02:00', 'Thu 02:00'][runs.length % 4];
+    var r = { n: n, at: at, load: 'Succeeded', build: fail ? 'Failed' : 'Succeeded', refresh: fail ? 'Skipped' : 'Succeeded', job: fail ? 'Failed' : 'Succeeded' };
+    runs.push(r);
+    $('pWhy').textContent = fail ? 'build_gold failed, so refresh_report was skipped. Each task keeps its own status.' : 'Every task succeeded.';
+    C.log(L, fail ? 'bad' : 'ok', 'Run #' + n + ': ' + r.job + '. ' + $('pWhy').textContent);
+    draw(); C.bump($('pHist'));
+  };
+  $('dReset').onclick = function () { runs = []; L.innerHTML = ''; $('pWhy').textContent = ''; draw(); };
+  draw();
+})();
+</script>
+</body>
+</html>

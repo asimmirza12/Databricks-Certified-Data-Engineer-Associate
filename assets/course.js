@@ -60,9 +60,9 @@
     ["16", "data-quality", "Data quality: constraints and expectations", 1]
   ]},
   {n:"04", slug:"lakeflow-jobs", title:"Working with Lakeflow Jobs", weight:16, lessons:[
-    ["01", "jobs-tasks-runs", "Lakeflow Jobs: jobs, tasks and runs", 0],
-    ["02", "task-types", "Task types: notebook, SQL query, dashboard, pipeline", 0],
-    ["03", "dependencies-and-dag", "Dependencies and the task graph (DAG)", 0],
+    ["01", "jobs-tasks-runs", "Lakeflow Jobs: jobs, tasks and runs", 1],
+    ["02", "task-types", "Task types: notebook, SQL query, dashboard, pipeline", 1],
+    ["03", "dependencies-and-dag", "Dependencies and the task graph (DAG)", 1],
     ["04", "retries", "Retries", 0],
     ["05", "parameters-and-task-values", "Parameters and task values", 0],
     ["06", "branching", "Branching: if/else and run-if conditions", 0],
