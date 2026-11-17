@@ -36,7 +36,7 @@
     <li>One mask per column. A table can have masks on several columns.</li>
     <li>Apply with <code>ALTER TABLE ... ALTER COLUMN ... SET MASK</code>; remove with <code>DROP MASK</code>.</li>
     <li>To set or remove a mask you must own the table, or hold both MANAGE and SELECT on it, and have EXECUTE on the function.</li>
-    <li>Nobody is exempt by default, not even the table owner. Exemptions come only from the logic in the function.</li>
+    <li>The docs describe no automatic exemption, not even for the table owner, so build any exemptions into the function's logic (verify in the docs).</li>
     <li>Readers need standard access mode compute (DBR 12.2 LTS+), a SQL warehouse, serverless, or dedicated compute on DBR 15.4 LTS+. Older runtimes fail safely and return no data.</li>
   </ul>
   <div class="analogy">
@@ -109,7 +109,7 @@ ALTER TABLE bakery.silver.customers
 
 <span class="c-c">-- 3. Remove a mask</span>
 ALTER TABLE bakery.silver.customers ALTER COLUMN email DROP MASK;</code></pre>
-  <p class="note">Group names such as <code>support</code> are made up. Drop a mask from every table before dropping its function, or those tables become unreadable.</p>
+  <p class="note">Group names such as <code>support</code> are made up. The demo above uses a simpler phone rule (support and admins see the full number) than this code sample. Drop a mask from every table before dropping its function, or those tables become unreadable.</p>
 </section>
 
 <section id="whatif">
@@ -155,7 +155,7 @@ ALTER TABLE bakery.silver.customers ALTER COLUMN email DROP MASK;</code></pre>
   <h2>Mask traps</h2>
   <div class="grid2">
     <div class="card trap"><span class="tag">Mask vs filter</span><p>A mask changes values in a column; a row filter removes whole rows.</p></div>
-    <div class="card trap"><span class="tag">Owners are masked</span><p>Only the function's logic exempts anyone.</p></div>
+    <div class="card trap"><span class="tag">Owners are masked</span><p>The docs describe no owner exemption; the function's logic decides (verify in the docs).</p></div>
     <div class="card trap"><span class="tag">Same type</span><p>The function must return the column's type.</p></div>
     <div class="card trap"><span class="tag">is_account_group_member</span><p>Checks account groups; recommended over is_member.</p></div>
   </div>
@@ -184,7 +184,7 @@ ALTER TABLE bakery.silver.customers ALTER COLUMN email DROP MASK;</code></pre>
       <label><input type="radio"> No, owners always see real values</label>
       <label><input type="radio" data-correct> Yes, unless the function's logic lets them through</label>
       <label><input type="radio"> Only on serverless</label>
-      <p class="explain" hidden>There is no built-in owner exemption.</p>
+      <p class="explain" hidden>The docs describe no owner exemption; the function decides.</p>
     </fieldset>
     <fieldset>
       <legend>4. In the demo, with the phone mask on, what did kim from data_admins see in phone?</legend>
@@ -202,7 +202,7 @@ ALTER TABLE bakery.silver.customers ALTER COLUMN email DROP MASK;</code></pre>
   <ul>
     <li>A column mask is a SQL UDF that returns the value each reader is allowed to see.</li>
     <li>SET MASK to attach, DROP MASK to remove; one per column; same return type.</li>
-    <li>is_account_group_member() inside the function decides who sees what; nobody is exempt by default.</li>
+    <li>is_account_group_member() inside the function decides who sees what; no automatic owner exemption is described.</li>
   </ul>
   <h3>Glossary terms used</h3>
   <p><a href="../../glossary.html#column-mask">column mask</a> · <a href="../../glossary.html#udf">UDF</a></p>

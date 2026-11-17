@@ -34,7 +34,7 @@
   <ul>
     <li>One row filter per table. Apply with <code>ALTER TABLE ... SET ROW FILTER fn ON (columns)</code>; remove with <code>DROP ROW FILTER</code>. You can also add it in <code>CREATE TABLE ... WITH ROW FILTER</code>.</li>
     <li>Permissions are the same as for masks: owner of the table, or MANAGE and SELECT on it, plus EXECUTE on the function.</li>
-    <li>It applies to every reader, including the owner, unless the function says otherwise.</li>
+    <li>It applies to every reader, including the owner, unless the function says otherwise; the docs describe no owner exemption (verify in the docs).</li>
     <li>Compute requirements match column masks; older runtimes fail safely and return no data.</li>
     <li>Filters cannot be put on views, and time travel and clones are not supported on filtered tables.</li>
   </ul>
@@ -162,7 +162,7 @@ ALTER TABLE bakery.gold.regional_sales DROP ROW FILTER;</code></pre>
   <div class="grid2">
     <div class="card trap"><span class="tag">FALSE or NULL hides</span><p>Only TRUE shows the row.</p></div>
     <div class="card trap"><span class="tag">One per table</span><p>Put all rules in one function.</p></div>
-    <div class="card trap"><span class="tag">Owners filtered too</span><p>No built-in exemption; write it into the function.</p></div>
+    <div class="card trap"><span class="tag">Owners filtered too</span><p>The docs describe no built-in exemption; write it into the function.</p></div>
     <div class="card trap"><span class="tag">Not on views</span><p>Filters attach to tables. (Views can contain their own WHERE logic.)</p></div>
   </div>
 </section>
@@ -197,7 +197,7 @@ ALTER TABLE bakery.gold.regional_sales DROP ROW FILTER;</code></pre>
       <label><input type="radio"> All rows</label>
       <label><input type="radio" data-correct> No rows</label>
       <label><input type="radio"> Only North</label>
-      <p class="explain" hidden>The owner is not in any allowed group, and owners are not exempt.</p>
+      <p class="explain" hidden>The owner is not in any allowed group, and the docs describe no owner exemption.</p>
     </fieldset>
   </div>
 </section>
@@ -208,7 +208,7 @@ ALTER TABLE bakery.gold.regional_sales DROP ROW FILTER;</code></pre>
   <ul>
     <li>A row filter is a BOOLEAN SQL UDF attached to a table; TRUE shows the row.</li>
     <li>SET ROW FILTER fn ON (cols) to attach; DROP ROW FILTER to remove; one per table.</li>
-    <li>Use is_account_group_member() or a mapping table to decide; nobody is exempt by default.</li>
+    <li>Use is_account_group_member() or a mapping table to decide; no automatic owner exemption is described.</li>
   </ul>
   <h3>Glossary terms used</h3>
   <p><a href="../../glossary.html#row-filter">row filter</a> · <a href="../../glossary.html#udf">UDF</a> · <a href="../../glossary.html#mapping-table">mapping table</a> · <a href="../../glossary.html#column-mask">column mask</a></p>
