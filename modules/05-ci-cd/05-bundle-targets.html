@@ -1,0 +1,258 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>05-05 Targets: dev, test and prod · DE Associate course</title>
+<link rel="stylesheet" href="../../assets/course.css">
+<script src="../../assets/course.js"></script>
+</head>
+<body data-lesson="05-05">
+
+<aside class="disclaimer" aria-label="Disclaimer"><strong>Learning resource only.</strong> This is an independent, unofficial study guide made for learning purposes. It is not affiliated with, endorsed by or sponsored by Databricks. Databricks features change often, so always check the details in the <a href="https://docs.databricks.com">official Databricks documentation</a> and the official exam guide on databricks.com before relying on anything here. Databricks and related names are trademarks of their respective owners.</aside>
+
+<main class="wrap">
+
+<header class="hero">
+  <div class="eyebrow">Module 05 · Implementing CI/CD · Lesson 5 of 10</div>
+  <h1>Targets: dev, test and prod</h1>
+  <p class="lede">One bundle, several places to deploy it. A target names one of those places and says how deployment should behave there. Development is forgiving and private. Production is strict and shared.</p>
+  <dl class="where">
+    <div><dt>Module</dt><dd>05 Implementing CI/CD (10% of the exam)</dd></div>
+    <div><dt>Exam objective</dt><dd>5.2 Understand environment-specific configuration while promoting the same codebase across dev, test and prod targets, and 5.3 deploy bundles across those environments. This lesson covers targets and deployment modes.</dd></div>
+    <div><dt>Time to read</dt><dd>About 13 minutes</dd></div>
+    <div><dt>Before this</dt><dd><a href="04-what-are-bundles.html">05-04 What are Declarative Automation Bundles?</a></dd></div>
+  </dl>
+</header>
+
+<section id="idea">
+  <div class="sec-num">The idea</div>
+  <h2>The same code, promoted through environments</h2>
+  <p>An <a href="../../glossary.html#environment">environment</a> is a separate place where the project runs: <strong>dev</strong> for building, <strong>test</strong> for checking, <strong>prod</strong> for real use. Often each is its own workspace, or at least its own catalog.</p>
+  <p>A <a href="../../glossary.html#target">target</a> is a named entry under <code>targets</code> in <code>databricks.yml</code>. Each target says which workspace to deploy to, and can change settings for that environment. Moving the same code from dev to test to prod is called <a href="../../glossary.html#promotion">promotion</a>.</p>
+  <p>Each target can set a <strong>mode</strong>. There are only two:</p>
+  <ul>
+    <li><code>mode: development</code>: every resource is prefixed with <code>[dev your-name]</code>, and schedules and triggers are paused by default. Several developers can deploy the same bundle to one workspace without clashing, and nothing runs on its own.</li>
+    <li><code>mode: production</code>: none of those safety changes. Resources keep their real names and schedules run. Extra checks apply, such as requiring the current Git branch to match the branch the target names. <code>--force</code> overrides that check.</li>
+  </ul>
+  <p>One target can be the <strong>default</strong>, used when a command names no target. Set <code>default: true</code> on it. Only one target may be the default.</p>
+  <div class="analogy">
+    <span class="tag">Everyday analogy</span>
+    <p><strong>A theatre production.</strong> Rehearsals happen in a practice room with name tags on everything ("Sam's script") and no audience: that is development. The dress rehearsal is test. Opening night is production: real names, real tickets, and the curtain goes up on schedule. Same play, three settings, and the rules get stricter as you move towards the audience.</p>
+  </div>
+</section>
+
+<section id="how">
+  <div class="sec-num">How it works</div>
+  <h2>One bundle, three targets</h2>
+  <div class="stage">
+    <svg class="tall" viewBox="0 0 360 360" role="img" aria-label="A single bundle deploys to three targets. Dev uses development mode, which adds a name prefix and pauses schedules. Test and prod use production mode with real names. Each target points to its own workspace.">
+      <defs><path id="tg1" d="M180 60 C 180 90, 62 90, 62 120"/><path id="tg2" d="M180 60 V120"/><path id="tg3" d="M180 60 C 180 90, 298 90, 298 120"/></defs>
+      <g class="wire"><use href="#tg1"/><use href="#tg2"/><use href="#tg3"/></g>
+      <g class="mover">
+        <circle r="5" class="dot"><animateMotion dur="1.6s" repeatCount="indefinite"><mpath href="#tg1"/></animateMotion></circle>
+        <circle r="5" class="dot"><animateMotion dur="1.6s" begin="-0.5s" repeatCount="indefinite"><mpath href="#tg2"/></animateMotion></circle>
+        <circle r="5" class="dot-ok"><animateMotion dur="1.6s" begin="-1s" repeatCount="indefinite"><mpath href="#tg3"/></animateMotion></circle>
+      </g>
+      <rect class="box-soft" x="90" y="10" width="180" height="50" rx="8"/><text class="t-b" x="180" y="32" text-anchor="middle">One bundle</text><text class="t-m" x="180" y="50" text-anchor="middle">databricks.yml + code</text>
+      <rect class="box" x="6" y="120" width="112" height="140" rx="8"/><text class="t-b" x="62" y="142" text-anchor="middle">dev</text><text class="t-m" x="62" y="162" text-anchor="middle">mode: development</text><text class="t-m" x="62" y="182" text-anchor="middle">[dev sam]</text><text class="t-m" x="62" y="198" text-anchor="middle">nightly_load</text><text class="t-m" x="62" y="220" text-anchor="middle">schedules paused</text><text class="t-m" x="62" y="244" text-anchor="middle">dev workspace</text>
+      <rect class="box" x="124" y="120" width="112" height="140" rx="8"/><text class="t-b" x="180" y="142" text-anchor="middle">test</text><text class="t-m" x="180" y="162" text-anchor="middle">mode: production</text><text class="t-m" x="180" y="190" text-anchor="middle">nightly_load</text><text class="t-m" x="180" y="220" text-anchor="middle">schedules run</text><text class="t-m" x="180" y="244" text-anchor="middle">test workspace</text>
+      <rect class="box-acc" x="242" y="120" width="112" height="140" rx="8"/><text class="t-b" x="298" y="142" text-anchor="middle">prod</text><text class="t-m" x="298" y="162" text-anchor="middle">mode: production</text><text class="t-m" x="298" y="190" text-anchor="middle">nightly_load</text><text class="t-m" x="298" y="220" text-anchor="middle">schedules run</text><text class="t-m" x="298" y="244" text-anchor="middle">prod workspace</text>
+      <rect class="box-soft" x="6" y="280" width="348" height="68" rx="8"/>
+      <text class="mono" x="20" y="302">databricks bundle deploy -t dev</text>
+      <text class="mono" x="20" y="320">databricks bundle deploy -t test</text>
+      <text class="mono" x="20" y="338">databricks bundle deploy -t prod</text>
+    </svg>
+    <p class="cap">The code is identical in all three. Only the target's settings differ. <code>-t</code> chooses the target.</p>
+  </div>
+  <h3>What a target can change</h3>
+  <div class="grid2">
+    <div class="card"><span class="tag">workspace</span><p>Which workspace to deploy to, by its host address.</p></div>
+    <div class="card"><span class="tag">mode</span><p>development or production, with the behaviour above.</p></div>
+    <div class="card"><span class="tag">variables</span><p>Different values for this environment, such as the catalog name (lesson 05-06).</p></div>
+    <div class="card"><span class="tag">resources and run_as</span><p>Per-target changes to resources, and which identity jobs run as.</p></div>
+  </div>
+</section>
+
+<section id="demo">
+  <div class="sec-num">Try it</div>
+  <h2>Deploy the same job to each target</h2>
+  <p>Pick a target and deploy. Watch the job's name, its schedule and its workspace change. Then try deploying to prod from a feature branch.</p>
+  <div class="stage">
+    <div class="ctrls">
+      <label class="tog">Target: <select id="tTarget"><option value="dev">dev (development)</option><option value="test">test (production)</option><option value="prod">prod (production)</option></select></label>
+      <label class="tog">Current Git branch: <select id="tBranch"><option value="main">main</option><option value="feature/shop-codes">feature/shop-codes</option></select></label>
+      <label class="tog"><input type="checkbox" id="tForce"> --force</label>
+      <button id="tDeploy" type="button" class="primary">Deploy</button>
+      <button id="tReset" type="button">Clear</button>
+    </div>
+    <div class="panes">
+      <div class="pane"><h4>Command</h4><pre class="filetext" id="tCmd"></pre></div>
+      <div class="pane"><h4>Result</h4><div id="tRes"></div><p class="cap" id="tWhy"></p></div>
+    </div>
+    <div class="log" id="dLog" role="log" aria-label="What happened"></div>
+    <p class="cap">Model: the prod target is tied to the main branch; test has no branch rule. The developer is "sam".</p>
+  </div>
+</section>
+
+<section id="code">
+  <div class="sec-num">Code</div>
+  <h2>Three targets in databricks.yml</h2>
+<pre><code><span class="c-k">bundle</span>:
+  <span class="c-k">name</span>: bakery_pipelines
+
+<span class="c-k">targets</span>:
+  <span class="c-k">dev</span>:
+    <span class="c-k">mode</span>: development               <span class="c-c"># [dev name] prefix, schedules paused</span>
+    <span class="c-k">default</span>: true                    <span class="c-c"># used when -t is left out</span>
+    <span class="c-k">workspace</span>:
+      <span class="c-k">host</span>: https://dev-bakery.cloud.databricks.com
+
+  <span class="c-k">test</span>:
+    <span class="c-k">mode</span>: production
+    <span class="c-k">workspace</span>:
+      <span class="c-k">host</span>: https://test-bakery.cloud.databricks.com
+
+  <span class="c-k">prod</span>:
+    <span class="c-k">mode</span>: production                <span class="c-c"># real names, schedules run</span>
+    <span class="c-k">git</span>:
+      <span class="c-k">branch</span>: main                     <span class="c-c"># deploy only from main, unless --force</span>
+    <span class="c-k">workspace</span>:
+      <span class="c-k">host</span>: https://prod-bakery.cloud.databricks.com</code></pre>
+<pre><code>databricks bundle deploy               <span class="c-c"># goes to dev, the default target</span>
+databricks bundle deploy -t prod       <span class="c-c"># goes to prod</span></code></pre>
+  <p class="note">Hosts are examples. Presets can fine-tune behaviour per target, such as a name prefix or pausing triggers in production too. Check the deployment modes page for the full list.</p>
+</section>
+
+<section id="whatif">
+  <div class="sec-num">What if I change this?</div>
+  <h2>Target settings and their effects</h2>
+  <div class="tbl"><table class="whatif">
+    <tr><th>Change</th><th>Effect</th></tr>
+    <tr><td>Deploy with no <code>-t</code></td><td>The default target is used: the one with <code>default: true</code>, or the first one if none is marked.</td></tr>
+    <tr><td>Two developers deploy to dev in development mode</td><td>Each gets their own copy, prefixed with their name. No clash.</td></tr>
+    <tr><td>Use production mode for dev</td><td>No prefix, so developers overwrite each other's job, and schedules start running.</td></tr>
+    <tr><td>Deploy to prod from a feature branch</td><td>Refused when the target names main as its branch.</td></tr>
+    <tr><td>Add <code>--force</code> to that deploy</td><td>The branch check is skipped. Use only when you are sure.</td></tr>
+    <tr><td>Mark two targets <code>default: true</code></td><td>Invalid. Only one target may be the default.</td></tr>
+  </table></div>
+</section>
+
+<section id="compare">
+  <div class="sec-num">Compare</div>
+  <h2>Development mode against production mode</h2>
+  <div class="tbl"><table>
+    <tr><th></th><th>mode: development</th><th>mode: production</th></tr>
+    <tr><td>Resource names</td><td>Prefixed with <code>[dev username]</code></td><td>As written</td></tr>
+    <tr><td>Schedules and triggers</td><td>Paused by default</td><td>Run as configured</td></tr>
+    <tr><td>Several people deploying</td><td>Each gets a separate copy</td><td>One shared copy</td></tr>
+    <tr><td>Git branch check</td><td>No</td><td>Yes, if the target names a branch; <code>--force</code> overrides</td></tr>
+    <tr><td>Typical target</td><td>dev</td><td>test and prod</td></tr>
+  </table></div>
+</section>
+
+<section id="scenarios">
+  <div class="sec-num">Real life</div>
+  <h2>Targets in practice</h2>
+  <div class="tbl"><table>
+    <tr><th>Scenario</th><th>What happens</th><th>Fix</th></tr>
+    <tr><td>A developer's test deploy started emailing the business at 2 am</td><td>dev used production mode, so the schedule ran</td><td>Use development mode for dev</td></tr>
+    <tr><td>Two developers keep overwriting each other's job in dev</td><td>No name prefix</td><td>Development mode adds a per-user prefix</td></tr>
+    <tr><td>Someone deployed an unreviewed branch to production</td><td>The prod target has no branch rule</td><td>Tie prod to main, and deploy prod only from CI</td></tr>
+    <tr><td>A command deployed to the wrong workspace</td><td>No target named, so the default was used</td><td>Always name the target in scripts</td></tr>
+  </table></div>
+</section>
+
+<section id="traps">
+  <div class="sec-num">Don't confuse these</div>
+  <h2>Target traps</h2>
+  <div class="grid2">
+    <div class="card trap"><span class="tag">Target vs environment</span><p>The environment is the real place. The target is its entry in <code>databricks.yml</code>.</p></div>
+    <div class="card trap"><span class="tag">Only two modes</span><p>development and production. There is no "test mode". A test target usually uses production mode.</p></div>
+    <div class="card trap"><span class="tag">Paused, not removed</span><p>Development mode pauses schedules. The schedule is still defined, and runs in production.</p></div>
+    <div class="card trap"><span class="tag">--force</span><p>It overrides safety checks such as the branch rule. It is not a fix for errors in the bundle.</p></div>
+  </div>
+</section>
+
+<section id="quiz">
+  <div class="sec-num">Check yourself</div>
+  <h2>Quiz</h2>
+  <div class="quiz">
+    <fieldset>
+      <legend>1. What does <code>mode: development</code> do to deployed resources?</legend>
+      <label><input type="radio"> Deletes them after one day</label>
+      <label><input type="radio" data-correct> Prefixes their names with [dev username] and pauses schedules</label>
+      <label><input type="radio"> Runs them every minute</label>
+      <p class="explain" hidden>Development mode keeps each developer's copy separate and stops it running on its own.</p>
+    </fieldset>
+    <fieldset>
+      <legend>2. Which target is used when a command gives no <code>-t</code>?</legend>
+      <label><input type="radio"> prod</label>
+      <label><input type="radio" data-correct> The default target</label>
+      <label><input type="radio"> None: the command fails</label>
+      <p class="explain" hidden>The target marked <code>default: true</code> is used. With none marked, the first target is used.</p>
+    </fieldset>
+    <fieldset>
+      <legend>3. In the demo, what happened when you deployed to prod from a feature branch?</legend>
+      <label><input type="radio"> It deployed normally</label>
+      <label><input type="radio" data-correct> It was refused, unless --force was used</label>
+      <label><input type="radio"> It deployed to dev instead</label>
+      <p class="explain" hidden>The prod target names main as its branch, so production mode checks the branch.</p>
+    </fieldset>
+    <fieldset>
+      <legend>4. What are the valid values for a target's mode?</legend>
+      <label><input type="radio"> dev, test, prod</label>
+      <label><input type="radio" data-correct> development and production</label>
+      <label><input type="radio"> safe and fast</label>
+      <p class="explain" hidden>There are only two modes. Target names are chosen by you; modes are not.</p>
+    </fieldset>
+  </div>
+</section>
+
+<section id="wrap">
+  <div class="sec-num">Wrap up</div>
+  <h2>Key takeaways</h2>
+  <ul>
+    <li>A target is an environment entry in <code>databricks.yml</code>: its workspace and settings.</li>
+    <li>Development mode prefixes names and pauses schedules. Production mode does not.</li>
+    <li>Production targets can require a Git branch; <code>--force</code> overrides the check.</li>
+    <li>One target is the default. Name the target explicitly in scripts.</li>
+  </ul>
+  <h3>Glossary terms used</h3>
+  <p><a href="../../glossary.html#target">target</a> · <a href="../../glossary.html#environment">environment</a> · <a href="../../glossary.html#promotion">promotion</a> · <a href="../../glossary.html#bundle">bundle</a></p>
+  <h3>Official docs</h3>
+  <ul>
+    <li><a href="https://docs.databricks.com/aws/en/dev-tools/bundles/deployment-modes">Bundle deployment modes</a></li>
+    <li><a href="https://docs.databricks.com/aws/en/dev-tools/bundles/settings">Bundle configuration</a></li>
+  </ul>
+  <p class="cap">Last verified: 16 November 2026</p>
+</section>
+
+</main>
+
+<script>
+(function () {
+  var C = window.Course, $ = function (id) { return document.getElementById(id); }, L = $('dLog');
+  var T = { dev: { mode: 'development', host: 'dev-bakery', branch: null }, test: { mode: 'production', host: 'test-bakery', branch: null }, prod: { mode: 'production', host: 'prod-bakery', branch: 'main' } };
+  function cmd() { var t = $('tTarget').value; return 'databricks bundle deploy -t ' + t + ($('tForce').checked ? ' --force' : '') + '\n# on branch ' + $('tBranch').value; }
+  function draw() { $('tCmd').textContent = cmd(); }
+  ['tTarget', 'tBranch', 'tForce'].forEach(function (id) { $(id).onchange = draw; });
+  $('tDeploy').onclick = function () {
+    var key = $('tTarget').value, t = T[key], br = $('tBranch').value, force = $('tForce').checked;
+    if (t.mode === 'production' && t.branch && br !== t.branch && !force) {
+      $('tRes').innerHTML = '<p class="note trap">Refused: target ' + key + ' must deploy from branch ' + t.branch + ', and you are on ' + br + '.</p>';
+      $('tWhy').textContent = 'Production mode checks the branch. --force would skip this check.';
+      C.log(L, 'bad', 'deploy -t ' + key + ' from ' + br + ': refused by the branch check.'); return;
+    }
+    var dev = t.mode === 'development';
+    $('tRes').innerHTML = C.table([{ setting: 'workspace', value: t.host }, { setting: 'job name', value: (dev ? '[dev sam] ' : '') + 'nightly_load' }, { setting: 'schedule', value: dev ? 'paused' : 'runs at 02:00' }]);
+    $('tWhy').textContent = dev ? 'Development mode: a personal, paused copy.' : 'Production mode: real name, schedule runs.' + (t.branch && br !== t.branch ? ' The branch check was skipped with --force.' : '');
+    C.log(L, t.branch && br !== t.branch ? 'bad' : 'ok', 'deploy -t ' + key + ': ' + $('tWhy').textContent);
+    C.bump($('tRes'));
+  };
+  $('tReset').onclick = function () { L.innerHTML = ''; $('tRes').innerHTML = ''; $('tWhy').textContent = ''; };
+  draw();
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,264 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>05-04 What are Declarative Automation Bundles? · DE Associate course</title>
+<link rel="stylesheet" href="../../assets/course.css">
+<script src="../../assets/course.js"></script>
+</head>
+<body data-lesson="05-04">
+
+<aside class="disclaimer" aria-label="Disclaimer"><strong>Learning resource only.</strong> This is an independent, unofficial study guide made for learning purposes. It is not affiliated with, endorsed by or sponsored by Databricks. Databricks features change often, so always check the details in the <a href="https://docs.databricks.com">official Databricks documentation</a> and the official exam guide on databricks.com before relying on anything here. Databricks and related names are trademarks of their respective owners.</aside>
+
+<main class="wrap">
+
+<header class="hero">
+  <div class="eyebrow">Module 05 · Implementing CI/CD · Lesson 4 of 10</div>
+  <h1>What are Declarative Automation Bundles?</h1>
+  <p class="lede">You built jobs and pipelines by clicking in the workspace. That works once. To create the same job in a test workspace and then in production, identically, you want it written down as files in Git. A bundle is that written-down project.</p>
+  <dl class="where">
+    <div><dt>Module</dt><dd>05 Implementing CI/CD (10% of the exam)</dd></div>
+    <div><dt>Exam objective</dt><dd>5.3 Deploy Declarative Automation Bundles (formerly Databricks Asset Bundles) to package, configure and promote Lakeflow Jobs, pipelines and other workspace assets across environments. This lesson covers what a bundle is and what it contains.</dd></div>
+    <div><dt>Time to read</dt><dd>About 13 minutes</dd></div>
+    <div><dt>Before this</dt><dd><a href="01-git-basics.html">05-01 Git basics</a> · <a href="../04-lakeflow-jobs/01-jobs-tasks-runs.html">04-01 Jobs, tasks and runs</a></dd></div>
+  </dl>
+</header>
+
+<section id="idea">
+  <div class="sec-num">The idea</div>
+  <h2>Your project's code and its settings, in one folder</h2>
+  <p>A <a href="../../glossary.html#bundle">Declarative Automation Bundle</a> is a folder that holds everything a data project needs: the code (notebooks, Python files, SQL) and a description of the Databricks resources that run it (jobs, pipelines and more). The product was formerly called Databricks Asset Bundles, and the name changed in 2026. You will still see the short form "DABs" in older material.</p>
+  <p>The description is written in a file called <code>databricks.yml</code>, in a format called <a href="../../glossary.html#yaml">YAML</a>. YAML is plain text that uses indentation to show structure.</p>
+  <p>"Declarative" means you describe <em>what</em> should exist, not the clicks to create it. You write "there is a job called nightly_load with these tasks", and the Databricks CLI makes the workspace match.</p>
+  <p>Because the whole project is files, it lives in Git. It is reviewed in pull requests, and the same files can be deployed to dev, test and prod. That is the base of CI/CD on Databricks.</p>
+  <div class="analogy">
+    <span class="tag">Everyday analogy</span>
+    <p><strong>A flat-pack furniture kit.</strong> The box holds the parts (your code) and the instruction sheet (<code>databricks.yml</code>). Anyone with the kit can build exactly the same bookshelf in any room. You do not describe how you moved your hands; you describe what the finished shelf looks like, and the builder makes it so. Rooms are environments: the same kit goes into the dev room, the test room and the production room.</p>
+  </div>
+</section>
+
+<section id="how">
+  <div class="sec-num">How it works</div>
+  <h2>From files to resources in a workspace</h2>
+  <div class="stage">
+    <svg class="tall" viewBox="0 0 360 360" role="img" aria-label="A bundle folder holds databricks.yml and source code. The Databricks CLI reads it and deploys the files and creates or updates jobs and pipelines in a workspace.">
+      <defs><path id="bd1" d="M180 160 V196"/><path id="bd2" d="M180 252 V284"/></defs>
+      <g class="wire"><use href="#bd1"/><use href="#bd2"/></g>
+      <g class="mover">
+        <circle r="5" class="dot"><animateMotion dur="1.4s" repeatCount="indefinite"><mpath href="#bd1"/></animateMotion></circle>
+        <circle r="5" class="dot-ok"><animateMotion dur="1.4s" begin="-0.7s" repeatCount="indefinite"><mpath href="#bd2"/></animateMotion></circle>
+      </g>
+      <rect class="box-soft" x="20" y="8" width="320" height="152" rx="10"/>
+      <text class="t-b" x="34" y="30">Bundle folder, kept in Git</text>
+      <text class="mono" x="40" y="56">bakery_pipelines/</text>
+      <text class="mono" x="56" y="76">databricks.yml      the description</text>
+      <text class="mono" x="56" y="96">resources/</text>
+      <text class="mono" x="72" y="116">nightly_load.job.yml</text>
+      <text class="mono" x="56" y="136">src/</text>
+      <text class="mono" x="72" y="154">load_orders.py</text>
+      <rect class="box-acc" x="70" y="196" width="220" height="56" rx="8"/><text class="t-b" x="180" y="218" text-anchor="middle">Databricks CLI</text><text class="mono" x="180" y="238" text-anchor="middle">databricks bundle deploy</text>
+      <rect class="box" x="20" y="284" width="320" height="66" rx="8"/><text class="t-b" x="180" y="306" text-anchor="middle">Workspace</text><text class="t-m" x="180" y="324" text-anchor="middle">files uploaded · job nightly_load created or updated</text><text class="t-m" x="180" y="340" text-anchor="middle">the workspace now matches the description</text>
+    </svg>
+    <p class="cap">Run the same deploy again with no changes, and nothing changes in the workspace. The description is the source of truth.</p>
+  </div>
+  <h3>The main parts of databricks.yml</h3>
+  <div class="grid2">
+    <div class="card"><span class="tag">bundle</span><p>The bundle's name and basic settings.</p></div>
+    <div class="card"><span class="tag">resources</span><p>The jobs, pipelines and other objects to create. Often split into separate files listed under <code>include</code>.</p></div>
+    <div class="card"><span class="tag">variables</span><p>Values that change between environments, such as a catalog name (lesson 05-06).</p></div>
+    <div class="card"><span class="tag">targets</span><p>The environments to deploy to, such as dev and prod (lesson 05-05).</p></div>
+  </div>
+</section>
+
+<section id="demo">
+  <div class="sec-num">Try it</div>
+  <h2>Build a bundle and deploy it</h2>
+  <p>Choose which resources the bundle describes, then deploy. Deploy again with no change, then remove a resource and deploy once more. Watch the workspace follow the description.</p>
+  <div class="stage">
+    <div class="ctrls">
+      <label class="tog"><input type="checkbox" id="rJob" checked> job: nightly_load</label>
+      <label class="tog"><input type="checkbox" id="rPipe" checked> pipeline: silver_orders</label>
+      <label class="tog"><input type="checkbox" id="rDash"> dashboard: sales_overview</label>
+      <button id="bDeploy" type="button" class="primary">databricks bundle deploy</button>
+      <button id="bReset" type="button">Reset</button>
+    </div>
+    <div class="panes">
+      <div class="pane"><h4>databricks.yml (resources)</h4><pre class="filetext" id="bYml"></pre></div>
+      <div class="pane"><h4>Workspace after deploy</h4><div id="bWs"></div></div>
+    </div>
+    <div class="log" id="dLog" role="log" aria-label="What happened"></div>
+    <p class="cap">Model: deploy creates what is described, updates what changed, and removes resources that the bundle created earlier but no longer describes.</p>
+  </div>
+</section>
+
+<section id="code">
+  <div class="sec-num">Code</div>
+  <h2>A minimal bundle</h2>
+<pre><code><span class="c-c"># databricks.yml</span>
+<span class="c-k">bundle</span>:
+  <span class="c-k">name</span>: bakery_pipelines
+
+<span class="c-k">include</span>:
+  - resources/*.yml                 <span class="c-c"># pull in the resource files</span>
+
+<span class="c-k">targets</span>:
+  <span class="c-k">dev</span>:
+    <span class="c-k">mode</span>: development
+    <span class="c-k">default</span>: true                   <span class="c-c"># used when no target is named</span>
+    <span class="c-k">workspace</span>:
+      <span class="c-k">host</span>: https://dev-bakery.cloud.databricks.com</code></pre>
+<pre><code><span class="c-c"># resources/nightly_load.job.yml</span>
+<span class="c-k">resources</span>:
+  <span class="c-k">jobs</span>:
+    <span class="c-k">nightly_load</span>:
+      <span class="c-k">name</span>: nightly_load
+      <span class="c-k">tasks</span>:
+        - <span class="c-k">task_key</span>: load_orders
+          <span class="c-k">notebook_task</span>:
+            <span class="c-k">notebook_path</span>: ../src/load_orders.py   <span class="c-c"># a path inside the bundle</span></code></pre>
+<pre><code>databricks bundle validate     <span class="c-c"># check the description is well formed</span>
+databricks bundle deploy       <span class="c-c"># make the workspace match it</span></code></pre>
+  <p class="note">The workspace host is an example. The bundle commands are covered properly in lesson 05-09. Check field names in the configuration reference.</p>
+</section>
+
+<section id="whatif">
+  <div class="sec-num">What if I change this?</div>
+  <h2>Editing the bundle</h2>
+  <div class="tbl"><table class="whatif">
+    <tr><th>Change</th><th>Effect</th></tr>
+    <tr><td>Add a task to a job in the YAML, then deploy</td><td>The job in the workspace gains the task. No clicking needed.</td></tr>
+    <tr><td>Deploy twice with no change</td><td>Nothing changes the second time. The workspace already matches.</td></tr>
+    <tr><td>Remove a job from the YAML, then deploy</td><td>The job the bundle created is removed from the workspace.</td></tr>
+    <tr><td>Edit the deployed job by hand in the UI</td><td>The next deploy puts it back to what the YAML says. Change the YAML, not the UI.</td></tr>
+    <tr><td>Keep the bundle in Git</td><td>Every change is reviewed and recorded, and any version can be deployed again.</td></tr>
+  </table></div>
+</section>
+
+<section id="compare">
+  <div class="sec-num">Compare</div>
+  <h2>Clicking in the UI against a bundle</h2>
+  <div class="tbl"><table>
+    <tr><th></th><th>Created in the UI</th><th>Defined in a bundle</th></tr>
+    <tr><td>Record of how it was built</td><td>None, or a note</td><td>The YAML, in Git</td></tr>
+    <tr><td>Same thing in another workspace</td><td>Rebuild by hand</td><td>Deploy to another target</td></tr>
+    <tr><td>Review before change</td><td>Hard</td><td>A pull request</td></tr>
+    <tr><td>Undo a change</td><td>Remember what it was</td><td>Deploy the previous commit</td></tr>
+    <tr><td>Good for</td><td>Trying something out</td><td>Anything that goes to production</td></tr>
+  </table></div>
+  <h3>What a bundle can hold</h3>
+  <div class="grid3">
+    <div class="card"><span class="tag">Jobs</span><p>Lakeflow Jobs with their tasks, schedules and triggers.</p></div>
+    <div class="card"><span class="tag">Pipelines</span><p>Lakeflow Spark Declarative Pipelines.</p></div>
+    <div class="card"><span class="tag">Other assets</span><p>Dashboards, schemas, volumes, model serving and more. The list grows: check the resources reference.</p></div>
+  </div>
+</section>
+
+<section id="scenarios">
+  <div class="sec-num">Real life</div>
+  <h2>Why teams move to bundles</h2>
+  <div class="tbl"><table>
+    <tr><th>Scenario</th><th>What happens</th><th>Fix</th></tr>
+    <tr><td>The production job differs from the test job, and nobody knows why</td><td>Each was built by hand</td><td>Define the job once in a bundle and deploy it to both</td></tr>
+    <tr><td>A colleague fixed the job in the UI, and the next deploy undid it</td><td>The bundle is the source of truth</td><td>Make the fix in the YAML and deploy</td></tr>
+    <tr><td>Setting up a new region's workspace takes a week of clicking</td><td>Nothing is written down</td><td>Add a target for the new workspace and deploy</td></tr>
+  </table></div>
+</section>
+
+<section id="traps">
+  <div class="sec-num">Don't confuse these</div>
+  <h2>Bundle traps</h2>
+  <div class="grid2">
+    <div class="card trap"><span class="tag">Bundle vs Git folder</span><p>A Git folder holds code in the workspace. A bundle also describes the jobs and pipelines, and deploys them.</p></div>
+    <div class="card trap"><span class="tag">Old and new names</span><p>Declarative Automation Bundles is the current name. Databricks Asset Bundles (DABs) is the former name.</p></div>
+    <div class="card trap"><span class="tag">Declarative vs scripted</span><p>You describe the end state. You do not write the steps to create it.</p></div>
+    <div class="card trap"><span class="tag">Deploy vs run</span><p>Deploy creates or updates the resources. Running a job is a separate step.</p></div>
+  </div>
+</section>
+
+<section id="quiz">
+  <div class="sec-num">Check yourself</div>
+  <h2>Quiz</h2>
+  <div class="quiz">
+    <fieldset>
+      <legend>1. Which file describes a bundle's resources and targets?</legend>
+      <label><input type="radio"> requirements.txt</label>
+      <label><input type="radio" data-correct> databricks.yml</label>
+      <label><input type="radio"> setup.py</label>
+      <p class="explain" hidden><code>databricks.yml</code> is the bundle's main configuration file.</p>
+    </fieldset>
+    <fieldset>
+      <legend>2. What was the former name of Declarative Automation Bundles?</legend>
+      <label><input type="radio"> Databricks Repos</label>
+      <label><input type="radio" data-correct> Databricks Asset Bundles</label>
+      <label><input type="radio"> Delta Live Tables</label>
+      <p class="explain" hidden>Repos became Git folders. Delta Live Tables became Lakeflow Spark Declarative Pipelines.</p>
+    </fieldset>
+    <fieldset>
+      <legend>3. In the demo, what happened when you removed the dashboard from the YAML and deployed?</legend>
+      <label><input type="radio"> Nothing</label>
+      <label><input type="radio" data-correct> The dashboard the bundle had created was removed from the workspace</label>
+      <label><input type="radio"> The deploy failed</label>
+      <p class="explain" hidden>The workspace follows the description, so resources no longer described are removed.</p>
+    </fieldset>
+    <fieldset>
+      <legend>4. A job deployed by a bundle was edited by hand in the UI. What happens at the next deploy?</legend>
+      <label><input type="radio"> The hand edit is kept</label>
+      <label><input type="radio" data-correct> The job is set back to what the YAML describes</label>
+      <label><input type="radio"> The bundle is updated from the UI</label>
+      <p class="explain" hidden>The bundle is the source of truth. Make changes in the YAML.</p>
+    </fieldset>
+  </div>
+</section>
+
+<section id="wrap">
+  <div class="sec-num">Wrap up</div>
+  <h2>Key takeaways</h2>
+  <ul>
+    <li>A bundle is a folder of code plus <code>databricks.yml</code>, kept in Git.</li>
+    <li>It declares the jobs, pipelines and other resources that should exist.</li>
+    <li>The Databricks CLI deploys it, and the workspace is made to match.</li>
+    <li>Change the YAML, not the deployed resource in the UI.</li>
+  </ul>
+  <h3>Glossary terms used</h3>
+  <p><a href="../../glossary.html#bundle">bundle</a> · <a href="../../glossary.html#yaml">YAML</a> · <a href="../../glossary.html#job">job</a> · <a href="../../glossary.html#databricks-cli">Databricks CLI</a></p>
+  <h3>Official docs</h3>
+  <ul>
+    <li><a href="https://docs.databricks.com/dev-tools/bundles/">What are Declarative Automation Bundles?</a></li>
+    <li><a href="https://docs.databricks.com/aws/en/dev-tools/bundles/settings">Bundle configuration</a></li>
+    <li><a href="https://docs.databricks.com/aws/en/dev-tools/bundles/resources">Bundle resources</a></li>
+  </ul>
+  <p class="cap">Last verified: 16 November 2026</p>
+</section>
+
+</main>
+
+<script>
+(function () {
+  var C = window.Course, $ = function (id) { return document.getElementById(id); }, L = $('dLog');
+  var RES = { rJob: ['jobs', 'nightly_load'], rPipe: ['pipelines', 'silver_orders'], rDash: ['dashboards', 'sales_overview'] }, ws;
+  function wanted() { return Object.keys(RES).filter(function (k) { return $(k).checked; }); }
+  function yml() {
+    var w = wanted(), by = {};
+    w.forEach(function (k) { (by[RES[k][0]] = by[RES[k][0]] || []).push(RES[k][1]); });
+    var out = 'resources:'; Object.keys(by).forEach(function (t) { out += '\n  ' + t + ':'; by[t].forEach(function (n) { out += '\n    ' + n + ': {...}'; }); });
+    return w.length ? out : 'resources: {}';
+  }
+  function draw() {
+    $('bYml').textContent = yml();
+    var names = Object.keys(ws);
+    $('bWs').innerHTML = names.length ? C.table(names.map(function (n) { return { resource: n, state: ws[n] }; })) : '<p class="cap">Nothing deployed yet.</p>';
+  }
+  Object.keys(RES).forEach(function (k) { $(k).onchange = draw; });
+  $('bDeploy').onclick = function () {
+    var w = wanted().map(function (k) { return RES[k][0] + '/' + RES[k][1]; }), made = 0, gone = 0, same = 0;
+    w.forEach(function (n) { if (ws[n]) { ws[n] = 'unchanged'; same++; } else { ws[n] = 'created'; made++; } });
+    Object.keys(ws).forEach(function (n) { if (w.indexOf(n) < 0) { delete ws[n]; gone++; } });
+    C.log(L, 'ok', 'deploy: ' + made + ' created, ' + same + ' unchanged, ' + gone + ' removed.'); draw(); C.bump($('bWs'));
+  };
+  $('bReset').onclick = function () { ws = {}; L.innerHTML = ''; $('rJob').checked = true; $('rPipe').checked = true; $('rDash').checked = false; C.log(L, 'skip', 'Nothing deployed yet.'); draw(); };
+  $('bReset').onclick();
+})();
+</script>
+</body>
+</html>

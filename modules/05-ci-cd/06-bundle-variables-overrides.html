@@ -1,0 +1,274 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>05-06 Variables and overrides · DE Associate course</title>
+<link rel="stylesheet" href="../../assets/course.css">
+<script src="../../assets/course.js"></script>
+</head>
+<body data-lesson="05-06">
+
+<aside class="disclaimer" aria-label="Disclaimer"><strong>Learning resource only.</strong> This is an independent, unofficial study guide made for learning purposes. It is not affiliated with, endorsed by or sponsored by Databricks. Databricks features change often, so always check the details in the <a href="https://docs.databricks.com">official Databricks documentation</a> and the official exam guide on databricks.com before relying on anything here. Databricks and related names are trademarks of their respective owners.</aside>
+
+<main class="wrap">
+
+<header class="hero">
+  <div class="eyebrow">Module 05 · Implementing CI/CD · Lesson 6 of 10</div>
+  <h1>Variables and overrides</h1>
+  <p class="lede">The catalog is <code>bakery_dev</code> in dev and <code>bakery</code> in prod. Rather than copy the whole job for each environment, you write it once with a placeholder and let each target fill it in.</p>
+  <dl class="where">
+    <div><dt>Module</dt><dd>05 Implementing CI/CD (10% of the exam)</dd></div>
+    <div><dt>Exam objective</dt><dd>5.2 Understand environment-specific configuration while promoting the same codebase across targets. This lesson covers bundle variables and how their values are chosen.</dd></div>
+    <div><dt>Time to read</dt><dd>About 13 minutes</dd></div>
+    <div><dt>Before this</dt><dd><a href="05-bundle-targets.html">05-05 Targets: dev, test and prod</a></dd></div>
+  </dl>
+</header>
+
+<section id="idea">
+  <div class="sec-num">The idea</div>
+  <h2>Write it once, fill it per environment</h2>
+  <p>A <a href="../../glossary.html#bundle-variable">bundle variable</a> is a named placeholder declared under <code>variables</code> in <code>databricks.yml</code>. You use it anywhere in the configuration as <code>${var.name}</code>. When you deploy, the CLI swaps each placeholder for a real value.</p>
+  <p>A variable can have a <strong>default</strong>. A target can <a href="../../glossary.html#override">override</a> it, which means replace the default with its own value for that environment. You can also pass a value when you run the command.</p>
+  <p>When more than one value is given, the CLI picks one using a fixed order, strongest first:</p>
+  <ol>
+    <li><code>--var="name=value"</code> on the command line</li>
+    <li>An environment variable called <code>BUNDLE_VAR_name</code></li>
+    <li>The file <code>.databricks/bundle/&lt;target&gt;/variable-overrides.json</code></li>
+    <li>The value set in the chosen target</li>
+    <li>The top-level default</li>
+  </ol>
+  <p>If none of these gives a value, the deploy fails. One important point: variables are filled in at <strong>deploy</strong> time. For values that change on every run, use <a href="../../glossary.html#job-parameter">job parameters</a> instead (lesson 04-05).</p>
+  <div class="analogy">
+    <span class="tag">Everyday analogy</span>
+    <p><strong>A recipe card with blanks.</strong> "Bake at ___ degrees." The card prints a usual value (180). Each branch kitchen writes its own number over it because its ovens differ: that is the target override. And the head baker can shout a number on the day, which beats anything written: that is <code>--var</code>.</p>
+  </div>
+</section>
+
+<section id="how">
+  <div class="sec-num">How it works</div>
+  <h2>The value with the highest rank wins</h2>
+  <div class="stage">
+    <svg class="tall" viewBox="0 0 360 330" role="img" aria-label="Five sources for a variable value, stacked from strongest to weakest: the --var flag, a BUNDLE_VAR environment variable, the variable-overrides file, the target value and the default. The CLI takes the first one that has a value and places it into the configuration.">
+      <defs><path id="vp" d="M290 40 V250"/></defs>
+      <g class="wire"><use href="#vp"/></g>
+      <g class="mover"><circle r="5" class="dot-ok"><animateMotion dur="2.4s" repeatCount="indefinite"><mpath href="#vp"/></animateMotion></circle></g>
+      <rect class="box-acc" x="6" y="14" width="250" height="38" rx="7"/><text class="t-b" x="18" y="32">1 --var flag</text><text class="t-m" x="18" y="46">strongest</text>
+      <rect class="box" x="6" y="60" width="250" height="38" rx="7"/><text class="t-b" x="18" y="78">2 BUNDLE_VAR_catalog</text><text class="t-m" x="18" y="92">environment variable</text>
+      <rect class="box" x="6" y="106" width="250" height="38" rx="7"/><text class="t-b" x="18" y="124">3 variable-overrides.json</text><text class="t-m" x="18" y="138">file per target</text>
+      <rect class="box" x="6" y="152" width="250" height="38" rx="7"/><text class="t-b" x="18" y="170">4 target value</text><text class="t-m" x="18" y="184">targets.prod.variables</text>
+      <rect class="box-soft" x="6" y="198" width="250" height="38" rx="7"/><text class="t-b" x="18" y="216">5 default</text><text class="t-m" x="18" y="230">weakest</text>
+      <rect class="box-soft" x="6" y="262" width="348" height="56" rx="8"/>
+      <text class="mono" x="20" y="284">catalog: ${var.catalog}</text>
+      <text class="mono" x="20" y="304">becomes  catalog: bakery</text>
+      <text class="t-m" x="290" y="12" text-anchor="middle">first found</text>
+    </svg>
+    <p class="cap">The CLI checks from the top and stops at the first source that has a value.</p>
+  </div>
+  <h3>Kinds of variable</h3>
+  <div class="grid2">
+    <div class="card"><span class="tag">Simple</span><p>A single text, number or true/false value, such as a catalog name.</p></div>
+    <div class="card"><span class="tag">Complex</span><p><code>type: complex</code> holds a structure, such as a whole cluster definition. Needs a recent CLI.</p></div>
+    <div class="card"><span class="tag">Lookup</span><p>Finds the ID of a named object, such as a warehouse, in the target workspace. Verify the supported object types in the docs.</p></div>
+    <div class="card"><span class="tag">Built-in</span><p>Values the CLI supplies, such as <code>${bundle.target}</code> and <code>${workspace.current_user.userName}</code>.</p></div>
+  </div>
+</section>
+
+<section id="demo">
+  <div class="sec-num">Try it</div>
+  <h2>Precedence resolver</h2>
+  <p>The variable <code>catalog</code> has a default of <code>bakery_dev</code>. Turn sources on and off and choose a target. The resolver shows which value wins, and why.</p>
+  <div class="stage">
+    <div class="ctrls">
+      <label class="tog">Target: <select id="vTarget"><option value="dev">dev (no override)</option><option value="prod">prod (sets bakery)</option></select></label>
+      <label class="tog"><input type="checkbox" id="vFile"> variable-overrides.json says <code>bakery_qa</code></label>
+      <label class="tog"><input type="checkbox" id="vEnv"> BUNDLE_VAR_catalog=bakery_ci</label>
+      <label class="tog"><input type="checkbox" id="vFlag"> --var="catalog=bakery_hotfix"</label>
+      <label class="tog"><input type="checkbox" id="vNoDef"> remove the default</label>
+      <button id="vGo" type="button" class="primary">Deploy</button>
+      <button id="vReset" type="button">Clear</button>
+    </div>
+    <div class="panes">
+      <div class="pane"><h4>Sources, strongest first</h4><div id="vList"></div></div>
+      <div class="pane"><h4>Resolved</h4><p class="big" id="vOut">?</p><p class="cap" id="vWhy"></p></div>
+    </div>
+    <div class="log" id="dLog" role="log" aria-label="What happened"></div>
+  </div>
+</section>
+
+<section id="code">
+  <div class="sec-num">Code</div>
+  <h2>Declare, use and override a variable</h2>
+<pre><code><span class="c-k">variables</span>:
+  <span class="c-k">catalog</span>:
+    <span class="c-k">description</span>: Catalog the jobs write to
+    <span class="c-k">default</span>: bakery_dev
+
+<span class="c-k">resources</span>:
+  <span class="c-k">jobs</span>:
+    <span class="c-k">nightly_load</span>:
+      <span class="c-k">name</span>: nightly_load
+      <span class="c-k">parameters</span>:
+        - <span class="c-k">name</span>: catalog
+          <span class="c-k">default</span>: ${var.catalog}       <span class="c-c"># filled in at deploy</span>
+      <span class="c-k">tasks</span>:
+        - <span class="c-k">task_key</span>: load_sales
+          <span class="c-k">notebook_task</span>:
+            <span class="c-k">notebook_path</span>: ../src/load_sales.py
+
+<span class="c-k">targets</span>:
+  <span class="c-k">dev</span>:
+    <span class="c-k">mode</span>: development                 <span class="c-c"># uses the default</span>
+  <span class="c-k">prod</span>:
+    <span class="c-k">mode</span>: production
+    <span class="c-k">variables</span>:
+      <span class="c-k">catalog</span>: bakery                  <span class="c-c"># override for prod</span></code></pre>
+<pre><code>databricks bundle deploy -t prod                          <span class="c-c"># catalog = bakery</span>
+databricks bundle deploy -t prod --var="catalog=bakery_hotfix"   <span class="c-c"># flag wins</span>
+BUNDLE_VAR_catalog=bakery_ci databricks bundle deploy -t dev     <span class="c-c"># env var</span></code></pre>
+  <p class="note">The deploy-time value lands in the job parameter's default. The notebook then reads the job parameter at run time, so one setting covers both.</p>
+</section>
+
+<section id="whatif">
+  <div class="sec-num">What if I change this?</div>
+  <h2>Variable changes and their effects</h2>
+  <div class="tbl"><table class="whatif">
+    <tr><th>Change</th><th>Effect</th></tr>
+    <tr><td>Remove the default and give no other value</td><td>The deploy fails: the variable has no value.</td></tr>
+    <tr><td>Set the value in the prod target</td><td>Only prod deploys use it. Other targets keep the default.</td></tr>
+    <tr><td>Export <code>BUNDLE_VAR_catalog</code> in the CI system</td><td>Beats the target value and the default, but loses to <code>--var</code>.</td></tr>
+    <tr><td>Pass <code>--var</code> as well</td><td>The flag always wins.</td></tr>
+    <tr><td>Expect a variable to change between runs</td><td>It will not. Its value is fixed at deploy. Use a job parameter.</td></tr>
+    <tr><td>Type <code>$var.catalog</code> without braces</td><td>Not a reference. Write <code>${var.catalog}</code>.</td></tr>
+  </table></div>
+</section>
+
+<section id="compare">
+  <div class="sec-num">Compare</div>
+  <h2>Bundle variables against job parameters</h2>
+  <div class="tbl"><table>
+    <tr><th></th><th>Bundle variable</th><th>Job parameter</th></tr>
+    <tr><td>Syntax</td><td><code>${var.name}</code></td><td><code>{{job.parameters.name}}</code></td></tr>
+    <tr><td>Filled in</td><td>When you deploy</td><td>When the job runs</td></tr>
+    <tr><td>Changed by</td><td>Targets, flags, environment variables</td><td>Run now with different values, or the trigger</td></tr>
+    <tr><td>Lives in</td><td>databricks.yml only</td><td>The deployed job</td></tr>
+    <tr><td>Good for</td><td>Per-environment settings</td><td>Per-run settings, such as a date</td></tr>
+  </table></div>
+</section>
+
+<section id="scenarios">
+  <div class="sec-num">Real life</div>
+  <h2>Variables in practice</h2>
+  <div class="tbl"><table>
+    <tr><th>Scenario</th><th>What happens</th><th>Fix</th></tr>
+    <tr><td>Prod jobs wrote to the dev catalog</td><td>No prod override, so the default was used</td><td>Set the value in the prod target</td></tr>
+    <tr><td>CI needs a different warehouse per pipeline run</td><td>Hard-coding means editing files</td><td>Set <code>BUNDLE_VAR_</code> in the CI job</td></tr>
+    <tr><td>An urgent one-off deploy to a hotfix catalog</td><td>Editing the file is slow</td><td>Use <code>--var</code> for that one deploy</td></tr>
+    <tr><td>Analysts want to rerun for a past date</td><td>A variable is fixed at deploy</td><td>Make the date a job parameter</td></tr>
+  </table></div>
+</section>
+
+<section id="traps">
+  <div class="sec-num">Don't confuse these</div>
+  <h2>Variable traps</h2>
+  <div class="grid2">
+    <div class="card trap"><span class="tag">Order of strength</span><p>Flag, then environment variable, then overrides file, then target, then default. The default is the weakest.</p></div>
+    <div class="card trap"><span class="tag">Deploy time</span><p>Variables are resolved once, at deploy. They are not run-time inputs.</p></div>
+    <div class="card trap"><span class="tag">Prefix</span><p>The environment variable is <code>BUNDLE_VAR_</code> plus the variable's name.</p></div>
+    <div class="card trap"><span class="tag">Two syntaxes</span><p><code>${var.x}</code> is a bundle variable. <code>{{job.parameters.x}}</code> is a job reference. Don't mix them up.</p></div>
+  </div>
+</section>
+
+<section id="quiz">
+  <div class="sec-num">Check yourself</div>
+  <h2>Quiz</h2>
+  <div class="quiz">
+    <fieldset>
+      <legend>1. How do you reference a bundle variable called <code>catalog</code>?</legend>
+      <label><input type="radio"> {{var.catalog}}</label>
+      <label><input type="radio" data-correct> ${var.catalog}</label>
+      <label><input type="radio"> $catalog</label>
+      <p class="explain" hidden>Bundle variables use a dollar sign and braces, with the <code>var.</code> prefix.</p>
+    </fieldset>
+    <fieldset>
+      <legend>2. The prod target sets <code>catalog: bakery</code> and <code>BUNDLE_VAR_catalog=bakery_ci</code> is set. Which value is used?</legend>
+      <label><input type="radio"> bakery</label>
+      <label><input type="radio" data-correct> bakery_ci</label>
+      <label><input type="radio"> The default</label>
+      <p class="explain" hidden>An environment variable outranks the target value and the default.</p>
+    </fieldset>
+    <fieldset>
+      <legend>3. Which source has the highest precedence?</legend>
+      <label><input type="radio"> The default</label>
+      <label><input type="radio"> The target value</label>
+      <label><input type="radio" data-correct> The --var flag</label>
+      <p class="explain" hidden>A value passed with <code>--var</code> beats every other source.</p>
+    </fieldset>
+    <fieldset>
+      <legend>4. You need a value that changes on every run. What should you use?</legend>
+      <label><input type="radio"> A bundle variable</label>
+      <label><input type="radio" data-correct> A job parameter</label>
+      <label><input type="radio"> A new target</label>
+      <p class="explain" hidden>Bundle variables are fixed at deploy. Job parameters are set per run.</p>
+    </fieldset>
+  </div>
+</section>
+
+<section id="wrap">
+  <div class="sec-num">Wrap up</div>
+  <h2>Key takeaways</h2>
+  <ul>
+    <li>Declare variables under <code>variables</code> and use them as <code>${var.name}</code>.</li>
+    <li>Targets override defaults with per-environment values.</li>
+    <li>Precedence: <code>--var</code>, then <code>BUNDLE_VAR_</code>, then variable-overrides.json, then target, then default.</li>
+    <li>Variables resolve at deploy. Use job parameters for run-time values.</li>
+  </ul>
+  <h3>Glossary terms used</h3>
+  <p><a href="../../glossary.html#bundle-variable">bundle variable</a> · <a href="../../glossary.html#override">override</a> · <a href="../../glossary.html#job-parameter">job parameter</a> · <a href="../../glossary.html#target">target</a></p>
+  <h3>Official docs</h3>
+  <ul>
+    <li><a href="https://docs.databricks.com/aws/en/dev-tools/bundles/variables">Bundle variables</a></li>
+    <li><a href="https://docs.databricks.com/aws/en/dev-tools/bundles/settings">Bundle configuration</a></li>
+  </ul>
+  <p class="cap">Last verified: 16 November 2026</p>
+</section>
+
+</main>
+
+<script>
+(function () {
+  var C = window.Course, $ = function (id) { return document.getElementById(id); }, L = $('dLog');
+  function sources() {
+    var t = $('vTarget').value;
+    return [
+      { name: '--var flag', val: $('vFlag').checked ? 'bakery_hotfix' : null },
+      { name: 'BUNDLE_VAR_catalog', val: $('vEnv').checked ? 'bakery_ci' : null },
+      { name: 'variable-overrides.json', val: $('vFile').checked ? 'bakery_qa' : null },
+      { name: 'target ' + t, val: t === 'prod' ? 'bakery' : null },
+      { name: 'default', val: $('vNoDef').checked ? null : 'bakery_dev' }
+    ];
+  }
+  function resolve(s) { for (var i = 0; i < s.length; i++) if (s[i].val) return i; return -1; }
+  function draw() {
+    var s = sources(), w = resolve(s);
+    $('vList').innerHTML = s.map(function (x, i) {
+      return '<div class="item' + (i === w ? ' hot' : x.val ? '' : ' off') + '">' + (i + 1) + '. ' + C.esc(x.name) + ': ' + (x.val ? '<code>' + x.val + '</code>' : 'not set') + '</div>';
+    }).join('');
+    return { s: s, w: w };
+  }
+  ['vTarget', 'vFile', 'vEnv', 'vFlag', 'vNoDef'].forEach(function (id) { $(id).onchange = draw; });
+  $('vGo').onclick = function () {
+    var r = draw();
+    if (r.w < 0) { $('vOut').textContent = 'error'; $('vWhy').textContent = 'No source gave a value, so the deploy fails.'; C.log(L, 'bad', 'deploy -t ' + $('vTarget').value + ': catalog has no value.'); return; }
+    var x = r.s[r.w];
+    $('vOut').textContent = x.val;
+    $('vWhy').textContent = 'Won by ' + x.name + (r.w > 0 ? '; nothing stronger was set.' : '; the flag beats everything.');
+    C.log(L, 'ok', 'deploy -t ' + $('vTarget').value + ': catalog = ' + x.val + ' (from ' + x.name + ').');
+    C.bump($('vOut'));
+  };
+  $('vReset').onclick = function () { L.innerHTML = ''; $('vOut').textContent = '?'; $('vWhy').textContent = ''; };
+  draw();
+})();
+</script>
+</body>
+</html>
