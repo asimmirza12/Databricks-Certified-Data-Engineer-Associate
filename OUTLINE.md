@@ -131,8 +131,8 @@ Objectives:
 | [x] | 04-07 Looping: for each | `07-looping.html` | 4.1 | 04-05 |
 | [x] | 04-08 Scheduled triggers | `08-scheduled-triggers.html` | 4.3 | 04-01 |
 | [x] | 04-09 File arrival triggers | `09-file-arrival-triggers.html` | 4.3 | 04-08, 02-02 |
-| [ ] | 04-10 Table update triggers | `10-table-update-triggers.html` | 4.3 | 04-08 |
-| [ ] | 04-11 Time-based or data-driven? Choosing a trigger | `11-choosing-triggers.html` | 4.4 | 04-08 to 04-10 |
+| [x] | 04-10 Table update triggers | `10-table-update-triggers.html` | 4.3 | 04-08 |
+| [x] | 04-11 Time-based or data-driven? Choosing a trigger | `11-choosing-triggers.html` | 4.4 | 04-08 to 04-10 |
 
 ## Module 05: Implementing CI/CD (10% of the exam)
 

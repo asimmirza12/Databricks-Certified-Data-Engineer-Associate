@@ -69,8 +69,8 @@
     ["07", "looping", "Looping: for each", 1],
     ["08", "scheduled-triggers", "Scheduled triggers", 1],
     ["09", "file-arrival-triggers", "File arrival triggers", 1],
-    ["10", "table-update-triggers", "Table update triggers", 0],
-    ["11", "choosing-triggers", "Time-based or data-driven? Choosing a trigger", 0]
+    ["10", "table-update-triggers", "Table update triggers", 1],
+    ["11", "choosing-triggers", "Time-based or data-driven? Choosing a trigger", 1]
   ]},
   {n:"05", slug:"ci-cd", title:"Implementing CI/CD", weight:10, lessons:[
     ["01", "git-basics", "Git basics for beginners: repo, branch, commit, pull request", 0],

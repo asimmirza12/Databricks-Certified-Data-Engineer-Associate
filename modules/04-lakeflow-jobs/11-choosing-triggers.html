@@ -1,0 +1,240 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>04-11 Choosing a trigger: time-based or data-driven · DE Associate course</title>
+<link rel="stylesheet" href="../../assets/course.css">
+<script src="../../assets/course.js"></script>
+</head>
+<body data-lesson="04-11">
+
+<aside class="disclaimer" aria-label="Disclaimer"><strong>Learning resource only.</strong> This is an independent, unofficial study guide made for learning purposes. It is not affiliated with, endorsed by or sponsored by Databricks. Databricks features change often, so always check the details in the <a href="https://docs.databricks.com">official Databricks documentation</a> and the official exam guide on databricks.com before relying on anything here. Databricks and related names are trademarks of their respective owners.</aside>
+
+<main class="wrap">
+
+<header class="hero">
+  <div class="eyebrow">Module 04 · Working with Lakeflow Jobs · Lesson 11 of 11</div>
+  <h1>Choosing a trigger: time-based or data-driven</h1>
+  <p class="lede">You now know four ways to start a job. Choosing between them is a design decision, and the exam asks it as a scenario. This lesson gives you the test to apply.</p>
+  <dl class="where">
+    <div><dt>Module</dt><dd>04 Working with Lakeflow Jobs (16% of the exam)</dd></div>
+    <div><dt>Exam objective</dt><dd>4.4 Choose between time-based and data-driven triggers based on data availability and pipeline dependencies. This lesson covers the choice, across all trigger types.</dd></div>
+    <div><dt>Time to read</dt><dd>About 12 minutes</dd></div>
+    <div><dt>Before this</dt><dd><a href="08-scheduled-triggers.html">04-08 Scheduled triggers</a> · <a href="09-file-arrival-triggers.html">04-09 File arrival triggers</a> · <a href="10-table-update-triggers.html">04-10 Table update triggers</a></dd></div>
+  </dl>
+</header>
+
+<section id="idea">
+  <div class="sec-num">The idea</div>
+  <h2>Time or data: which one drives the job?</h2>
+  <p>A <a href="../../glossary.html#time-based-trigger">time-based trigger</a> starts a run at a set time, whether or not new data has arrived. A scheduled trigger is time-based.</p>
+  <p>A <a href="../../glossary.html#data-driven-trigger">data-driven trigger</a> starts a run when data arrives or changes. A file arrival trigger and a table update trigger are data-driven.</p>
+  <p>The test is one question: <strong>does the business need the output at a fixed time, or as soon as the data is ready?</strong> Then check the data's own behaviour: does it arrive on a known timetable, or unpredictably? And what must finish before this job can start?</p>
+  <div class="analogy">
+    <span class="tag">Everyday analogy</span>
+    <p><strong>A bakery that bakes at 5 am, or when the flour arrives.</strong> If the shop must open at 7 with bread, the baker bakes at 5, flour or not, because the deadline is fixed. If the baker only needs to bake when the flour is delivered, bake on delivery, and the shop's stock is fresh whenever the van comes. The first is time-based. The second is data-driven.</p>
+  </div>
+</section>
+
+<section id="how">
+  <div class="sec-num">How it works</div>
+  <h2>A decision path</h2>
+  <div class="stage">
+    <svg class="tall" viewBox="0 0 360 380" role="img" aria-label="Decision path: a fixed deadline suggests a scheduled trigger. If data arrives as files, use file arrival. If data changes in tables, use table update. If a job depends on another job or pipeline, consider a table update or a scheduled run after it.">
+      <defs><path id="dp1" d="M180 56 V80"/><path id="dp2" d="M90 146 V168"/><path id="dp3" d="M270 146 V168"/></defs>
+      <g class="wire"><use href="#dp1"/><use href="#dp2"/><use href="#dp3"/></g>
+      <g class="mover"><circle r="5" class="dot"><animateMotion dur="1.4s" repeatCount="indefinite"><mpath href="#dp1"/></animateMotion></circle></g>
+      <rect class="box-soft" x="60" y="8" width="240" height="48" rx="8"/><text class="t-b" x="180" y="30" text-anchor="middle">Does the output have a fixed deadline?</text><text class="t-m" x="180" y="48" text-anchor="middle">a time people rely on</text>
+      <rect class="box-acc" x="6" y="80" width="150" height="66" rx="8"/><text class="t-b" x="81" y="102" text-anchor="middle">Yes: time-based</text><text class="t-m" x="81" y="122" text-anchor="middle">scheduled trigger</text><text class="t-m" x="81" y="138" text-anchor="middle">with a check on the data</text>
+      <rect class="box" x="204" y="80" width="150" height="66" rx="8"/><text class="t-b" x="279" y="102" text-anchor="middle">No: data-driven</text><text class="t-m" x="279" y="122" text-anchor="middle">what do the inputs look like?</text><text class="t-m" x="279" y="138" text-anchor="middle">see below</text>
+      <rect class="box" x="6" y="168" width="168" height="62" rx="8"/><text class="t-b" x="90" y="190" text-anchor="middle">Files in a folder</text><text class="t-m" x="90" y="210" text-anchor="middle">file arrival trigger</text>
+      <rect class="box" x="186" y="168" width="168" height="62" rx="8"/><text class="t-b" x="270" y="190" text-anchor="middle">Rows in a table</text><text class="t-m" x="270" y="210" text-anchor="middle">table update trigger</text>
+      <rect class="box" x="6" y="250" width="348" height="54" rx="8"/><text class="t-b" x="180" y="272" text-anchor="middle">Upstream is a pipeline or job</text><text class="t-m" x="180" y="292" text-anchor="middle">a table update trigger on its output, or a schedule after it</text>
+      <text class="t-m" x="180" y="330" text-anchor="middle">Often more than one applies: pick the one that matches the data's own signal.</text>
+      <text class="t-m" x="180" y="350" text-anchor="middle">Avoid polling a clock for work that could start on a signal.</text>
+    </svg>
+  </div>
+  <h3>The trade-off</h3>
+  <div class="grid2">
+    <div class="card"><span class="tag">Time-based</span><p>Predictable. Easy to plan and to explain. Can run when nothing changed, or start before the data is ready if it arrives late.</p></div>
+    <div class="card"><span class="tag">Data-driven</span><p>Runs when there is work, and as soon as it is ready. Timing depends on the data, so a fixed deadline needs care.</p></div>
+  </div>
+  <p>Many good designs combine them: data-driven triggers keep the work current, and a time-based check confirms that the expected data arrived by the deadline.</p>
+</section>
+
+<section id="demo">
+  <div class="sec-num">Try it</div>
+  <h2>Pick the trigger for the scenario</h2>
+  <p>Describe the job's situation. The checker recommends a trigger and explains which answer decided it. Try to predict first.</p>
+  <div class="stage">
+    <div class="ctrls">
+      <label class="tog">Scenario: <select id="cScn">
+        <option value="deadline">Management report must be ready by 9 am every day</option>
+        <option value="files">Supplier drops CSV files at unpredictable times</option>
+        <option value="gold">Gold tables must rebuild when silver changes</option>
+        <option value="both">Gold must rebuild on change, and a 9 am check confirms it</option>
+        <option value="monthly">Month-end close on the first of each month</option>
+        <option value="nodata">Refresh only if nothing has changed for a day</option>
+      </select></label>
+      <button id="cGo" type="button" class="primary">Recommend</button>
+      <button id="cReset" type="button">Clear</button>
+    </div>
+    <div class="panes">
+      <div class="pane"><h4>Recommended trigger</h4><div class="big" id="cPick">-</div><p class="cap" id="cWhy"></p></div>
+      <div class="pane"><h4>The deciding question</h4><div id="cQ"></div></div>
+    </div>
+    <div class="log" id="dLog" role="log" aria-label="What happened"></div>
+  </div>
+</section>
+
+<section id="code">
+  <div class="sec-num">Code</div>
+  <h2>Two triggers on one job</h2>
+  <p>A job has one trigger setting, so a combined design usually uses two jobs: one data-driven and one time-based check. Here is the time-based check as a scheduled job:</p>
+<pre><code><span class="c-k">name</span>: check_gold_ready_9am
+<span class="c-k">schedule</span>:
+  <span class="c-k">quartz_cron_expression</span>: <span class="c-s">"0 0 9 * * ?"</span>      <span class="c-c"># 09:00 every day</span>
+  <span class="c-k">timezone_id</span>: <span class="c-s">"Europe/London"</span>
+<span class="c-k">tasks</span>:
+  - <span class="c-k">task_key</span>: confirm_gold
+    <span class="c-k">notebook_task</span>: {notebook_path: /Workspace/bakery/confirm_gold_updated_today}</code></pre>
+<pre><code><span class="c-c"># confirm_gold_updated_today: fail loudly if gold was not refreshed today.</span>
+latest = spark.sql(<span class="c-s">"DESCRIBE HISTORY bakery.gold.sales_by_shop LIMIT 1"</span>).first()
+<span class="c-k">if</span> latest.timestamp.date() &lt; date.today():
+    <span class="c-k">raise</span> RuntimeError(<span class="c-s">"gold not refreshed today"</span>)</code></pre>
+  <p class="note">The check reads the table's history (lesson 01-02). Adapt the test to what "refreshed" means for your tables.</p>
+</section>
+
+<section id="whatif">
+  <div class="sec-num">What if I change this?</div>
+  <h2>How the trigger choice changes the design</h2>
+  <div class="tbl"><table class="whatif">
+    <tr><th>Change</th><th>Effect</th></tr>
+    <tr><td>A fixed-time report becomes data-driven only</td><td>It may run late, or not at all on a quiet day. Add a scheduled check.</td></tr>
+    <tr><td>Files arrive on a schedule that never varies</td><td>A scheduled trigger is simpler and more predictable. File arrival still works, but adds no value.</td></tr>
+    <tr><td>A time-based job runs every hour on unchanged data</td><td>Wasted compute. A data-driven trigger runs only when there is something to do.</td></tr>
+    <tr><td>A data-driven job depends on late upstream data</td><td>Its runs may start on partial input. Use an all-condition or a wait, and check completeness.</td></tr>
+    <tr><td>Both a schedule and a file trigger added to one job</td><td>Not how this is designed: one job has one trigger setting. Use two jobs.</td></tr>
+  </table></div>
+</section>
+
+<section id="compare">
+  <div class="sec-num">Compare</div>
+  <h2>Time-based against data-driven</h2>
+  <div class="tbl"><table>
+    <tr><th></th><th>Time-based (scheduled)</th><th>Data-driven (file arrival, table update)</th></tr>
+    <tr><td>Starts on</td><td>The clock</td><td>A signal in the data</td></tr>
+    <tr><td>Runs when data is absent</td><td>Yes, unless paused</td><td>No</td></tr>
+    <tr><td>Timing</td><td>Known in advance</td><td>Depends on arrivals</td></tr>
+    <tr><td>Best for</td><td>Deadlines, planned loads, month-end</td><td>Keeping outputs current, reacting to arrivals</td></tr>
+    <tr><td>Risk</td><td>Runs on stale or missing data</td><td>Runs on partial data, or late</td></tr>
+  </table></div>
+</section>
+
+<section id="scenarios">
+  <div class="sec-num">Real life</div>
+  <h2>Choosing well</h2>
+  <div class="tbl"><table>
+    <tr><th>Scenario</th><th>What happens</th><th>Fix</th></tr>
+    <tr><td>A bank runs its risk report at 6 am, and the data may land late</td><td>A fixed deadline, and unreliable arrival</td><td>Scheduled trigger at 6 am, with a check that the data is complete</td></tr>
+    <tr><td>A shop's gold dashboard must always show the latest sales</td><td>Output should follow the data</td><td>Table update trigger on silver</td></tr>
+    <tr><td>A weekly job runs even in weeks with no new data, and costs money</td><td>Time-based on data that rarely changes</td><td>File arrival or table update trigger instead</td></tr>
+    <tr><td>A job starts before the upstream pipeline finishes, and reads half a table</td><td>A table trigger fires on each partial update</td><td>Set a quiet period, or trigger on the pipeline's completion</td></tr>
+  </table></div>
+</section>
+
+<section id="traps">
+  <div class="sec-num">Don't confuse these</div>
+  <h2>Choice traps</h2>
+  <div class="grid2">
+    <div class="card trap"><span class="tag">Time-based is not "less smart"</span><p>A deadline is a real requirement. A clock is the right tool for it, and data-driven is not automatically better.</p></div>
+    <div class="card trap"><span class="tag">Data-driven is not "always on"</span><p>A data-driven job starts only when its signal arrives. It is not a streaming job.</p></div>
+    <div class="card trap"><span class="tag">One trigger per job</span><p>A job has one trigger setting. Combine trigger types with separate jobs, not one job.</p></div>
+    <div class="card trap"><span class="tag">Exam wording</span><p>"Fixed time" or "by 9 am" points to time-based. "When the data is ready" or "as files arrive" points to data-driven.</p></div>
+  </div>
+</section>
+
+<section id="quiz">
+  <div class="sec-num">Check yourself</div>
+  <h2>Quiz</h2>
+  <div class="quiz">
+    <fieldset>
+      <legend>1. A board report must be ready at 8 am every weekday. Which trigger type fits best?</legend>
+      <label><input type="radio"> File arrival</label>
+      <label><input type="radio" data-correct> Scheduled (time-based)</label>
+      <label><input type="radio"> Table update</label>
+      <p class="explain" hidden>The deadline is fixed. A scheduled trigger starts at the set time every weekday.</p>
+    </fieldset>
+    <fieldset>
+      <legend>2. Gold tables must refresh whenever silver tables change. Which fits?</legend>
+      <label><input type="radio"> Scheduled every minute</label>
+      <label><input type="radio" data-correct> Table update trigger on the silver tables</label>
+      <label><input type="radio"> Manual runs only</label>
+      <p class="explain" hidden>The output should follow the data, so a table update trigger on the silver tables is the data-driven choice.</p>
+    </fieldset>
+    <fieldset>
+      <legend>3. What is the main risk of a purely data-driven job for a fixed deadline?</legend>
+      <label><input type="radio"> It runs too early</label>
+      <label><input type="radio" data-correct> If the data arrives late, the output may miss the deadline</label>
+      <label><input type="radio"> It cannot read tables</label>
+      <p class="explain" hidden>Data-driven timing depends on arrivals. Without a clock, a late arrival means a late output.</p>
+    </fieldset>
+    <fieldset>
+      <legend>4. A job must both react to changes and confirm a 9 am deadline. What is a good design?</legend>
+      <label><input type="radio"> One job with two triggers</label>
+      <label><input type="radio" data-correct> A data-driven job for the work, and a scheduled check job at 9 am</label>
+      <label><input type="radio"> A single scheduled job every minute</label>
+      <p class="explain" hidden>One job has one trigger setting. Two jobs, each with the right trigger, do the two things.</p>
+    </fieldset>
+  </div>
+</section>
+
+<section id="wrap">
+  <div class="sec-num">Wrap up</div>
+  <h2>Key takeaways</h2>
+  <ul>
+    <li>Time-based triggers start on the clock. Data-driven triggers start on a signal in the data.</li>
+    <li>Choose by the deadline and by how the data arrives.</li>
+    <li>Data-driven triggers avoid wasted runs. Time-based triggers give predictable timing.</li>
+    <li>Combine them with two jobs, and check completeness before a deadline.</li>
+  </ul>
+  <p class="note">That completes Module 04. Jobs now run in order, retry, branch, loop and start on time or on data. Module 05 packages this work and deploys it across environments.</p>
+  <h3>Glossary terms used</h3>
+  <p><a href="../../glossary.html#time-based-trigger">time-based trigger</a> · <a href="../../glossary.html#data-driven-trigger">data-driven trigger</a> · <a href="../../glossary.html#scheduled-trigger">scheduled trigger</a> · <a href="../../glossary.html#file-arrival-trigger">file arrival trigger</a> · <a href="../../glossary.html#table-update-trigger">table update trigger</a></p>
+  <h3>Official docs</h3>
+  <ul>
+    <li><a href="https://docs.databricks.com/aws/en/jobs/triggers">Automate jobs with schedules and triggers</a></li>
+    <li><a href="https://docs.databricks.com/aws/en/jobs/trigger-table-update">Trigger jobs when source tables are updated</a></li>
+    <li><a href="https://docs.databricks.com/aws/en/jobs/file-arrival-triggers">Trigger jobs when new files arrive</a></li>
+  </ul>
+  <p class="cap">Last verified: 16 November 2026</p>
+</section>
+
+</main>
+
+<script>
+(function () {
+  var C = window.Course, $ = function (id) { return document.getElementById(id); }, L = $('dLog');
+  var SCN = {
+    deadline: { pick: 'Scheduled trigger', why: 'The deadline is fixed, so the clock must start the run. Add a check that the data is complete.', q: 'Is there a fixed time people depend on?', ans: 'Yes' },
+    files:    { pick: 'File arrival trigger', why: 'The files arrive at unpredictable times, so the arrival should start the run. Use a quiet period so a batch runs once.', q: 'Is the input a set of files arriving unpredictably?', ans: 'Yes' },
+    gold:     { pick: 'Table update trigger', why: 'The output should follow the silver tables, so a change to them starts the rebuild.', q: 'Should the output follow changes in tables?', ans: 'Yes' },
+    both:     { pick: 'Two jobs: table update trigger, plus a scheduled check', why: 'One job has one trigger. The rebuild follows the data, and a separate 9 am check confirms it ran.', q: 'Is there both a reactive need and a fixed deadline?', ans: 'Yes, both' },
+    monthly:  { pick: 'Scheduled trigger', why: 'The close happens on a known date. A cron expression for the first of the month fits.', q: 'Does it happen on a known date every period?', ans: 'Yes' },
+    nodata:   { pick: 'Table update trigger, or a scheduled check that does nothing when unchanged', why: 'Running on a clock wastes work when nothing changed. A data signal runs only when there is something new.', q: 'Should runs happen only when data changes?', ans: 'Yes' }
+  };
+  function run() {
+    var r = SCN[$('cScn').value];
+    $('cPick').textContent = r.pick; $('cWhy').textContent = r.why;
+    $('cQ').innerHTML = C.table([{ question: r.q, answer: r.ans }]);
+    C.log(L, 'ok', $('cScn').selectedOptions[0].text + ' -> ' + r.pick + '.');
+    C.bump($('cPick'));
+  }
+  $('cGo').onclick = run;
+  $('cReset').onclick = function () { L.innerHTML = ''; };
+  run();
+})();
+</script>
+</body>
+</html>
