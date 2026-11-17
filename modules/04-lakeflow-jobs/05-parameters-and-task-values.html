@@ -1,0 +1,248 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>04-05 Parameters and task values · DE Associate course</title>
+<link rel="stylesheet" href="../../assets/course.css">
+<script src="../../assets/course.js"></script>
+</head>
+<body data-lesson="04-05">
+
+<aside class="disclaimer" aria-label="Disclaimer"><strong>Learning resource only.</strong> This is an independent, unofficial study guide made for learning purposes. It is not affiliated with, endorsed by or sponsored by Databricks. Databricks features change often, so always check the details in the <a href="https://docs.databricks.com">official Databricks documentation</a> and the official exam guide on databricks.com before relying on anything here. Databricks and related names are trademarks of their respective owners.</aside>
+
+<main class="wrap">
+
+<header class="hero">
+  <div class="eyebrow">Module 04 · Working with Lakeflow Jobs · Lesson 5 of 11</div>
+  <h1>Parameters and task values</h1>
+  <p class="lede">A job should not hard-code the date it processes, or the file it reads. Parameters pass values into a job from outside. Task values pass results from one task to the next. Together they let one job do many different jobs.</p>
+  <dl class="where">
+    <div><dt>Module</dt><dd>04 Working with Lakeflow Jobs (16% of the exam)</dd></div>
+    <div><dt>Exam objective</dt><dd>4.1 Implement control flows for pipeline orchestration, and 4.2 configure tasks and their dependencies. This lesson covers passing values: job parameters and task values.</dd></div>
+    <div><dt>Time to read</dt><dd>About 12 minutes</dd></div>
+    <div><dt>Before this</dt><dd><a href="03-dependencies-and-dag.html">04-03 Dependencies and the task graph</a></dd></div>
+  </dl>
+</header>
+
+<section id="idea">
+  <div class="sec-num">The idea</div>
+  <h2>Two ways values travel</h2>
+  <p>A <a href="../../glossary.html#job-parameter">job parameter</a> is a value supplied when the job runs: a date, an environment name, a file path. The same job can then process today's data, last week's, or the test copy, with no code change.</p>
+  <p>A <a href="../../glossary.html#task-value">task value</a> is a small result one task produces for the tasks after it: a row count, a file name, a flag. Task A sets the value, and task B reads it.</p>
+  <p>Both are referenced with double curly braces in the job definition, so the job fills them in when a run starts:</p>
+  <ul>
+    <li><code>{{job.parameters.run_date}}</code> reads a job parameter.</li>
+    <li><code>{{tasks.count_rows.values.bad_records}}</code> reads a value set by the task named <code>count_rows</code>.</li>
+  </ul>
+  <p>A task value is limited to about 48 KiB of JSON. Pass small facts through task values, and pass the data itself through tables.</p>
+  <div class="analogy">
+    <span class="tag">Everyday analogy</span>
+    <p><strong>A parcel with a label, and a note inside.</strong> A job parameter is the address label written before the parcel leaves the office: it tells the courier where to go. A task value is the note tucked inside a parcel by one team and read by the next: "twelve items checked, two missing". Neither changes the parcel's contents; both carry information along the route.</p>
+  </div>
+</section>
+
+<section id="how">
+  <div class="sec-num">How it works</div>
+  <h2>Set once, read later</h2>
+  <div class="stage">
+    <svg class="tall" viewBox="0 0 360 330" role="img" aria-label="A run starts with a run_date parameter supplied by the schedule or a person. Task count_rows sets a bad_records value. Task report reads that value and the run_date parameter.">
+      <defs><path id="pv1" d="M180 70 V96"/><path id="pv2" d="M180 180 V206"/></defs>
+      <g class="wire"><use href="#pv1"/><use href="#pv2"/></g>
+      <g class="mover">
+        <circle r="5" class="dot"><animateMotion dur="1.4s" repeatCount="indefinite"><mpath href="#pv1"/></animateMotion></circle>
+        <circle r="5" class="dot-ok"><animateMotion dur="1.4s" begin="-0.7s" repeatCount="indefinite"><mpath href="#pv2"/></animateMotion></circle>
+      </g>
+      <rect class="box-soft" x="50" y="8" width="260" height="60" rx="8"/><text class="t-b" x="180" y="30" text-anchor="middle">Job parameter</text><text class="mono" x="180" y="50" text-anchor="middle">run_date = 2026-11-16</text>
+      <rect class="box" x="50" y="96" width="260" height="84" rx="8"/><text class="t-b" x="180" y="118" text-anchor="middle">task: count_rows</text><text class="t-m" x="180" y="138" text-anchor="middle">sets task value bad_records = 3</text><text class="t-m" x="180" y="158" text-anchor="middle">for the tasks after it</text>
+      <rect class="box-acc" x="50" y="206" width="260" height="100" rx="8"/><text class="t-b" x="180" y="228" text-anchor="middle">task: report</text><text class="mono" x="180" y="252" text-anchor="middle">reads {{job.parameters.run_date}}</text><text class="mono" x="180" y="272" text-anchor="middle">and {{tasks.count_rows.values.bad_records}}</text><text class="t-m" x="180" y="294" text-anchor="middle">both filled in when the run starts</text>
+    </svg>
+    <p class="cap">The references are filled in at run time, so the same definition produces a different report on each day it runs.</p>
+  </div>
+  <h3>Reading values inside a notebook</h3>
+  <p>A notebook task can read the job's parameters from widgets, and can set and read task values with the <code>dbutils.jobs.taskValues</code> helper. The helper works in Python notebooks.</p>
+</section>
+
+<section id="demo">
+  <div class="sec-num">Try it</div>
+  <h2>Run the same job for different dates</h2>
+  <p>Change the run date parameter and the number of bad records the first task finds. Start a run. Watch the report text fill in from the values, and notice what a missing value does.</p>
+  <div class="stage">
+    <div class="ctrls">
+      <label class="tog">run_date: <select id="pDate"><option>2026-11-14</option><option selected>2026-11-16</option><option>2026-11-17</option></select></label>
+      <label class="tog">bad_records found by count_rows: <select id="pBad"><option value="0">0</option><option value="3" selected>3</option><option value="none">not set (task skipped)</option></select></label>
+      <button id="dRun" type="button" class="primary">Start the run</button>
+      <button id="dReset" type="button">Clear</button>
+    </div>
+    <div class="panes">
+      <div class="pane"><h4>The report template</h4><pre class="filetext" id="pTpl"></pre></div>
+      <div class="pane"><h4>What the run writes</h4><pre class="filetext" id="pOut"></pre></div>
+    </div>
+    <div class="log" id="dLog" role="log" aria-label="What happened"></div>
+  </div>
+</section>
+
+<section id="code">
+  <div class="sec-num">Code</div>
+  <h2>Parameters and task values in a job</h2>
+<pre><code><span class="c-k">tasks</span>:
+  - <span class="c-k">task_key</span>: count_rows
+    <span class="c-k">notebook_task</span>:
+      <span class="c-k">notebook_path</span>: /Workspace/bakery/count_rows
+      <span class="c-k">base_parameters</span>:
+        <span class="c-k">run_date</span>: <span class="c-s">"{{job.parameters.run_date}}"</span>   <span class="c-c"># pass the job parameter in</span>
+
+  - <span class="c-k">task_key</span>: report
+    <span class="c-k">depends_on</span>:
+      - {task_key: count_rows}
+    <span class="c-k">notebook_task</span>:
+      <span class="c-k">notebook_path</span>: /Workspace/bakery/report
+      <span class="c-k">base_parameters</span>:
+        <span class="c-k">run_date</span>: <span class="c-s">"{{job.parameters.run_date}}"</span>
+        <span class="c-k">bad_records</span>: <span class="c-s">"{{tasks.count_rows.values.bad_records}}"</span></code></pre>
+<pre><code><span class="c-c"># Inside count_rows: set the task value that later tasks can read.</span>
+run_date = dbutils.widgets.get(<span class="c-s">"run_date"</span>)        <span class="c-c"># the value passed in from the job</span>
+bad = (spark.table(<span class="c-s">"bakery.silver.orders"</span>)
+       .filter(<span class="c-s">f"order_date = '{run_date}' AND price IS NULL"</span>).count())
+dbutils.jobs.taskValues.set(key=<span class="c-s">"bad_records"</span>, value=bad)
+
+<span class="c-c"># Inside report: read the value a task set earlier.</span>
+bad = dbutils.jobs.taskValues.get(taskKey=<span class="c-s">"count_rows"</span>, key=<span class="c-s">"bad_records"</span>)</code></pre>
+  <p class="note"><code>taskValues.get</code> works, but the docs advise the double-brace reference in the job definition instead. Then a task rename changes one place, not every notebook that reads the value. Check the exact widget and helper names for your notebook language.</p>
+</section>
+
+<section id="whatif">
+  <div class="sec-num">What if I change this?</div>
+  <h2>Parameters, values and their effects</h2>
+  <div class="tbl"><table class="whatif">
+    <tr><th>Change</th><th>Effect</th></tr>
+    <tr><td>Change a job parameter's value when starting a run</td><td>That run uses the new value. Other runs and the job definition are unchanged.</td></tr>
+    <tr><td>Rename the task that sets a value</td><td>References to the old name break. Update every reference that names it.</td></tr>
+    <tr><td>Set a task value that is larger than 48 KiB</td><td>Rejected. Store the data in a table and pass only its name or a count.</td></tr>
+    <tr><td>Read a task value from a task that did not run</td><td>The value is missing. Downstream logic must handle it, or it fails.</td></tr>
+    <tr><td>Hard-code the date in the notebook instead of a parameter</td><td>The job works only for that date. Every other day needs a code change.</td></tr>
+    <tr><td>Read a task value with <code>get</code> in a notebook, not a reference</td><td>Works, but renaming the task means finding every notebook that uses it.</td></tr>
+  </table></div>
+</section>
+
+<section id="compare">
+  <div class="sec-num">Compare</div>
+  <h2>Parameters and task values</h2>
+  <div class="tbl"><table>
+    <tr><th></th><th>Job parameter</th><th>Task value</th></tr>
+    <tr><td>Set by</td><td>The person or schedule that starts the run</td><td>An earlier task in the same run</td></tr>
+    <tr><td>Reference</td><td><code>{{job.parameters.name}}</code></td><td><code>{{tasks.task_key.values.name}}</code></td></tr>
+    <tr><td>Changes between runs</td><td>Yes, per run</td><td>Yes, produced by each run</td></tr>
+    <tr><td>Size</td><td>Small values</td><td>Up to about 48 KiB</td></tr>
+    <tr><td>Typical use</td><td>Run date, environment, file path</td><td>A row count, a status, a file name for the next step</td></tr>
+  </table></div>
+  <h3>Other references you may see</h3>
+  <div class="grid3">
+    <div class="card"><span class="tag">result_state</span><p>The outcome of an earlier task: the value a later task reads to choose its path.</p></div>
+    <div class="card"><span class="tag">execution_count</span><p>How many times a task ran in this run, counting retries and repairs.</p></div>
+    <div class="card"><span class="tag">values.name</span><p>A value a task set with <code>taskValues.set</code>.</p></div>
+  </div>
+</section>
+
+<section id="scenarios">
+  <div class="sec-num">Real life</div>
+  <h2>Values in practice</h2>
+  <div class="tbl"><table>
+    <tr><th>Scenario</th><th>What happens</th><th>Fix</th></tr>
+    <tr><td>The same job is copied for each country, with the country name written into the code</td><td>Five copies to keep in step</td><td>One job with a country parameter</td></tr>
+    <tr><td>A backfill for last month must run without touching today's data</td><td>The job used today's date</td><td>Start a run with the run_date parameter set to the backfill date</td></tr>
+    <tr><td>The report says "0 bad records" when the check task was skipped</td><td>A missing task value was read as zero</td><td>Handle the missing value explicitly, and fail the report if the check did not run</td></tr>
+    <tr><td>A task value holds a whole table of rows, and the run fails</td><td>It is above the size limit</td><td>Write the rows to a table and pass the table's name</td></tr>
+  </table></div>
+</section>
+
+<section id="traps">
+  <div class="sec-num">Don't confuse these</div>
+  <h2>Value traps</h2>
+  <div class="grid2">
+    <div class="card trap"><span class="tag">Parameter vs task value</span><p>A parameter comes into the run from outside. A task value is produced inside the run by an earlier task.</p></div>
+    <div class="card trap"><span class="tag">Reference vs notebook widget</span><p>A double-brace reference is filled in by the job. A widget is a value the notebook reads at run time.</p></div>
+    <div class="card trap"><span class="tag">Task value vs table</span><p>Task values are for small facts. Data belongs in a table, which the next task reads.</p></div>
+    <div class="card trap"><span class="tag">Missing vs zero</span><p>A value that was never set is not the same as zero. Check for it before using it.</p></div>
+  </div>
+</section>
+
+<section id="quiz">
+  <div class="sec-num">Check yourself</div>
+  <h2>Quiz</h2>
+  <div class="quiz">
+    <fieldset>
+      <legend>1. Which reference reads a value passed into the job when it starts?</legend>
+      <label><input type="radio"> <code>{{tasks.name.values.value}}</code></label>
+      <label><input type="radio" data-correct> <code>{{job.parameters.name}}</code></label>
+      <label><input type="radio"> <code>{{tasks.name.result_state}}</code></label>
+      <p class="explain" hidden>Job parameters use the job.parameters form. Task values use the tasks form.</p>
+    </fieldset>
+    <fieldset>
+      <legend>2. What is a task value meant for?</legend>
+      <label><input type="radio"> Passing a whole table between tasks</label>
+      <label><input type="radio" data-correct> Passing a small result, such as a count, to later tasks in the run</label>
+      <label><input type="radio"> Storing secrets</label>
+      <p class="explain" hidden>Task values are small. Large data goes in a table, and secrets go in a secret store.</p>
+    </fieldset>
+    <fieldset>
+      <legend>3. In the demo, what happened when the first task was skipped and no value was set?</legend>
+      <label><input type="radio"> The report used zero by default</label>
+      <label><input type="radio" data-correct> The report had no value to read, and was flagged as missing</label>
+      <label><input type="radio"> The whole job was rerun</label>
+      <p class="explain" hidden>A value that was never set is missing, not zero. A careful report checks for it.</p>
+    </fieldset>
+    <fieldset>
+      <legend>4. Why is the double-brace reference preferred over a taskValues.get call in each notebook?</legend>
+      <label><input type="radio"> It is faster</label>
+      <label><input type="radio" data-correct> Renaming a task then changes one place, not every notebook that reads its value</label>
+      <label><input type="radio"> It removes the size limit</label>
+      <p class="explain" hidden>The reference lives in the job definition, so a rename is handled in one place.</p>
+    </fieldset>
+  </div>
+</section>
+
+<section id="wrap">
+  <div class="sec-num">Wrap up</div>
+  <h2>Key takeaways</h2>
+  <ul>
+    <li>Job parameters carry values in from outside. Task values carry small results from one task to the next.</li>
+    <li>References use double braces and are filled in when the run starts.</li>
+    <li>Task values are limited to about 48 KiB. Put data in tables.</li>
+    <li>A value that was never set is missing, not zero.</li>
+  </ul>
+  <h3>Glossary terms used</h3>
+  <p><a href="../../glossary.html#job-parameter">job parameter</a> · <a href="../../glossary.html#task-value">task value</a> · <a href="../../glossary.html#task">task</a> · <a href="../../glossary.html#run">run</a></p>
+  <h3>Official docs</h3>
+  <ul>
+    <li><a href="https://docs.databricks.com/aws/en/jobs/parameters">Parameterize jobs</a></li>
+    <li><a href="https://docs.databricks.com/aws/en/jobs/task-values">Use task values to pass information between tasks</a></li>
+    <li><a href="https://docs.databricks.com/aws/en/jobs/dynamic-value-references">Dynamic value references</a></li>
+  </ul>
+  <p class="cap">Last verified: 16 November 2026</p>
+</section>
+
+</main>
+
+<script>
+(function () {
+  var C = window.Course, $ = function (id) { return document.getElementById(id); }, L = $('dLog');
+  var TPL = 'Daily check for {{job.parameters.run_date}}\nBad records found: {{tasks.count_rows.values.bad_records}}\nStatus: {{tasks.count_rows.result_state}}';
+  $('pTpl').textContent = TPL;
+  function fill(date, bad) {
+    var out = TPL.replace('{{job.parameters.run_date}}', date);
+    if (bad === 'none') return out.replace('{{tasks.count_rows.values.bad_records}}', '(no value)').replace('{{tasks.count_rows.result_state}}', 'Skipped');
+    return out.replace('{{tasks.count_rows.values.bad_records}}', bad).replace('{{tasks.count_rows.result_state}}', 'Succeeded');
+  }
+  $('dRun').onclick = function () {
+    var date = $('pDate').value, bad = $('pBad').value;
+    $('pOut').textContent = fill(date, bad);
+    var missing = bad === 'none';
+    C.log(L, missing ? 'bad' : 'ok', 'run_date ' + date + ': ' + (missing ? 'count_rows did not run, so the report shows "(no value)" and must not be read as zero.' : 'report filled in with ' + bad + ' bad record(s).'));
+    C.bump($('pOut'));
+  };
+  $('dReset').onclick = function () { L.innerHTML = ''; $('pOut').textContent = ''; };
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,252 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>04-06 Branching: If/else and run-if conditions · DE Associate course</title>
+<link rel="stylesheet" href="../../assets/course.css">
+<script src="../../assets/course.js"></script>
+</head>
+<body data-lesson="04-06">
+
+<aside class="disclaimer" aria-label="Disclaimer"><strong>Learning resource only.</strong> This is an independent, unofficial study guide made for learning purposes. It is not affiliated with, endorsed by or sponsored by Databricks. Databricks features change often, so always check the details in the <a href="https://docs.databricks.com">official Databricks documentation</a> and the official exam guide on databricks.com before relying on anything here. Databricks and related names are trademarks of their respective owners.</aside>
+
+<main class="wrap">
+
+<header class="hero">
+  <div class="eyebrow">Module 04 · Working with Lakeflow Jobs · Lesson 6 of 11</div>
+  <h1>Branching: If/else and run-if conditions</h1>
+  <p class="lede">Sometimes the next step depends on the result of the last one. If the data was clean, publish it. If not, quarantine it and alert someone. A job can choose its path, and only one path runs.</p>
+  <dl class="where">
+    <div><dt>Module</dt><dd>04 Working with Lakeflow Jobs (16% of the exam)</dd></div>
+    <div><dt>Exam objective</dt><dd>4.1 Implement control flows (retries and conditional tasks such as branching and looping) using Lakeflow Jobs. This lesson covers branching.</dd></div>
+    <div><dt>Time to read</dt><dd>About 13 minutes</dd></div>
+    <div><dt>Before this</dt><dd><a href="03-dependencies-and-dag.html">04-03 Dependencies and the task graph</a> · <a href="05-parameters-and-task-values.html">04-05 Parameters and task values</a></dd></div>
+  </dl>
+</header>
+
+<section id="idea">
+  <div class="sec-num">The idea</div>
+  <h2>Two ways to choose a path</h2>
+  <p><a href="../../glossary.html#branching">Branching</a> means a job takes one of several routes. Lakeflow Jobs offers two tools for it.</p>
+  <ul>
+    <li>An <a href="../../glossary.html#if-else-task">If/else condition task</a> tests a value and sends the run down a <strong>true</strong> path or a <strong>false</strong> path. It is a task of its own, with two outcomes.</li>
+    <li><a href="../../glossary.html#run-if">Run if</a> rules, from lesson 04-03, let a task run or not based on how its upstream tasks finished. They choose by outcome, not by a value.</li>
+  </ul>
+  <p>An If/else condition task compares two operands with an operator. The left operand is usually a task value or a job parameter. The operators are:</p>
+  <ul>
+    <li><code>EQUAL_TO</code>, <code>NOT_EQUAL</code></li>
+    <li><code>GREATER_THAN</code>, <code>GREATER_THAN_OR_EQUAL</code></li>
+    <li><code>LESS_THAN</code>, <code>LESS_THAN_OR_EQUAL</code></li>
+  </ul>
+  <p>Downstream tasks are attached to the true or false outcome. Only the tasks on the chosen path run.</p>
+  <div class="analogy">
+    <span class="tag">Everyday analogy</span>
+    <p><strong>A fork at the end of a road.</strong> At the sign, you check: is the bridge open? If yes, take the left road. If no, take the right. You do not drive both. The sign is the If/else condition; the two roads are the true and false outcomes. A run-if rule is a different sort of sign: "only go this way if the last car made it through".</p>
+  </div>
+</section>
+
+<section id="how">
+  <div class="sec-num">How it works</div>
+  <h2>A condition, two outcomes, one path</h2>
+  <div class="stage">
+    <svg class="tall" viewBox="0 0 360 340" role="img" aria-label="A check task counts bad records. An if/else condition tests whether the count is greater than zero. If true, a quarantine and alert path runs. If false, the publish path runs.">
+      <defs><path id="b1" d="M180 70 V96"/><path id="b2" d="M140 166 C 100 190, 90 200, 90 226"/><path id="b3" d="M220 166 C 260 190, 270 200, 270 226"/></defs>
+      <g class="wire"><use href="#b1"/><use href="#b2"/><use href="#b3"/></g>
+      <g class="mover">
+        <circle r="5" class="dot"><animateMotion dur="1.4s" repeatCount="indefinite"><mpath href="#b1"/></animateMotion></circle>
+        <circle r="5" class="dot-ok"><animateMotion dur="1.6s" repeatCount="indefinite"><mpath href="#b2"/></animateMotion></circle>
+        <circle r="5" class="dot"><animateMotion dur="1.6s" begin="-0.8s" repeatCount="indefinite"><mpath href="#b3"/></animateMotion></circle>
+      </g>
+      <rect class="box-soft" x="60" y="8" width="240" height="60" rx="8"/><text class="t-b" x="180" y="30" text-anchor="middle">task: count_rows</text><text class="t-m" x="180" y="50" text-anchor="middle">sets bad_records = 3</text>
+      <rect class="box-acc" x="60" y="96" width="240" height="70" rx="8"/><text class="t-b" x="180" y="120" text-anchor="middle">If/else: bad_records GREATER_THAN 0</text><text class="t-m" x="180" y="142" text-anchor="middle">condition is true here</text>
+      <text class="t-b" x="72" y="200">true</text><text class="t-b" x="248" y="200">false</text>
+      <rect class="box" x="6" y="226" width="168" height="90" rx="8"/><text class="t-b" x="90" y="248" text-anchor="middle">quarantine and alert</text><text class="t-m" x="90" y="268" text-anchor="middle">RUNS</text><text class="t-m" x="90" y="286" text-anchor="middle">move bad rows aside</text>
+      <rect class="box" x="186" y="226" width="168" height="90" rx="8"/><text class="t-b" x="270" y="248" text-anchor="middle">publish gold</text><text class="t-m" x="270" y="268" text-anchor="middle">SKIPPED</text><text class="t-m" x="270" y="286" text-anchor="middle">only on the false path</text>
+    </svg>
+    <p class="cap">The condition task itself runs, then exactly one of its two paths runs. The other path is skipped, not failed.</p>
+  </div>
+  <h3>Branching by run-if</h3>
+  <p>A run-if rule can also split a graph. Put one task on All succeeded and another on At least one failed, and only one of them runs, depending on how the upstream task finished. That is a branch by outcome, without a condition task.</p>
+  <p>If the upstream task that provides a condition's value is disabled, the If/else task fails. Make sure the value is always produced.</p>
+</section>
+
+<section id="demo">
+  <div class="sec-num">Try it</div>
+  <h2>Choose the path</h2>
+  <p>Set the number of bad records and the condition. The condition task decides, and only the matching path runs. Then try the same record count with a different operator.</p>
+  <div class="stage">
+    <div class="ctrls">
+      <label class="tog">bad_records: <select id="bVal"><option value="0">0</option><option value="2" selected>2</option><option value="50">50</option></select></label>
+      <label class="tog">Operator: <select id="bOp">
+        <option value="GREATER_THAN">GREATER_THAN</option>
+        <option value="GREATER_THAN_OR_EQUAL">GREATER_THAN_OR_EQUAL</option>
+        <option value="EQUAL_TO">EQUAL_TO</option>
+        <option value="NOT_EQUAL">NOT_EQUAL</option>
+        <option value="LESS_THAN">LESS_THAN</option>
+      </select></label>
+      <label class="tog">Right operand: <select id="bRight"><option value="0">0</option><option value="10">10</option></select></label>
+      <button id="dRun" type="button" class="primary">Evaluate</button>
+      <button id="dReset" type="button">Clear</button>
+    </div>
+    <div class="panes">
+      <div class="pane"><h4>Condition</h4><div class="big" id="bRes">-</div><p class="cap" id="bExpr"></p></div>
+      <div class="pane"><h4>Paths</h4><div id="bPaths"></div></div>
+    </div>
+    <div class="log" id="dLog" role="log" aria-label="What happened"></div>
+  </div>
+</section>
+
+<section id="code">
+  <div class="sec-num">Code</div>
+  <h2>A branch in a job</h2>
+<pre><code><span class="c-k">tasks</span>:
+  - <span class="c-k">task_key</span>: count_rows
+    <span class="c-k">notebook_task</span>: {notebook_path: /Workspace/bakery/count_rows}
+
+  - <span class="c-k">task_key</span>: any_bad_rows
+    <span class="c-k">depends_on</span>: [{task_key: count_rows}]
+    <span class="c-k">condition_task</span>:
+      <span class="c-k">left</span>: <span class="c-s">"{{tasks.count_rows.values.bad_records}}"</span>
+      <span class="c-k">op</span>: GREATER_THAN
+      <span class="c-k">right</span>: <span class="c-s">"0"</span>
+
+  - <span class="c-k">task_key</span>: quarantine
+    <span class="c-k">depends_on</span>:
+      - {task_key: any_bad_rows, outcome: <span class="c-s">"true"</span>}     <span class="c-c"># runs only on the true path</span>
+    <span class="c-k">notebook_task</span>: {notebook_path: /Workspace/bakery/quarantine}
+
+  - <span class="c-k">task_key</span>: publish_gold
+    <span class="c-k">depends_on</span>:
+      - {task_key: any_bad_rows, outcome: <span class="c-s">"false"</span>}    <span class="c-c"># runs only on the false path</span>
+    <span class="c-k">notebook_task</span>: {notebook_path: /Workspace/bakery/publish_gold}</code></pre>
+  <p class="note">The condition task's operands are written as strings in the definition, and the outcome names are <code>true</code> and <code>false</code>. Check the condition task reference for exact field names before use.</p>
+</section>
+
+<section id="whatif">
+  <div class="sec-num">What if I change this?</div>
+  <h2>Operators and paths</h2>
+  <div class="tbl"><table class="whatif">
+    <tr><th>Change</th><th>Effect</th></tr>
+    <tr><td><code>GREATER_THAN</code> to <code>GREATER_THAN_OR_EQUAL</code>, with the right side 0</td><td>A count of exactly 0 now takes the true path. Check which boundary you mean.</td></tr>
+    <tr><td>Swap the true and false paths</td><td>Publishing and quarantine trade places. A quiet, serious error.</td></tr>
+    <tr><td>Set the right operand to a value that is not a number</td><td>The comparison fails, and the condition task fails with it.</td></tr>
+    <tr><td>Remove the depends_on on the condition task</td><td>It may read the value before the count has been set.</td></tr>
+    <tr><td>Use run-if At least one failed instead of a condition</td><td>The branch now depends on failure, not on a count. Good for errors, not for data quality thresholds.</td></tr>
+    <tr><td>Make one path depend on both true and false outcomes</td><td>The task waits for a path that never runs, and may be marked as unable to run.</td></tr>
+  </table></div>
+</section>
+
+<section id="compare">
+  <div class="sec-num">Compare</div>
+  <h2>Condition task or run-if</h2>
+  <div class="tbl"><table>
+    <tr><th></th><th>If/else condition task</th><th>Run-if rule</th></tr>
+    <tr><td>Decides by</td><td>A value compared with an operator</td><td>How upstream tasks finished</td></tr>
+    <tr><td>Outcomes</td><td>True path or false path</td><td>Runs or does not run</td></tr>
+    <tr><td>Skipped path shows as</td><td>Skipped, not failed</td><td>Upstream failed or Excluded</td></tr>
+    <tr><td>Use for</td><td>Thresholds, flags, environment checks</td><td>Alerts, clean-up, fallbacks after failure</td></tr>
+  </table></div>
+</section>
+
+<section id="scenarios">
+  <div class="sec-num">Real life</div>
+  <h2>Branches at work</h2>
+  <div class="tbl"><table>
+    <tr><th>Scenario</th><th>What happens</th><th>Fix</th></tr>
+    <tr><td>A load with more than 100 bad rows should be held back, not published</td><td>A count threshold decides the path</td><td>If/else on the count: publish on false, hold back on true</td></tr>
+    <tr><td>A job should publish only in production, and test elsewhere</td><td>The environment is a parameter</td><td>If/else on the environment parameter</td></tr>
+    <tr><td>Both branches of a branch ran on the same night</td><td>Two paths were not mutually exclusive, or a run-if was set wrong</td><td>Make each path depend on one outcome only, and check the run-if rules</td></tr>
+    <tr><td>The job fails with "condition could not be evaluated"</td><td>The task value it reads was never set</td><td>Make sure the upstream task always sets the value</td></tr>
+  </table></div>
+</section>
+
+<section id="traps">
+  <div class="sec-num">Don't confuse these</div>
+  <h2>Branching traps</h2>
+  <div class="grid2">
+    <div class="card trap"><span class="tag">Skipped vs failed</span><p>The path not taken is skipped. Skipped is not a failure. A run can succeed with some tasks skipped.</p></div>
+    <div class="card trap"><span class="tag">If/else vs run-if</span><p>If/else tests a value. Run-if tests how tasks finished. Choose by what you are branching on.</p></div>
+    <div class="card trap"><span class="tag">GREATER_THAN vs GREATER_THAN_OR_EQUAL</span><p>They differ exactly at the boundary value. Read the operator carefully.</p></div>
+    <div class="card trap"><span class="tag">Branching vs looping</span><p>A branch chooses one path. A loop repeats a task (lesson 04-07).</p></div>
+  </div>
+</section>
+
+<section id="quiz">
+  <div class="sec-num">Check yourself</div>
+  <h2>Quiz</h2>
+  <div class="quiz">
+    <fieldset>
+      <legend>1. An If/else condition task is true. What runs?</legend>
+      <label><input type="radio"> Both branches</label>
+      <label><input type="radio" data-correct> Only the tasks attached to the true outcome</label>
+      <label><input type="radio"> Only the tasks attached to the false outcome</label>
+      <p class="explain" hidden>Exactly one outcome path is followed. The other is skipped.</p>
+    </fieldset>
+    <fieldset>
+      <legend>2. Which operator tests whether the left value is at least the right value?</legend>
+      <label><input type="radio"> GREATER_THAN</label>
+      <label><input type="radio" data-correct> GREATER_THAN_OR_EQUAL</label>
+      <label><input type="radio"> EQUAL_TO</label>
+      <p class="explain" hidden>"At least" includes the boundary, which is what GREATER_THAN_OR_EQUAL does.</p>
+    </fieldset>
+    <fieldset>
+      <legend>3. In the demo, bad_records was 0, the condition was GREATER_THAN 0. Which path ran?</legend>
+      <label><input type="radio"> The true path, quarantine</label>
+      <label><input type="radio" data-correct> The false path, publish</label>
+      <label><input type="radio"> Neither, because 0 is an error</label>
+      <p class="explain" hidden>Zero is not greater than zero, so the condition is false and the publish path runs.</p>
+    </fieldset>
+    <fieldset>
+      <legend>4. A task on the false path is not run. How is it shown in the run?</legend>
+      <label><input type="radio"> Failed</label>
+      <label><input type="radio" data-correct> Skipped</label>
+      <label><input type="radio"> Deleted from the run</label>
+      <p class="explain" hidden>A path not taken is skipped. It is not counted as a failure.</p>
+    </fieldset>
+  </div>
+</section>
+
+<section id="wrap">
+  <div class="sec-num">Wrap up</div>
+  <h2>Key takeaways</h2>
+  <ul>
+    <li>An If/else condition task compares two operands and sends the run down a true or false path.</li>
+    <li>Only one path runs. The other is skipped, not failed.</li>
+    <li>Run-if rules branch by how tasks finished. If/else branches by a value.</li>
+    <li>Make sure the value the condition reads is always set.</li>
+  </ul>
+  <h3>Glossary terms used</h3>
+  <p><a href="../../glossary.html#branching">branching</a> · <a href="../../glossary.html#if-else-task">If/else task</a> · <a href="../../glossary.html#run-if">Run if</a> · <a href="../../glossary.html#task-value">task value</a></p>
+  <h3>Official docs</h3>
+  <ul>
+    <li><a href="https://docs.databricks.com/aws/en/jobs/tasks/if-else">Add branching logic with the If/else task</a></li>
+    <li><a href="https://docs.databricks.com/aws/en/jobs/control-flow">Control the flow of tasks within Lakeflow Jobs</a></li>
+  </ul>
+  <p class="cap">Last verified: 16 November 2026</p>
+</section>
+
+</main>
+
+<script>
+(function () {
+  var C = window.Course, $ = function (id) { return document.getElementById(id); }, L = $('dLog');
+  var OPS = { GREATER_THAN: function (a, b) { return a > b; }, GREATER_THAN_OR_EQUAL: function (a, b) { return a >= b; }, EQUAL_TO: function (a, b) { return a === b; }, NOT_EQUAL: function (a, b) { return a !== b; }, LESS_THAN: function (a, b) { return a < b; } };
+  function run() {
+    var a = +$('bVal').value, b = +$('bRight').value, op = $('bOp').value, t = OPS[op](a, b);
+    $('bRes').textContent = t ? 'true' : 'false';
+    $('bExpr').textContent = 'bad_records ' + op + ' ' + b + ' with bad_records = ' + a;
+    $('bPaths').innerHTML = C.table([
+      { path: 'true: quarantine', status: t ? 'Ran' : 'Skipped' },
+      { path: 'false: publish_gold', status: t ? 'Skipped' : 'Ran' }
+    ]);
+    C.log(L, 'ok', 'bad_records ' + a + ' ' + op + ' ' + b + ' is ' + (t ? 'true: quarantine ran, publish skipped.' : 'false: publish ran, quarantine skipped.'));
+    C.bump($('bRes'));
+  }
+  $('dRun').onclick = run;
+  $('dReset').onclick = function () { L.innerHTML = ''; };
+  run();
+})();
+</script>
+</body>
+</html>

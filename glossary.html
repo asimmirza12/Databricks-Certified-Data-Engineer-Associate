@@ -41,6 +41,7 @@
     <div id="avro"><dt>Avro</dt><dd>A row-based binary file format that stores its schema with the data. Common for messages in streaming systems. <span class="cap">First used in 00-03.</span></dd></div>
     <div id="batch"><dt>Batch</dt><dd>Processing a collected pile of data in one go, at intervals. <span class="cap">First used in 00-04.</span></dd></div>
     <div id="binaryfile"><dt>binaryFile</dt><dd>A file format that reads each file as one row with its path, modification time, length and raw content. Used for unstructured files. <span class="cap">First used in 02-12.</span></dd></div>
+    <div id="branching"><dt>Branching</dt><dd>Choosing one of several routes through a job, so that only one path runs. <span class="cap">First used in 04-06.</span></dd></div>
     <div id="broadcast-join"><dt>Broadcast join</dt><dd>A join in which a small table is copied to every executor, so the large table does not need to be shuffled. <span class="cap">First used in 03-05.</span></dd></div>
     <div id="bronze"><dt>Bronze</dt><dd>The layer that holds raw data exactly as it arrived. <span class="cap">First used in 00-10.</span></dd></div>
     <div id="bucket"><dt>Bucket</dt><dd>The top-level container for objects in Amazon S3 and Google Cloud Storage. Azure calls it a container. <span class="cap">First used in 00-06.</span></dd></div>
@@ -100,6 +101,7 @@
     <div id="group-by"><dt>Group by</dt><dd>Sorting rows into groups that share a value, so that aggregates can be worked out for each group. <span class="cap">First used in 03-11.</span></dd></div>
     <div id="high-water-mark"><dt>High-water mark</dt><dd>The largest value of an ever-growing column, such as an ID or a last-updated time, that you have already loaded. The next load asks only for rows above it. <span class="cap">First used in 02-01.</span></dd></div>
     <div id="idempotent"><dt>Idempotent</dt><dd>Giving the same end result however many times it is run. An idempotent load can be retried safely. <span class="cap">First used in 02-04.</span></dd></div>
+    <div id="if-else-task"><dt>If/else condition task</dt><dd>A job task that compares two operands and sends the run down a true or false path. <span class="cap">First used in 04-06.</span></dd></div>
     <div id="incremental"><dt>Incremental</dt><dd>Processing only the data that is new since the last run, instead of everything again. <span class="cap">First used in 00-04.</span></dd></div>
     <div id="information-schema"><dt>Information schema</dt><dd>A ready-made schema called <code>information_schema</code> inside every catalog. Its tables describe that catalog's own tables, columns and privileges. <span class="cap">First used in 01-03.</span></dd></div>
     <div id="ingestion"><dt>Ingestion</dt><dd>Bringing data in from a source and making a copy of it, without changing it. <span class="cap">First used in 00-01.</span></dd></div>
@@ -108,6 +110,7 @@
     <div id="inner-join"><dt>Inner join</dt><dd>A join that keeps only rows that have a match in both tables. <span class="cap">First used in 03-04.</span></dd></div>
     <div id="jdbc"><dt>JDBC</dt><dd>A long-established standard that lets programs built on Java technology, including Spark, connect to databases through a driver. <span class="cap">First used in 02-09.</span></dd></div>
     <div id="job"><dt>Job</dt><dd>The definition of an automated workflow: its tasks, their order, its schedule and settings. <span class="cap">First used in 04-01.</span></dd></div>
+    <div id="job-parameter"><dt>Job parameter</dt><dd>A value supplied when a job runs, referenced in the job definition as {{job.parameters.name}}. <span class="cap">First used in 04-05.</span></dd></div>
     <div id="jobs-compute"><dt>Jobs compute</dt><dd>Classic compute created for one job run and removed when the run ends. It has a lower price per DBU than all-purpose compute. <span class="cap">First used in 01-04.</span></dd></div>
     <div id="join"><dt>Join</dt><dd>Combining two tables by matching rows on a key, and putting their columns side by side. <span class="cap">First used in 03-04.</span></dd></div>
     <div id="join-key"><dt>Join key</dt><dd>The column or columns whose values must match for two rows to be joined. <span class="cap">First used in 03-04.</span></dd></div>
@@ -159,6 +162,7 @@
     <div id="read-files"><dt>read_files</dt><dd>A SQL function that reads files from a path and returns them as rows, so files can be queried or loaded into a table. <span class="cap">First used in 02-02.</span></dd></div>
     <div id="rescued-data"><dt>Rescued data column</dt><dd>A spare column, <code>_rescued_data</code>, where Auto Loader keeps data that did not fit the schema: new columns, wrong types, wrong letter case. <span class="cap">First used in 02-07.</span></dd></div>
     <div id="rest-api"><dt>REST API</dt><dd>A common way for programs to request data from a web address. The answer usually comes back as JSON. <span class="cap">First used in 02-10.</span></dd></div>
+    <div id="retry"><dt>Retry</dt><dd>An automatic second or later attempt at a failed task, within a limit set by max_retries. <span class="cap">First used in 04-04.</span></dd></div>
     <div id="row"><dt>Row</dt><dd>One record in a table: one order, one customer, one event. <span class="cap">First used in 00-02.</span></dd></div>
     <div id="run"><dt>Run</dt><dd>One execution of a job, with a record of the status and timing of each task. <span class="cap">First used in 04-01.</span></dd></div>
     <div id="run-if"><dt>Run if</dt><dd>The rule that decides whether a task runs, based on how its upstream tasks finished. The default is All succeeded. <span class="cap">First used in 04-03.</span></dd></div>
@@ -193,6 +197,7 @@
     <div id="system-tables"><dt>System tables</dt><dd>Tables in the built-in <code>system</code> catalog that record how the platform is used: audit events, lineage, billing and more. <span class="cap">First used in 01-03.</span></dd></div>
     <div id="table"><dt>Table</dt><dd>Data arranged in rows and columns, with a schema that every row must fit. <span class="cap">First used in 00-02.</span></dd></div>
     <div id="task"><dt>Task</dt><dd>One step inside a job, such as one notebook, one query or one pipeline. <span class="cap">First used in 04-01.</span></dd></div>
+    <div id="task-value"><dt>Task value</dt><dd>A small result set by one task and read by later tasks in the same run, referenced as {{tasks.task_key.values.name}}. <span class="cap">First used in 04-05.</span></dd></div>
     <div id="temp-view"><dt>Temporary view</dt><dd>A name given to a DataFrame so that SQL in the same session can use it. It is not stored in the catalog and disappears with the session. <span class="cap">First used in 03-01.</span></dd></div>
     <div id="three-level-namespace"><dt>Three-level namespace</dt><dd>The naming scheme <code>catalog.schema.object</code> used for everything in Unity Catalog. <span class="cap">First used in 00-09.</span></dd></div>
     <div id="time-travel"><dt>Time travel</dt><dd>Reading a Delta table as it was at an earlier version or time. <span class="cap">First used in 00-08.</span></dd></div>

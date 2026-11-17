@@ -1,0 +1,260 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>04-04 Retries · DE Associate course</title>
+<link rel="stylesheet" href="../../assets/course.css">
+<script src="../../assets/course.js"></script>
+</head>
+<body data-lesson="04-04">
+
+<aside class="disclaimer" aria-label="Disclaimer"><strong>Learning resource only.</strong> This is an independent, unofficial study guide made for learning purposes. It is not affiliated with, endorsed by or sponsored by Databricks. Databricks features change often, so always check the details in the <a href="https://docs.databricks.com">official Databricks documentation</a> and the official exam guide on databricks.com before relying on anything here. Databricks and related names are trademarks of their respective owners.</aside>
+
+<main class="wrap">
+
+<header class="hero">
+  <div class="eyebrow">Module 04 · Working with Lakeflow Jobs · Lesson 4 of 11</div>
+  <h1>Retries</h1>
+  <p class="lede">Networks blink. A source is busy for a minute. A file is still being written. Many failures are temporary, and a job that retries a failed task a little later often succeeds without anyone noticing.</p>
+  <dl class="where">
+    <div><dt>Module</dt><dd>04 Working with Lakeflow Jobs (16% of the exam)</dd></div>
+    <div><dt>Exam objective</dt><dd>4.1 Implement control flows (retries and conditional tasks such as branching and looping) using Lakeflow Jobs for pipeline orchestration. This lesson covers retries.</dd></div>
+    <div><dt>Time to read</dt><dd>About 12 minutes</dd></div>
+    <div><dt>Before this</dt><dd><a href="01-jobs-tasks-runs.html">04-01 Jobs, tasks and runs</a> · <a href="03-dependencies-and-dag.html">04-03 Dependencies and the task graph</a></dd></div>
+  </dl>
+</header>
+
+<section id="idea">
+  <div class="sec-num">The idea</div>
+  <h2>Try again, but not forever</h2>
+  <p>A <a href="../../glossary.html#retry">retry</a> is the job starting a failed task again by itself. You set how many times it may retry, and how long to wait before each attempt.</p>
+  <p>The settings are:</p>
+  <ul>
+    <li><code>max_retries</code>: the most times a failed task is run again. Zero, or leaving it out, means no retries.</li>
+    <li><code>min_retry_interval_millis</code>: the minimum wait, in milliseconds, between the start of a failed attempt and the next attempt. The default is zero, which retries straight away.</li>
+    <li><code>retry_on_timeout</code>: whether a task that hit its time limit should be retried. The default is false.</li>
+  </ul>
+  <p>Retries only help with failures that will go away. A typo in a table name fails the same way every time, and retrying it wastes time and compute. Retries are for the temporary kind.</p>
+  <div class="analogy">
+    <span class="tag">Everyday analogy</span>
+    <p><strong>Redialling a busy phone line.</strong> If the line is busy, you hang up and try again in a minute. You do not redial every second for ever, and you stop after three attempts and leave a message. If the number itself is wrong, redialling changes nothing. The wait between calls is the retry interval; the number of tries is max retries.</p>
+  </div>
+</section>
+
+<section id="how">
+  <div class="sec-num">How it works</div>
+  <h2>One task, a limited number of attempts</h2>
+  <div class="stage">
+    <svg class="tall" viewBox="0 0 360 340" role="img" aria-label="A task attempt fails. The job waits for the minimum interval and tries again. After the maximum number of retries, the task is marked failed and downstream tasks follow their run-if rules.">
+      <defs><path id="a1" d="M180 60 V84"/><path id="a2" d="M180 140 V164"/><path id="a3" d="M180 220 V244"/></defs>
+      <g class="wire"><use href="#a1"/><use href="#a2"/><use href="#a3"/></g>
+      <g class="mover">
+        <circle r="5" class="dot"><animateMotion dur="1.2s" repeatCount="indefinite"><mpath href="#a1"/></animateMotion></circle>
+        <circle r="5" class="dot"><animateMotion dur="1.2s" begin="-0.4s" repeatCount="indefinite"><mpath href="#a2"/></animateMotion></circle>
+        <circle r="5" class="dot-ok"><animateMotion dur="1.2s" begin="-0.8s" repeatCount="indefinite"><mpath href="#a3"/></animateMotion></circle>
+      </g>
+      <rect class="box-soft" x="60" y="8" width="240" height="52" rx="8"/><text class="t-b" x="180" y="30" text-anchor="middle">Attempt 1: failed</text><text class="t-m" x="180" y="48" text-anchor="middle">connection timed out</text>
+      <rect class="box" x="60" y="84" width="240" height="56" rx="8"/><text class="t-b" x="180" y="106" text-anchor="middle">Wait min_retry_interval</text><text class="t-m" x="180" y="126" text-anchor="middle">e.g. 60 000 ms, then retry</text>
+      <rect class="box" x="60" y="164" width="240" height="56" rx="8"/><text class="t-b" x="180" y="186" text-anchor="middle">Attempt 2: succeeded</text><text class="t-m" x="180" y="206" text-anchor="middle">the task is marked Succeeded</text>
+      <rect class="box-acc" x="60" y="244" width="240" height="60" rx="8"/><text class="t-b" x="180" y="264" text-anchor="middle">If every attempt fails</text><text class="t-m" x="180" y="282" text-anchor="middle">after max_retries, the task is Failed</text><text class="t-m" x="180" y="298" text-anchor="middle">and downstream run-if rules apply</text>
+    </svg>
+    <p class="cap">Each attempt is recorded in the run. A task that eventually succeeds shows it took more than one attempt.</p>
+  </div>
+  <h3>Timeouts and retries together</h3>
+  <p>A task can also have a time limit. If you set both, the time limit applies to each attempt separately, not to all attempts together. A task that hangs can therefore be retried, but only if <code>retry_on_timeout</code> is true.</p>
+</section>
+
+<section id="demo">
+  <div class="sec-num">Try it</div>
+  <h2>Choose the retries and see which failures recover</h2>
+  <p>A task fails in the way you choose. Set how many retries it gets and the wait between attempts. Watch whether the task recovers, and how long the job takes.</p>
+  <div class="stage">
+    <div class="ctrls">
+      <label class="tog">Failure: <select id="rKind">
+        <option value="net">Brief network blip (fails twice, then works)</option>
+        <option value="busy">Source busy (fails once, then works)</option>
+        <option value="typo">Wrong table name (fails every time)</option>
+        <option value="slow">Times out (fails each time, while the time limit is short)</option>
+      </select></label>
+      <label class="tog">max_retries: <select id="rMax"><option>0</option><option selected>2</option><option>5</option></select></label>
+      <label class="tog">min_retry_interval: <select id="rWait"><option value="0">0 s</option><option value="60" selected>60 s</option><option value="600">10 min</option></select></label>
+      <label class="tog"><input type="checkbox" id="rTo"> retry_on_timeout</label>
+      <button id="dRun" type="button" class="primary">Run the task</button>
+      <button id="dReset" type="button">Clear</button>
+    </div>
+    <div class="panes">
+      <div class="pane"><h4>Attempts</h4><div id="pAtt"></div></div>
+      <div class="pane"><h4>Outcome</h4><div class="big" id="pRes">-</div><p class="cap" id="pWhy"></p></div>
+    </div>
+    <div class="log" id="dLog" role="log" aria-label="What happened"></div>
+    <p class="cap">Model: a blip or busy source succeeds on a later attempt. A typo never succeeds. A timeout is retried only if retry_on_timeout is set.</p>
+  </div>
+</section>
+
+<section id="code">
+  <div class="sec-num">Code</div>
+  <h2>Retry settings in a job</h2>
+<pre><code><span class="c-k">tasks</span>:
+  - <span class="c-k">task_key</span>: load_orders
+    <span class="c-k">notebook_task</span>: {notebook_path: /Workspace/bakery/load_orders}
+    <span class="c-k">max_retries</span>: 3                  <span class="c-c"># try again up to three times</span>
+    <span class="c-k">min_retry_interval_millis</span>: 60000  <span class="c-c"># wait at least one minute between attempts</span>
+    <span class="c-k">retry_on_timeout</span>: false         <span class="c-c"># do not retry a task that hit its time limit</span>
+    <span class="c-k">timeout_seconds</span>: 1800           <span class="c-c"># each attempt may run for 30 minutes</span></code></pre>
+  <p>A notebook can also protect itself, so that a retry is safe. A retry runs the whole task again, so a half-finished load must not leave bad data behind:</p>
+<pre><code><span class="c-c"># A retry reruns the whole task. Make the write safe to repeat: overwrite a whole batch.</span>
+(orders_today.write
+    .mode(<span class="c-s">"overwrite"</span>)
+    .option(<span class="c-s">"replaceWhere"</span>, <span class="c-s">"order_date = '2026-11-16'"</span>)  <span class="c-c"># replace only today's rows</span>
+    .saveAsTable(<span class="c-s">"bakery.silver.orders"</span>))</code></pre>
+  <p class="note">Check the exact field names and limits in the job reference before use. The <code>replaceWhere</code> option is one way to make a retry safe, shown here as an idea rather than the only method.</p>
+</section>
+
+<section id="whatif">
+  <div class="sec-num">What if I change this?</div>
+  <h2>Retry settings and their effects</h2>
+  <div class="tbl"><table class="whatif">
+    <tr><th>Change</th><th>Effect</th></tr>
+    <tr><td><code>max_retries</code> set to 0</td><td>The first failure is final. Good for tasks that must run at most once.</td></tr>
+    <tr><td><code>max_retries</code> raised to 10</td><td>A permanent error is retried ten times, using compute each time and delaying the alert.</td></tr>
+    <tr><td><code>min_retry_interval_millis</code> set to 0</td><td>Retries happen at once. Useless if the cause needs time to clear, such as a busy source.</td></tr>
+    <tr><td>Interval raised to ten minutes</td><td>Each retry waits longer. Gives a busy source time to recover, but delays the whole night's work.</td></tr>
+    <tr><td><code>retry_on_timeout</code> set to true</td><td>A task that hit its time limit is tried again. Useful if slowness is occasional; harmful if the task is always too slow.</td></tr>
+    <tr><td>A retried task writes to a table with append</td><td>Each attempt that wrote rows before failing leaves duplicates behind. Make the write safe to repeat.</td></tr>
+    <tr><td>Retries on a continuous job</td><td>Not supported. Retry policies do not apply to continuous jobs.</td></tr>
+  </table></div>
+</section>
+
+<section id="compare">
+  <div class="sec-num">Compare</div>
+  <h2>Retry, rerun and repair</h2>
+  <div class="tbl"><table>
+    <tr><th></th><th>Retry</th><th>Rerun</th><th>Repair</th></tr>
+    <tr><td>Who starts it</td><td>The job, automatically</td><td>A person, for the whole job</td><td>A person, for failed tasks only</td></tr>
+    <tr><td>When</td><td>Straight after a failed attempt, within the policy</td><td>Any time</td><td>After a run has failed</td></tr>
+    <tr><td>Setting</td><td><code>max_retries</code> and the interval</td><td>Start the job again</td><td>Choose the failed tasks to rerun</td></tr>
+    <tr><td>Best for</td><td>Brief, temporary faults</td><td>Starting over after a clean fix</td><td>Rerunning one failed step without repeating the rest</td></tr>
+  </table></div>
+  <h3>Which failures to retry</h3>
+  <div class="grid2">
+    <div class="card"><span class="tag">Retry</span><p>Network timeouts, busy sources, a file still being written, brief service outages.</p></div>
+    <div class="card"><span class="tag">Do not retry</span><p>A wrong table name, a bad credential, a code error, a rule violation. The same failure will happen again.</p></div>
+  </div>
+</section>
+
+<section id="scenarios">
+  <div class="sec-num">Real life</div>
+  <h2>Retries in practice</h2>
+  <div class="tbl"><table>
+    <tr><th>Scenario</th><th>What happens</th><th>Fix</th></tr>
+    <tr><td>A nightly load fails once in ten runs, with a timeout to the source</td><td>A brief network problem</td><td>Set max_retries to 2 and a short interval</td></tr>
+    <tr><td>A job retries five times, and each attempt inserts half the rows again</td><td>The write is not safe to repeat</td><td>Make the write overwrite its batch, or use MERGE</td></tr>
+    <tr><td>A bad column name fails four retries in a row, and the alert is an hour late</td><td>The error is permanent, so retries only delayed the alert</td><td>Use no retries for code errors. Alert on the first failure.</td></tr>
+    <tr><td>A slow query times out, and retrying it never finishes</td><td>retry_on_timeout is on, and the task is always too slow</td><td>Fix the query or raise the time limit. Retries cannot make it faster.</td></tr>
+  </table></div>
+</section>
+
+<section id="traps">
+  <div class="sec-num">Don't confuse these</div>
+  <h2>Retry traps</h2>
+  <div class="grid2">
+    <div class="card trap"><span class="tag">Retry vs repair</span><p>A retry happens by itself, inside the run. A repair is a person rerunning failed tasks after the run ended.</p></div>
+    <div class="card trap"><span class="tag">Interval vs timeout</span><p>The interval is the wait between attempts. The timeout is the longest one attempt may run.</p></div>
+    <div class="card trap"><span class="tag">Max retries vs attempts</span><p>Max retries of 2 means up to three attempts in all: the first, plus two retries.</p></div>
+    <div class="card trap"><span class="tag">Retry is not a fix</span><p>A retry hides a temporary fault. It does not repair a bug. Find out why the first attempt failed.</p></div>
+  </div>
+</section>
+
+<section id="quiz">
+  <div class="sec-num">Check yourself</div>
+  <h2>Quiz</h2>
+  <div class="quiz">
+    <fieldset>
+      <legend>1. A task has <code>max_retries</code> set to 2. How many attempts can it make in total?</legend>
+      <label><input type="radio"> 2</label>
+      <label><input type="radio" data-correct> 3</label>
+      <label><input type="radio"> 4</label>
+      <p class="explain" hidden>The first attempt plus two retries makes three attempts.</p>
+    </fieldset>
+    <fieldset>
+      <legend>2. What does <code>min_retry_interval_millis</code> control?</legend>
+      <label><input type="radio"> How long one attempt may run</label>
+      <label><input type="radio" data-correct> The minimum wait between a failed attempt and the next one</label>
+      <label><input type="radio"> The number of retries</label>
+      <p class="explain" hidden>It is the minimum gap between attempts. The time limit is a separate setting.</p>
+    </fieldset>
+    <fieldset>
+      <legend>3. In the demo, which failure did no number of retries fix?</legend>
+      <label><input type="radio"> A brief network blip</label>
+      <label><input type="radio"> A busy source</label>
+      <label><input type="radio" data-correct> A wrong table name</label>
+      <p class="explain" hidden>A permanent error fails the same way on every attempt. Retries only help with temporary failures.</p>
+    </fieldset>
+    <fieldset>
+      <legend>4. Why is <code>retry_on_timeout</code> false by default?</legend>
+      <label><input type="radio"> Timeouts never happen</label>
+      <label><input type="radio" data-correct> A task that is too slow usually stays too slow, so retrying wastes time</label>
+      <label><input type="radio"> It would double the cost of every job</label>
+      <p class="explain" hidden>Retrying a task that always runs past its limit does not make it finish.</p>
+    </fieldset>
+  </div>
+</section>
+
+<section id="wrap">
+  <div class="sec-num">Wrap up</div>
+  <h2>Key takeaways</h2>
+  <ul>
+    <li>Retries are for temporary failures. Use <code>max_retries</code> and <code>min_retry_interval_millis</code>.</li>
+    <li><code>max_retries</code> counts retries, so the total attempts is one more.</li>
+    <li><code>retry_on_timeout</code> is off by default.</li>
+    <li>A retry reruns the whole task, so make the task's writes safe to repeat.</li>
+    <li>Retry policies do not apply to continuous jobs.</li>
+  </ul>
+  <h3>Glossary terms used</h3>
+  <p><a href="../../glossary.html#retry">retry</a> · <a href="../../glossary.html#task">task</a> · <a href="../../glossary.html#run">run</a> · <a href="../../glossary.html#idempotent">idempotent</a></p>
+  <h3>Official docs</h3>
+  <ul>
+    <li><a href="https://docs.databricks.com/aws/en/jobs/configure-task">Configure and edit tasks in Lakeflow Jobs</a></li>
+    <li><a href="https://docs.databricks.com/aws/en/reference/jobs-2.0-api">Jobs API reference</a></li>
+  </ul>
+  <p class="cap">Last verified: 16 November 2026</p>
+</section>
+
+</main>
+
+<script>
+(function () {
+  var C = window.Course, $ = function (id) { return document.getElementById(id); }, L = $('dLog');
+  /* Each failure: how many attempts fail before one works (Infinity = never), and whether it is a timeout. */
+  var KIND = { net: { fails: 2, timeout: false, text: 'brief network blip' }, busy: { fails: 1, timeout: false, text: 'busy source' }, typo: { fails: Infinity, timeout: false, text: 'wrong table name' }, slow: { fails: Infinity, timeout: true, text: 'times out' } };
+  function run() {
+    var k = KIND[$('rKind').value], max = +$('rMax').value, wait = +$('rWait').value, toRetry = $('rTo').checked, rows = [], n = 0, ok = false, mins = 0;
+    while (n <= max) {
+      n++;
+      var failsHere = k.fails === Infinity || n <= k.fails;
+      if (!failsHere) { rows.push({ attempt: n, result: 'Succeeded' }); ok = true; break; }
+      var canRetry = n <= max && (!k.timeout || toRetry);
+      rows.push({ attempt: n, result: k.timeout ? 'Timed out' : 'Failed' });
+      if (!canRetry || n > max) break;
+      mins += wait / 60;
+    }
+    if (!ok && rows.length && rows[rows.length - 1].result !== 'Succeeded' && k.timeout && !toRetry && max > 0) { /* timeout not retried */ }
+    $('pAtt').innerHTML = C.table(rows);
+    $('pRes').textContent = ok ? 'Recovered' : 'Failed';
+    var why = ok ? 'Succeeded on attempt ' + n + ', after about ' + Math.round(mins) + ' min of waiting.'
+      : k.timeout && !toRetry ? 'Timed out, and retry_on_timeout is off, so the task was not retried.'
+      : k.timeout ? 'Timed out on every attempt. Retrying a task that is always too slow does not help.'
+      : k.fails === Infinity ? 'It failed on every attempt. Retries cannot fix a wrong name.'
+      : 'Ran out of retries before it worked.';
+    $('pWhy').textContent = why;
+    C.log(L, ok ? 'ok' : 'bad', $('rKind').selectedOptions[0].text + ', max_retries ' + max + ': ' + (ok ? 'recovered' : 'failed') + '. ' + why);
+    C.bump($('pRes'));
+  }
+  $('dRun').onclick = run;
+  $('dReset').onclick = function () { L.innerHTML = ''; $('pAtt').innerHTML = ''; $('pRes').textContent = '-'; $('pWhy').textContent = ''; };
+  run();
+})();
+</script>
+</body>
+</html>

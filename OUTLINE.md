@@ -125,9 +125,9 @@ Objectives:
 | [x] | 04-01 Lakeflow Jobs: jobs, tasks and runs | `01-jobs-tasks-runs.html` | 4.2 | 00-01, 01-04 |
 | [x] | 04-02 Task types: notebook, SQL query, dashboard, pipeline | `02-task-types.html` | 4.2 | 04-01 |
 | [x] | 04-03 Dependencies and the task graph (DAG) | `03-dependencies-and-dag.html` | 4.2 | 04-02 |
-| [ ] | 04-04 Retries | `04-retries.html` | 4.1 | 04-03 |
-| [ ] | 04-05 Parameters and task values | `05-parameters-and-task-values.html` | 4.1 | 04-03 |
-| [ ] | 04-06 Branching: if/else and run-if conditions | `06-branching.html` | 4.1 | 04-05 |
+| [x] | 04-04 Retries | `04-retries.html` | 4.1 | 04-03 |
+| [x] | 04-05 Parameters and task values | `05-parameters-and-task-values.html` | 4.1 | 04-03 |
+| [x] | 04-06 Branching: if/else and run-if conditions | `06-branching.html` | 4.1 | 04-05 |
 | [ ] | 04-07 Looping: for each | `07-looping.html` | 4.1 | 04-05 |
 | [ ] | 04-08 Scheduled triggers | `08-scheduled-triggers.html` | 4.3 | 04-01 |
 | [ ] | 04-09 File arrival triggers | `09-file-arrival-triggers.html` | 4.3 | 04-08, 02-02 |
