@@ -92,22 +92,22 @@ Objectives:
 
 | Status | Lesson | File | Objective | Prerequisites |
 |---|---|---|---|---|
-| [ ] | 03-01 DataFrames and SQL: two ways to say the same thing | `01-dataframes-and-sql.html` | 3.1 | 00-05, 00-10 |
-| [ ] | 03-02 Cleaning nulls | `02-cleaning-nulls.html` | 3.1 | 03-01 |
-| [ ] | 03-03 Standardising data types and writing silver tables | `03-data-types-and-silver.html` | 3.1 | 03-02 |
-| [ ] | 03-04 Joins: inner and left | `04-joins-inner-left.html` | 3.2 | 03-01 |
-| [ ] | 03-05 Joins: multiple keys, cross join, broadcast join | `05-joins-multi-key-cross-broadcast.html` | 3.2 | 03-04 |
-| [ ] | 03-06 Union and union all | `06-union.html` | 3.2 | 03-01 |
-| [ ] | 03-07 Columns: add, drop, rename, split | `07-columns.html` | 3.3 | 03-01 |
-| [ ] | 03-08 Filtering rows | `08-filtering-rows.html` | 3.3 | 03-01 |
-| [ ] | 03-09 Arrays and explode | `09-arrays-and-explode.html` | 3.3 | 03-07 |
-| [ ] | 03-10 Deduplication | `10-deduplication.html` | 3.4 | 03-08 |
-| [ ] | 03-11 Aggregations: count, approx_count_distinct, mean, summary | `11-aggregations.html` | 3.4 | 03-08 |
-| [ ] | 03-12 Tuning: shuffle partitions and default parallelism | `12-tuning-partitions.html` | 3.5 | 03-04, 03-11 |
-| [ ] | 03-13 Tuning: memory and the auto-broadcast threshold, then measure again | `13-tuning-memory-broadcast.html` | 3.5 | 03-05, 03-12 |
-| [ ] | 03-14 Gold objects: tables, views, materialized views, streaming tables | `14-gold-objects.html` | 3.6 | 00-10, 03-11 |
-| [ ] | 03-15 Building gold objects for BI and analytics | `15-building-gold-objects.html` | 3.6 | 03-14 |
-| [ ] | 03-16 Data quality: constraints and expectations | `16-data-quality.html` | 3.7 | 03-03, 03-14 |
+| [x] | 03-01 DataFrames and SQL: two ways to say the same thing | `01-dataframes-and-sql.html` | 3.1 | 00-05, 00-10 |
+| [x] | 03-02 Cleaning nulls | `02-cleaning-nulls.html` | 3.1 | 03-01 |
+| [x] | 03-03 Standardising data types and writing silver tables | `03-data-types-and-silver.html` | 3.1 | 03-02 |
+| [x] | 03-04 Joins: inner and left | `04-joins-inner-left.html` | 3.2 | 03-01 |
+| [x] | 03-05 Joins: multiple keys, cross join, broadcast join | `05-joins-multi-key-cross-broadcast.html` | 3.2 | 03-04 |
+| [x] | 03-06 Union and union all | `06-union.html` | 3.2 | 03-01 |
+| [x] | 03-07 Columns: add, drop, rename, split | `07-columns.html` | 3.3 | 03-01 |
+| [x] | 03-08 Filtering rows | `08-filtering-rows.html` | 3.3 | 03-01 |
+| [x] | 03-09 Arrays and explode | `09-arrays-and-explode.html` | 3.3 | 03-07 |
+| [x] | 03-10 Deduplication | `10-deduplication.html` | 3.4 | 03-08 |
+| [x] | 03-11 Aggregations: count, approx_count_distinct, mean, summary | `11-aggregations.html` | 3.4 | 03-08 |
+| [x] | 03-12 Tuning: shuffle partitions and default parallelism | `12-tuning-partitions.html` | 3.5 | 03-04, 03-11 |
+| [x] | 03-13 Tuning: memory and the auto-broadcast threshold, then measure again | `13-tuning-memory-broadcast.html` | 3.5 | 03-05, 03-12 |
+| [x] | 03-14 Gold objects: tables, views, materialized views, streaming tables | `14-gold-objects.html` | 3.6 | 00-10, 03-11 |
+| [x] | 03-15 Building gold objects for BI and analytics | `15-building-gold-objects.html` | 3.6 | 03-14 |
+| [x] | 03-16 Data quality: constraints and expectations | `16-data-quality.html` | 3.7 | 03-03, 03-14 |
 
 ## Module 04: Working with Lakeflow Jobs (16% of the exam)
 

@@ -1,0 +1,285 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>03-06 Union and union all · DE Associate course</title>
+<link rel="stylesheet" href="../../assets/course.css">
+<script src="../../assets/course.js"></script>
+</head>
+<body data-lesson="03-06">
+
+<aside class="disclaimer" aria-label="Disclaimer"><strong>Learning resource only.</strong> This is an independent, unofficial study guide made for learning purposes. It is not affiliated with, endorsed by or sponsored by Databricks. Databricks features change often, so always check the details in the <a href="https://docs.databricks.com">official Databricks documentation</a> and the official exam guide on databricks.com before relying on anything here. Databricks and related names are trademarks of their respective owners.</aside>
+
+<main class="wrap">
+
+<header class="hero">
+  <div class="eyebrow">Module 03 · Data Transformation and Modeling · Lesson 6 of 16</div>
+  <h1>Union and union all</h1>
+  <p class="lede">A join puts tables side by side. A union stacks them on top of each other. It sounds simpler, and it hides two traps that catch nearly everyone once.</p>
+  <dl class="where">
+    <div><dt>Module</dt><dd>03 Data Transformation and Modeling (22% of the exam)</dd></div>
+    <div><dt>Exam objective</dt><dd>3.2 Combine datasets: inner, left, broadcast, multi-key and cross joins, plus union and union all. This lesson covers union and union all.</dd></div>
+    <div><dt>Time to read</dt><dd>About 11 minutes</dd></div>
+    <div><dt>Before this</dt><dd><a href="01-dataframes-and-sql.html">03-01 DataFrames and SQL</a></dd></div>
+  </dl>
+</header>
+
+<section id="idea">
+  <div class="sec-num">The idea</div>
+  <h2>Stack rows from two tables</h2>
+  <p>A <a href="../../glossary.html#union">union</a> takes two tables with the same columns and returns one table containing the rows of both. North shop's orders plus South shop's orders become all orders.</p>
+  <p>There are two questions to settle every time.</p>
+  <p><strong>1. What happens to duplicate rows?</strong></p>
+  <ul>
+    <li><strong>UNION ALL</strong> keeps everything. If the same row is in both tables, it appears twice.</li>
+    <li><strong>UNION</strong> (also written UNION DISTINCT) removes duplicate rows from the result.</li>
+  </ul>
+  <p><strong>2. How are the columns lined up?</strong></p>
+  <ul>
+    <li><strong>By position.</strong> The first column of one table goes over the first column of the other, whatever they are called. This is how SQL's UNION and PySpark's <code>union()</code> work.</li>
+    <li><strong>By name.</strong> Columns called <code>price</code> are lined up with each other, wherever they sit. This is PySpark's <code>unionByName()</code>.</li>
+  </ul>
+  <p>And here is the first trap. In SQL, plain <code>UNION</code> removes duplicates. In PySpark, <code>union()</code> does <em>not</em>. The PySpark method behaves like SQL's <code>UNION ALL</code>.</p>
+  <div class="analogy">
+    <span class="tag">Everyday analogy</span>
+    <p><strong>Merging two guest lists.</strong> You and a friend each wrote a list for the same party. Stapling the two sheets together is UNION ALL: quick, and anyone you both invited is on it twice. Copying them onto a fresh sheet and skipping names already written is UNION. And if your list is "first name, surname" while your friend's is "surname, first name", stacking them by position puts surnames under first names. You must line them up by what each column means.</p>
+  </div>
+</section>
+
+<section id="how">
+  <div class="sec-num">How it works</div>
+  <h2>Stacking, with and without duplicates</h2>
+  <div class="stage">
+    <svg class="tall" viewBox="0 0 360 370" role="img" aria-label="Two tables with one row in common are stacked. Union all gives every row including the repeated one. Union gives each distinct row once.">
+      <defs><path id="u1" d="M90 112 C 90 150, 90 150, 90 176"/><path id="u2" d="M270 112 C 270 150, 270 150, 270 176"/></defs>
+      <g class="wire"><use href="#u1"/><use href="#u2"/></g>
+      <g class="mover">
+        <circle r="5" class="dot"><animateMotion dur="1.6s" repeatCount="indefinite"><mpath href="#u1"/></animateMotion></circle>
+        <circle r="5" class="dot-ok"><animateMotion dur="1.6s" begin="-0.8s" repeatCount="indefinite"><mpath href="#u2"/></animateMotion></circle>
+      </g>
+      <text class="t-b" x="90" y="18" text-anchor="middle">north_orders</text><text class="t-b" x="270" y="18" text-anchor="middle">south_orders</text>
+      <g class="box"><rect x="14" y="26" width="152" height="86" rx="6"/><rect x="194" y="26" width="152" height="86" rx="6"/></g>
+      <text class="mono" x="24" y="48">101  Loaf   4</text><text class="mono" x="24" y="70">102  Bun    1</text><text class="mono" x="24" y="92">103  Bagel  2</text>
+      <text class="mono" x="204" y="48">103  Bagel  2</text><text class="mono" x="204" y="70">104  Roll   1</text>
+      <text class="t-m" x="270" y="104" text-anchor="middle">order 103 is in both</text>
+      <rect class="box-acc" x="14" y="176" width="152" height="150" rx="6"/>
+      <text class="t-b" x="90" y="196" text-anchor="middle">UNION ALL</text>
+      <text class="mono" x="24" y="218">101  Loaf   4</text><text class="mono" x="24" y="238">102  Bun    1</text><text class="mono" x="24" y="258">103  Bagel  2</text><text class="mono" x="24" y="278">103  Bagel  2</text><text class="mono" x="24" y="298">104  Roll   1</text>
+      <text class="t-m" x="90" y="318" text-anchor="middle">5 rows: 103 twice</text>
+      <rect class="box-acc" x="194" y="176" width="152" height="150" rx="6"/>
+      <text class="t-b" x="270" y="196" text-anchor="middle">UNION</text>
+      <text class="mono" x="204" y="218">101  Loaf   4</text><text class="mono" x="204" y="238">102  Bun    1</text><text class="mono" x="204" y="258">103  Bagel  2</text><text class="mono" x="204" y="278">104  Roll   1</text>
+      <text class="t-m" x="270" y="318" text-anchor="middle">4 rows: 103 once</text>
+      <text class="t-m" x="180" y="352" text-anchor="middle">UNION must compare every row to find duplicates, so it costs more.</text>
+    </svg>
+  </div>
+  <p>Removing duplicates is not free. To know that two rows are the same, Spark has to bring equal rows together, which means a <a href="../../glossary.html#shuffle">shuffle</a>. UNION ALL does no such work: it simply reads one table and then the other. So use UNION ALL unless you really need duplicates removed.</p>
+</section>
+
+<section id="demo">
+  <div class="sec-num">Try it</div>
+  <h2>Stack two tables four ways</h2>
+  <p>The second table has its columns in a different order and one extra column. One order appears in both. Try each method and read the result carefully: one of them puts values in the wrong columns without any error.</p>
+  <div class="stage">
+    <div class="ctrls">
+      <label class="tog">Method: <select id="dHow">
+        <option value="pos">df1.union(df2)  (by position, keeps duplicates)</option>
+        <option value="name">df1.unionByName(df2)</option>
+        <option value="miss">df1.unionByName(df2, allowMissingColumns=True)</option>
+        <option value="dist">df1.unionByName(df2, allowMissingColumns=True).distinct()</option>
+      </select></label>
+      <button id="dGo" type="button" class="primary">Run</button>
+    </div>
+    <div class="panes">
+      <div class="pane"><h4>df1: north (item, price)</h4><div id="pA"></div></div>
+      <div class="pane"><h4>df2: south (price, item, note)</h4><div id="pB"></div></div>
+      <div class="pane"><h4>Result</h4><div id="pOut"></div></div>
+    </div>
+    <div class="log" id="dLog" role="log" aria-label="What happened"></div>
+  </div>
+</section>
+
+<section id="code">
+  <div class="sec-num">Code</div>
+  <h2>Union in both languages</h2>
+<pre><code>north = spark.table(<span class="c-s">"bakery.silver.orders_north"</span>)
+south = spark.table(<span class="c-s">"bakery.silver.orders_south"</span>)
+
+<span class="c-c"># By position, keeping duplicates. Same as SQL's UNION ALL.</span>
+<span class="c-c"># Safe only when both DataFrames have the same columns in the same order.</span>
+all_orders = north.union(south)
+
+<span class="c-c"># By column name. Safe whatever the column order.</span>
+all_orders = north.unionByName(south)
+
+<span class="c-c"># By name, and tolerate a column that only one side has. The gap is filled with NULL.</span>
+all_orders = north.unionByName(south, allowMissingColumns=<span class="c-k">True</span>)
+
+<span class="c-c"># Remove duplicate rows afterwards, to get what SQL's plain UNION gives.</span>
+unique_orders = north.unionByName(south).distinct()</code></pre>
+<pre><code><span class="c-c">-- Keep every row.</span>
+<span class="c-k">SELECT</span> order_id, item, price <span class="c-k">FROM</span> bakery.silver.orders_north
+<span class="c-k">UNION ALL</span>
+<span class="c-k">SELECT</span> order_id, item, price <span class="c-k">FROM</span> bakery.silver.orders_south;
+
+<span class="c-c">-- Remove duplicate rows. UNION and UNION DISTINCT mean the same.</span>
+<span class="c-k">SELECT</span> order_id, item, price <span class="c-k">FROM</span> bakery.silver.orders_north
+<span class="c-k">UNION</span>
+<span class="c-k">SELECT</span> order_id, item, price <span class="c-k">FROM</span> bakery.silver.orders_south;</code></pre>
+  <p class="note">In SQL, always list the columns in the same order in both halves, as above. <code>SELECT *</code> on each side relies on the two tables happening to have matching column orders.</p>
+</section>
+
+<section id="whatif">
+  <div class="sec-num">What if I change this?</div>
+  <h2>Each variation</h2>
+  <div class="tbl"><table class="whatif">
+    <tr><th>Change</th><th>Effect</th></tr>
+    <tr><td>SQL <code>UNION ALL</code></td><td>All rows from both, duplicates included. Fast.</td></tr>
+    <tr><td>SQL <code>UNION</code></td><td>Duplicate rows removed. Slower, because rows must be compared.</td></tr>
+    <tr><td>PySpark <code>union()</code></td><td>Keeps duplicates, like SQL's UNION ALL. Lines columns up by position.</td></tr>
+    <tr><td><code>union()</code> when the column orders differ</td><td>No error if the types happen to fit. Values simply land under the wrong column names.</td></tr>
+    <tr><td><code>union()</code> when the number of columns differs</td><td>An error. Both sides must have the same number of columns.</td></tr>
+    <tr><td><code>unionByName()</code> when one side lacks a column</td><td>An error, unless you add <code>allowMissingColumns=True</code>, which fills the gap with NULL.</td></tr>
+    <tr><td>Add <code>.distinct()</code> after a union</td><td>Removes rows that are identical in every column. Rows that differ in any column are both kept.</td></tr>
+    <tr><td>Union a column that is INT on one side and STRING on the other</td><td>Spark either converts to a common type or refuses. Cast both sides to the same type first to be sure.</td></tr>
+  </table></div>
+</section>
+
+<section id="compare">
+  <div class="sec-num">Compare</div>
+  <h2>The four forms</h2>
+  <div class="tbl"><table>
+    <tr><th></th><th>Columns matched by</th><th>Duplicates</th><th>Cost</th></tr>
+    <tr><td>SQL <code>UNION ALL</code></td><td>Position</td><td>Kept</td><td>Low</td></tr>
+    <tr><td>SQL <code>UNION</code></td><td>Position</td><td>Removed</td><td>Higher</td></tr>
+    <tr><td>PySpark <code>union()</code></td><td>Position</td><td>Kept</td><td>Low</td></tr>
+    <tr><td>PySpark <code>unionByName()</code></td><td>Name</td><td>Kept</td><td>Low</td></tr>
+  </table></div>
+  <h3>Join or union?</h3>
+  <div class="grid2">
+    <div class="card"><span class="tag">Union</span><p>Adds <strong>rows</strong>. The tables describe the same kind of thing: orders and more orders. The result is longer.</p></div>
+    <div class="card"><span class="tag">Join</span><p>Adds <strong>columns</strong>. The tables describe different things that are related: orders and shops. The result is wider.</p></div>
+  </div>
+</section>
+
+<section id="scenarios">
+  <div class="sec-num">Real life</div>
+  <h2>Stacking data in practice</h2>
+  <div class="tbl"><table>
+    <tr><th>Scenario</th><th>What happens</th><th>Fix</th></tr>
+    <tr><td>Three regional order tables must become one</td><td>They hold the same kind of rows</td><td><code>unionByName</code> the three</td></tr>
+    <tr><td>After combining two files, prices appear in the item column</td><td><code>union()</code> matched by position and the column orders differed</td><td>Use <code>unionByName()</code></td></tr>
+    <tr><td>A new source has an extra <code>loyalty</code> column the old one lacks</td><td><code>unionByName</code> fails on the missing column</td><td>Add <code>allowMissingColumns=True</code></td></tr>
+    <tr><td>A PySpark job ported from SQL now reports more rows</td><td>SQL's <code>UNION</code> removed duplicates, and <code>union()</code> does not</td><td>Add <code>.distinct()</code>, or decide the duplicates should be kept</td></tr>
+    <tr><td>A query unions twelve monthly tables with <code>UNION</code> and is slow</td><td>It is hunting for duplicates that cannot exist across months</td><td>Use <code>UNION ALL</code></td></tr>
+  </table></div>
+</section>
+
+<section id="traps">
+  <div class="sec-num">Don't confuse these</div>
+  <h2>Union traps</h2>
+  <div class="grid2">
+    <div class="card trap"><span class="tag">SQL UNION vs PySpark union()</span><p>SQL's <code>UNION</code> removes duplicates. PySpark's <code>union()</code> keeps them. The exam likes this one.</p></div>
+    <div class="card trap"><span class="tag">union() vs unionByName()</span><p><code>union()</code> goes by position and ignores names. <code>unionByName()</code> goes by name and ignores position.</p></div>
+    <div class="card trap"><span class="tag">UNION vs UNION ALL</span><p>ALL means "all rows, duplicates too". Without ALL, duplicates are removed at a cost.</p></div>
+    <div class="card trap"><span class="tag">distinct vs dropDuplicates</span><p><code>distinct()</code> compares whole rows. <code>dropDuplicates(["order_id"])</code> can compare chosen columns only (lesson 03-10).</p></div>
+  </div>
+</section>
+
+<section id="quiz">
+  <div class="sec-num">Check yourself</div>
+  <h2>Quiz</h2>
+  <div class="quiz">
+    <fieldset>
+      <legend>1. Table A has 10 rows and table B has 8. Three rows are identical in both. How many rows does SQL <code>UNION ALL</code> return?</legend>
+      <label><input type="radio"> 15</label>
+      <label><input type="radio" data-correct> 18</label>
+      <label><input type="radio"> 21</label>
+      <p class="explain" hidden>UNION ALL keeps everything: 10 + 8. Plain UNION would return 15.</p>
+    </fieldset>
+    <fieldset>
+      <legend>2. In PySpark, what does <code>df1.union(df2)</code> do with duplicate rows?</legend>
+      <label><input type="radio" data-correct> Keeps them</label>
+      <label><input type="radio"> Removes them</label>
+      <label><input type="radio"> Raises an error</label>
+      <p class="explain" hidden>The DataFrame <code>union()</code> behaves like SQL's UNION ALL. Add <code>.distinct()</code> to remove duplicates.</p>
+    </fieldset>
+    <fieldset>
+      <legend>3. Two DataFrames have the same columns in different orders. Which method combines them correctly?</legend>
+      <label><input type="radio"> <code>union()</code></label>
+      <label><input type="radio" data-correct> <code>unionByName()</code></label>
+      <label><input type="radio"> <code>crossJoin()</code></label>
+      <p class="explain" hidden><code>unionByName</code> lines columns up by their names, so order does not matter.</p>
+    </fieldset>
+    <fieldset>
+      <legend>4. In the demo, what did plain <code>union()</code> do with the second table's columns?</legend>
+      <label><input type="radio"> Matched them by name</label>
+      <label><input type="radio" data-correct> Matched them by position, putting prices under "item"</label>
+      <label><input type="radio"> Dropped the mismatched rows</label>
+      <p class="explain" hidden>It paid no attention to names. The values went into whatever column sat in the same position.</p>
+    </fieldset>
+    <fieldset>
+      <legend>5. Why is <code>UNION ALL</code> cheaper than <code>UNION</code>?</legend>
+      <label><input type="radio"> It reads fewer columns</label>
+      <label><input type="radio" data-correct> It does not have to compare rows to find duplicates</label>
+      <label><input type="radio"> It skips the second table</label>
+      <p class="explain" hidden>Finding duplicates requires bringing equal rows together, which is a shuffle. UNION ALL avoids it.</p>
+    </fieldset>
+  </div>
+</section>
+
+<section id="wrap">
+  <div class="sec-num">Wrap up</div>
+  <h2>Key takeaways</h2>
+  <ul>
+    <li>A union stacks the rows of two tables. A join adds columns.</li>
+    <li>UNION ALL keeps duplicates. UNION removes them and costs more.</li>
+    <li>PySpark's <code>union()</code> keeps duplicates, like SQL's UNION ALL.</li>
+    <li><code>union()</code> matches columns by position. <code>unionByName()</code> matches by name.</li>
+    <li><code>allowMissingColumns=True</code> fills columns that one side lacks with NULL.</li>
+  </ul>
+  <h3>Glossary terms used</h3>
+  <p><a href="../../glossary.html#union">union</a> · <a href="../../glossary.html#join">join</a> · <a href="../../glossary.html#shuffle">shuffle</a> · <a href="../../glossary.html#null">NULL</a></p>
+  <h3>Official docs</h3>
+  <ul>
+    <li><a href="https://docs.databricks.com/aws/en/sql/language-manual/sql-ref-syntax-qry-select-setops">Set operators (UNION, INTERSECT, EXCEPT)</a></li>
+    <li><a href="https://spark.apache.org/docs/latest/api/python/reference/pyspark.sql/dataframe.html">PySpark DataFrame reference (union, unionByName)</a></li>
+  </ul>
+  <p class="cap">Last verified: 16 November 2026</p>
+</section>
+
+</main>
+
+<script>
+(function () {
+  var C = window.Course, $ = function (id) { return document.getElementById(id); }, L = $('dLog');
+  var A = { cols: ['item', 'price'], rows: [['Loaf', 4], ['Bun', 1], ['Bagel', 2]] };
+  var B = { cols: ['price', 'item', 'note'], rows: [[2, 'Bagel', null], [1, 'Roll', 'warm']] };
+  function objs(t) { return t.rows.map(function (r) { var o = {}; t.cols.forEach(function (c, i) { o[c] = r[i]; }); return o; }); }
+  $('pA').innerHTML = C.table(objs(A)); $('pB').innerHTML = C.table(objs(B));
+  $('dGo').onclick = function () {
+    var how = $('dHow').value, out, msg, cls = 'ok';
+    if (how === 'pos') {
+      /* By position: both sides must have the same number of columns. */
+      $('pOut').innerHTML = '<p class="note trap">ERROR: union() needs the same number of columns on both sides. df1 has 2, df2 has 3.</p>';
+      var b2 = B.rows.map(function (r) { return { item: r[0], price: r[1] }; });   /* what would happen if "note" were dropped first */
+      out = objs(A).concat(b2);
+      $('pOut').innerHTML += '<p class="cap">If you first drop <code>note</code> from df2, it runs, like this:</p>' + C.table(out);
+      msg = 'union() by position: failed on the column count. With note dropped it runs, and df2\'s prices land in "item" and its items in "price". No error.'; cls = 'bad';
+    } else if (how === 'name') {
+      $('pOut').innerHTML = '<p class="note trap">ERROR: column "note" exists in df2 but not in df1. Add allowMissingColumns=True.</p>'; msg = 'unionByName: failed, because df1 has no "note" column.'; cls = 'bad';
+    } else {
+      out = objs(A).map(function (r) { return { item: r.item, price: r.price, note: null }; }).concat(objs(B).map(function (r) { return { item: r.item, price: r.price, note: r.note }; }));
+      if (how === 'dist') { var seen = {}; out = out.filter(function (r) { var k = JSON.stringify(r); if (seen[k]) return false; seen[k] = 1; return true; }); }
+      $('pOut').innerHTML = C.table(out);
+      msg = (how === 'dist' ? 'With distinct(): ' : 'unionByName with allowMissingColumns: ') + out.length + ' rows, columns correctly matched by name.' + (how === 'dist' ? ' The repeated Bagel row was removed.' : ' The Bagel row appears twice.');
+    }
+    C.log(L, cls, msg);
+  };
+  $('dHow').onchange = $('dGo').onclick;
+  $('dGo').onclick();
+})();
+</script>
+</body>
+</html>

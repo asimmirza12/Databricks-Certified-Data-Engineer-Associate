@@ -1,0 +1,300 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>03-09 Arrays and explode · DE Associate course</title>
+<link rel="stylesheet" href="../../assets/course.css">
+<script src="../../assets/course.js"></script>
+</head>
+<body data-lesson="03-09">
+
+<aside class="disclaimer" aria-label="Disclaimer"><strong>Learning resource only.</strong> This is an independent, unofficial study guide made for learning purposes. It is not affiliated with, endorsed by or sponsored by Databricks. Databricks features change often, so always check the details in the <a href="https://docs.databricks.com">official Databricks documentation</a> and the official exam guide on databricks.com before relying on anything here. Databricks and related names are trademarks of their respective owners.</aside>
+
+<main class="wrap">
+
+<header class="hero">
+  <div class="eyebrow">Module 03 · Data Transformation and Modeling · Lesson 9 of 16</div>
+  <h1>Arrays and explode</h1>
+  <p class="lede">Sometimes one cell holds a whole list: the items in a basket, the tags on a product. To count or filter the things in that list, you first have to give each one a row of its own.</p>
+  <dl class="where">
+    <div><dt>Module</dt><dd>03 Data Transformation and Modeling (22% of the exam)</dd></div>
+    <div><dt>Exam objective</dt><dd>3.3 Reshape data: add, drop, split and rename columns, filter rows, and turn arrays into rows. This lesson covers arrays.</dd></div>
+    <div><dt>Time to read</dt><dd>About 12 minutes</dd></div>
+    <div><dt>Before this</dt><dd><a href="07-columns.html">03-07 Columns: add, drop, rename, split</a></dd></div>
+  </dl>
+</header>
+
+<section id="idea">
+  <div class="sec-num">The idea</div>
+  <h2>One row per list becomes one row per item</h2>
+  <p>An <a href="../../glossary.html#array">array</a> is a column type that holds an ordered list of values in a single cell. An order row might have an <code>items</code> column containing <code>["Loaf", "Bun", "Bagel"]</code>.</p>
+  <p>Arrays arrive in two ways. Nested JSON brings them ready-made (lesson 02-11). Or you create one yourself, by using <code>split</code> on text such as <code>"Loaf,Bun,Bagel"</code>.</p>
+  <p>A list in a cell is compact, but most questions cannot be asked of it directly. "How many Buns were sold?" needs each Bun to be countable. The function <a href="../../glossary.html#explode">explode</a> does that. It takes each row and produces one output row for every element in its array. The other columns are copied onto each new row.</p>
+  <p>An order with three items goes in as one row and comes out as three. The table gets longer, and each row is now about one item instead of one order.</p>
+  <div class="analogy">
+    <span class="tag">Everyday analogy</span>
+    <p><strong>Unpacking a shopping bag onto the checkout belt.</strong> A bag is one thing, but the cashier cannot scan a bag. Each item has to be lifted out and placed on the belt separately. Afterwards there are many items where there was one bag, and each still belongs to the same customer. Explode is the unpacking. And an empty bag puts nothing on the belt at all, which matters, as you will see.</p>
+  </div>
+</section>
+
+<section id="how">
+  <div class="sec-num">How it works</div>
+  <h2>Explode copies the row once per element</h2>
+  <div class="stage">
+    <svg class="tall" viewBox="0 0 360 370" role="img" aria-label="Three orders with arrays of items. Explode produces one row per item. The order with an empty array produces no rows with explode, and one row with a NULL item with explode_outer.">
+      <defs><path id="e1" d="M180 128 V164"/></defs>
+      <g class="wire"><use href="#e1"/></g>
+      <g class="mover">
+        <circle r="5" class="dot"><animateMotion dur="1.4s" repeatCount="indefinite"><mpath href="#e1"/></animateMotion></circle>
+        <circle r="5" class="dot-ok"><animateMotion dur="1.4s" begin="-0.7s" repeatCount="indefinite"><mpath href="#e1"/></animateMotion></circle>
+      </g>
+      <rect class="box-soft" x="20" y="8" width="320" height="120" rx="8"/>
+      <text class="t-m" x="34" y="28">order_id   items (ARRAY)</text>
+      <g class="wire"><path d="M30 36 H330 M30 66 H330 M30 96 H330"/></g>
+      <text class="mono" x="34" y="56">501        ["Loaf", "Bun"]</text>
+      <text class="mono" x="34" y="86">502        ["Bagel"]</text>
+      <text class="mono" x="34" y="116">503        []   (empty)</text>
+      <text class="t-b" x="196" y="150">explode(items)</text>
+      <rect class="box-acc" x="20" y="164" width="150" height="130" rx="8"/>
+      <text class="t-b" x="95" y="184" text-anchor="middle">explode</text>
+      <text class="mono" x="34" y="208">501   Loaf</text><text class="mono" x="34" y="230">501   Bun</text><text class="mono" x="34" y="252">502   Bagel</text>
+      <text class="t-m" x="95" y="282" text-anchor="middle">3 rows. 503 is gone.</text>
+      <rect class="box-acc" x="190" y="164" width="150" height="130" rx="8"/>
+      <text class="t-b" x="265" y="184" text-anchor="middle">explode_outer</text>
+      <text class="mono" x="204" y="208">501   Loaf</text><text class="mono" x="204" y="230">501   Bun</text><text class="mono" x="204" y="252">502   Bagel</text><text class="mono" x="204" y="274">503   NULL</text>
+      <text class="t-m" x="180" y="322" text-anchor="middle">Rows whose array is empty or NULL vanish with explode.</text>
+      <text class="t-m" x="180" y="340" text-anchor="middle">explode_outer keeps them, with NULL where the item would be.</text>
+    </svg>
+  </div>
+  <p>The reverse journey also exists. After exploding and working on the items, you can gather them back into one list per order with <code>collect_list</code>, which is an aggregate function used with <code>groupBy</code>.</p>
+</section>
+
+<section id="demo">
+  <div class="sec-num">Try it</div>
+  <h2>Split, explode, and gather back</h2>
+  <p>Each order has its items as comma-separated text. Split it into an array, then explode it three different ways. Watch order 503, whose items are NULL.</p>
+  <div class="stage">
+    <div class="ctrls">
+      <label class="tog">Step: <select id="dStep">
+        <option value="raw">0. The raw table</option>
+        <option value="split">1. split(items_text, ",")</option>
+        <option value="explode">2. explode</option>
+        <option value="outer">2. explode_outer</option>
+        <option value="pos">2. posexplode (with position)</option>
+        <option value="collect">3. explode, then groupBy and collect_list</option>
+      </select></label>
+    </div>
+    <div class="panes">
+      <div class="pane"><h4 id="hOut">Result</h4><div id="pOut"></div></div>
+      <div class="pane"><h4>Rows</h4><div class="big" id="pN"></div><p class="cap" id="pWhy"></p></div>
+    </div>
+    <div class="log" id="dLog" role="log" aria-label="What happened"></div>
+  </div>
+</section>
+
+<section id="code">
+  <div class="sec-num">Code</div>
+  <h2>Working with arrays</h2>
+<pre><code><span class="c-k">from</span> pyspark.sql <span class="c-k">import</span> functions <span class="c-k">as</span> F
+
+orders = spark.table(<span class="c-s">"bakery.silver.orders"</span>)    <span class="c-c"># order_id, items_text such as "Loaf,Bun"</span>
+
+<span class="c-c"># Make an array from text.</span>
+with_array = orders.withColumn(<span class="c-s">"items"</span>, F.split(<span class="c-s">"items_text"</span>, <span class="c-s">","</span>))
+
+<span class="c-c"># Ask things of the array without exploding it.</span>
+checked = (with_array
+    .withColumn(<span class="c-s">"item_count"</span>, F.size(<span class="c-s">"items"</span>))                       <span class="c-c"># how many elements</span>
+    .withColumn(<span class="c-s">"has_bun"</span>, F.array_contains(<span class="c-s">"items"</span>, <span class="c-s">"Bun"</span>))        <span class="c-c"># true or false</span>
+    .withColumn(<span class="c-s">"first_item"</span>, F.col(<span class="c-s">"items"</span>).getItem(0)))
+
+<span class="c-c"># One row per item. Orders with an empty or NULL array are dropped.</span>
+lines = with_array.select(<span class="c-s">"order_id"</span>, F.explode(<span class="c-s">"items"</span>).alias(<span class="c-s">"item"</span>))
+
+<span class="c-c"># Keep those orders too, with NULL as the item.</span>
+lines_all = with_array.select(<span class="c-s">"order_id"</span>, F.explode_outer(<span class="c-s">"items"</span>).alias(<span class="c-s">"item"</span>))
+
+<span class="c-c"># Also return each item's position in the list (0, 1, 2 ...).</span>
+numbered = with_array.select(<span class="c-s">"order_id"</span>, F.posexplode(<span class="c-s">"items"</span>).alias(<span class="c-s">"position"</span>, <span class="c-s">"item"</span>))
+
+<span class="c-c"># Now ordinary questions work.</span>
+display(lines.groupBy(<span class="c-s">"item"</span>).count())
+
+<span class="c-c"># And back again: one row per order, items gathered into a list.</span>
+regrouped = lines.groupBy(<span class="c-s">"order_id"</span>).agg(F.collect_list(<span class="c-s">"item"</span>).alias(<span class="c-s">"items"</span>))</code></pre>
+<pre><code><span class="c-c">-- In SQL, explode is used in the FROM clause.</span>
+<span class="c-k">SELECT</span> o.order_id, item
+<span class="c-k">FROM</span> bakery.silver.orders <span class="c-k">AS</span> o,
+     <span class="c-k">LATERAL</span> explode(split(o.items_text, <span class="c-s">','</span>)) <span class="c-k">AS</span> t(item);
+
+<span class="c-c">-- The older spelling, still widely seen:</span>
+<span class="c-k">SELECT</span> order_id, item
+<span class="c-k">FROM</span> bakery.silver.orders
+<span class="c-k">LATERAL VIEW</span> explode(split(items_text, <span class="c-s">','</span>)) exploded <span class="c-k">AS</span> item;
+
+<span class="c-c">-- Array questions without exploding.</span>
+<span class="c-k">SELECT</span> order_id, size(split(items_text, <span class="c-s">','</span>)) <span class="c-k">AS</span> item_count
+<span class="c-k">FROM</span> bakery.silver.orders
+<span class="c-k">WHERE</span> array_contains(split(items_text, <span class="c-s">','</span>), <span class="c-s">'Bun'</span>);</code></pre>
+</section>
+
+<section id="whatif">
+  <div class="sec-num">What if I change this?</div>
+  <h2>Explode and its relatives</h2>
+  <div class="tbl"><table class="whatif">
+    <tr><th>Change</th><th>Effect</th></tr>
+    <tr><td><code>explode</code></td><td>One row per element. Rows whose array is empty or NULL produce nothing and disappear.</td></tr>
+    <tr><td><code>explode_outer</code></td><td>The same, except those rows are kept, with NULL in the new column.</td></tr>
+    <tr><td><code>posexplode</code></td><td>Like <code>explode</code>, with an extra column giving each element's position, starting at 0.</td></tr>
+    <tr><td>Sum an order-level column after exploding</td><td>It is counted once per item. An order total of 10 with three items sums to 30. Add up item-level values instead.</td></tr>
+    <tr><td>Explode two array columns in the same step</td><td>Not allowed in one <code>select</code>. Done one after the other, you get every combination, which is rarely what you want.</td></tr>
+    <tr><td><code>split</code> text that has spaces after the commas</td><td>The pieces keep their leading spaces: <code>" Bun"</code> is not <code>"Bun"</code>. Trim them, or split on a pattern that includes the space.</td></tr>
+    <tr><td><code>collect_list</code> instead of <code>collect_set</code></td><td><code>collect_list</code> keeps duplicates. <code>collect_set</code> keeps each distinct value once. Neither promises an order.</td></tr>
+    <tr><td><code>size</code> of a NULL array</td><td>Not 0. Depending on settings it is NULL or -1. Do not use it to mean "no items" without checking.</td></tr>
+  </table></div>
+</section>
+
+<section id="compare">
+  <div class="sec-num">Compare</div>
+  <h2>The three explode functions</h2>
+  <div class="tbl"><table>
+    <tr><th></th><th>explode</th><th>explode_outer</th><th>posexplode</th></tr>
+    <tr><td>Rows per element</td><td>One</td><td>One</td><td>One</td></tr>
+    <tr><td>Empty or NULL array</td><td>Row dropped</td><td>Row kept, with NULL</td><td>Row dropped</td></tr>
+    <tr><td>Extra column</td><td>None</td><td>None</td><td>Position</td></tr>
+    <tr><td>Use when</td><td>Only rows with items matter</td><td>Every original row must survive</td><td>The order of items matters</td></tr>
+  </table></div>
+  <h3>Array helpers that avoid exploding</h3>
+  <div class="grid3">
+    <div class="card"><span class="tag">size</span><p>How many elements are in the array.</p></div>
+    <div class="card"><span class="tag">array_contains</span><p>Whether a given value is in the array. True or false.</p></div>
+    <div class="card"><span class="tag">getItem / [n]</span><p>The element at a position, counting from 0.</p></div>
+  </div>
+</section>
+
+<section id="scenarios">
+  <div class="sec-num">Real life</div>
+  <h2>Lists in cells</h2>
+  <div class="tbl"><table>
+    <tr><th>Scenario</th><th>What happens</th><th>Fix</th></tr>
+    <tr><td>The business asks for the best-selling item, but orders store items as a list</td><td>You cannot group by something inside a list</td><td>Explode, then group by the item</td></tr>
+    <tr><td>After exploding, the number of orders in a report has fallen</td><td>Orders with no items were dropped by <code>explode</code></td><td>Use <code>explode_outer</code></td></tr>
+    <tr><td>Revenue triples after exploding the items</td><td>The order total was repeated on each item row and then summed</td><td>Sum item prices, or count each order's total only once</td></tr>
+    <tr><td>"Bun" and " Bun" show up as two different items</td><td>The text had a space after each comma</td><td>Trim each piece after splitting</td></tr>
+    <tr><td>Product tags must be searchable but stay one row per product</td><td>Exploding would multiply the rows</td><td>Keep the array and filter with <code>array_contains</code></td></tr>
+  </table></div>
+</section>
+
+<section id="traps">
+  <div class="sec-num">Don't confuse these</div>
+  <h2>Array traps</h2>
+  <div class="grid2">
+    <div class="card trap"><span class="tag">explode vs explode_outer</span><p>The only difference is rows with an empty or NULL array: dropped, or kept with NULL.</p></div>
+    <div class="card trap"><span class="tag">split vs explode</span><p><code>split</code> turns text into an array and keeps one row. <code>explode</code> turns an array into many rows. They are often used together, in that order.</p></div>
+    <div class="card trap"><span class="tag">explode vs collect_list</span><p>Opposites. One spreads a list over rows. The other gathers rows into a list.</p></div>
+    <div class="card trap"><span class="tag">More rows is expected</span><p>Unlike a join, an increase in rows after explode is the whole point. The danger is summing columns that were copied.</p></div>
+  </div>
+</section>
+
+<section id="quiz">
+  <div class="sec-num">Check yourself</div>
+  <h2>Quiz</h2>
+  <div class="quiz">
+    <fieldset>
+      <legend>1. A table has three orders with 2, 3 and 0 items in their arrays. How many rows does <code>explode</code> return?</legend>
+      <label><input type="radio"> 3</label>
+      <label><input type="radio" data-correct> 5</label>
+      <label><input type="radio"> 6</label>
+      <p class="explain" hidden>2 + 3 = 5. The order with an empty array produces no rows.</p>
+    </fieldset>
+    <fieldset>
+      <legend>2. The same table with <code>explode_outer</code>. How many rows?</legend>
+      <label><input type="radio"> 5</label>
+      <label><input type="radio" data-correct> 6</label>
+      <label><input type="radio"> 3</label>
+      <p class="explain" hidden>The empty order is kept as one row with a NULL item: 2 + 3 + 1.</p>
+    </fieldset>
+    <fieldset>
+      <legend>3. Which function turns the text <code>"Loaf,Bun"</code> into an array?</legend>
+      <label><input type="radio"> <code>explode</code></label>
+      <label><input type="radio" data-correct> <code>split</code></label>
+      <label><input type="radio"> <code>collect_list</code></label>
+      <p class="explain" hidden><code>split</code> cuts text into an array. <code>explode</code> then turns that array into rows.</p>
+    </fieldset>
+    <fieldset>
+      <legend>4. In the demo, what did <code>posexplode</code> add compared with <code>explode</code>?</legend>
+      <label><input type="radio"> A row for the empty order</label>
+      <label><input type="radio" data-correct> A column with each item's position in its list</label>
+      <label><input type="radio"> A count of items</label>
+      <p class="explain" hidden>It returns the position, starting at 0, alongside each element.</p>
+    </fieldset>
+    <fieldset>
+      <legend>5. An order has <code>order_total = 10</code> and three items. After <code>explode</code>, what is <code>SUM(order_total)</code> for that order?</legend>
+      <label><input type="radio"> 10</label>
+      <label><input type="radio" data-correct> 30</label>
+      <label><input type="radio"> 3.33</label>
+      <p class="explain" hidden>The total is copied onto each of the three item rows, so summing it counts it three times.</p>
+    </fieldset>
+  </div>
+</section>
+
+<section id="wrap">
+  <div class="sec-num">Wrap up</div>
+  <h2>Key takeaways</h2>
+  <ul>
+    <li>An array holds a list in one cell. <code>split</code> makes one from text.</li>
+    <li><code>explode</code> gives one row per element and copies the other columns.</li>
+    <li><code>explode</code> drops rows with empty or NULL arrays. <code>explode_outer</code> keeps them.</li>
+    <li>After exploding, do not sum columns that were copied from the original row.</li>
+    <li><code>size</code> and <code>array_contains</code> answer simple questions without exploding.</li>
+  </ul>
+  <h3>Glossary terms used</h3>
+  <p><a href="../../glossary.html#array">array</a> · <a href="../../glossary.html#explode">explode</a> · <a href="../../glossary.html#nested">nested data</a> · <a href="../../glossary.html#aggregate">aggregate</a></p>
+  <h3>Official docs</h3>
+  <ul>
+    <li><a href="https://docs.databricks.com/aws/en/sql/language-manual/functions/explode">explode function</a></li>
+    <li><a href="https://docs.databricks.com/aws/en/sql/language-manual/functions/split">split function</a></li>
+    <li><a href="https://docs.databricks.com/aws/en/semi-structured/">Semi-structured data on Databricks</a></li>
+  </ul>
+  <p class="cap">Last verified: 16 November 2026</p>
+</section>
+
+</main>
+
+<script>
+(function () {
+  var C = window.Course, $ = function (id) { return document.getElementById(id); }, L = $('dLog');
+  var RAW = [{ order_id: 501, items_text: 'Loaf,Bun' }, { order_id: 502, items_text: 'Bagel,Bun,Bun' }, { order_id: 503, items_text: null }];
+  function arr(r) { return r.items_text ? r.items_text.split(',') : []; }
+  function show(a) { return '[' + a.map(function (x) { return '"' + x + '"'; }).join(', ') + ']'; }
+  function explode(outer, pos) {
+    var out = [];
+    RAW.forEach(function (r) {
+      var a = arr(r);
+      if (!a.length && outer) out.push({ order_id: r.order_id, item: null });
+      a.forEach(function (x, i) { out.push(pos ? { order_id: r.order_id, position: i, item: x } : { order_id: r.order_id, item: x }); });
+    });
+    return out;
+  }
+  function run() {
+    var s = $('dStep').value, out, why;
+    if (s === 'raw') { out = RAW; why = 'One row per order. The items are plain text.'; }
+    else if (s === 'split') { out = RAW.map(function (r) { return { order_id: r.order_id, items: r.items_text === null ? null : show(arr(r)) }; }); why = 'Still one row per order. Each cell now holds an array. Splitting NULL gives NULL.'; }
+    else if (s === 'explode') { out = explode(false, false); why = 'One row per item. Order 503 had no items, so it produced no rows.'; }
+    else if (s === 'outer') { out = explode(true, false); why = 'One row per item, and order 503 is kept with NULL.'; }
+    else if (s === 'pos') { out = explode(false, true); why = 'As explode, plus the position of each item in its list.'; }
+    else {
+      var g = {}; explode(false, false).forEach(function (r) { (g[r.order_id] = g[r.order_id] || []).push(r.item); });
+      out = Object.keys(g).map(function (k) { return { order_id: +k, items: show(g[k]) }; });
+      why = 'Back to one row per order. Order 503 never came back, because explode dropped it.';
+    }
+    $('hOut').textContent = $('dStep').selectedOptions[0].text; $('pOut').innerHTML = C.table(out); $('pN').textContent = out.length; $('pWhy').textContent = why;
+    C.log(L, /503 (had|never)/.test(why) ? 'bad' : 'ok', $('dStep').selectedOptions[0].text + ': ' + out.length + ' row(s). ' + why);
+  }
+  $('dStep').onchange = run;
+  run();
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,279 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>03-15 Building gold objects for BI and analytics · DE Associate course</title>
+<link rel="stylesheet" href="../../assets/course.css">
+<script src="../../assets/course.js"></script>
+</head>
+<body data-lesson="03-15">
+
+<aside class="disclaimer" aria-label="Disclaimer"><strong>Learning resource only.</strong> This is an independent, unofficial study guide made for learning purposes. It is not affiliated with, endorsed by or sponsored by Databricks. Databricks features change often, so always check the details in the <a href="https://docs.databricks.com">official Databricks documentation</a> and the official exam guide on databricks.com before relying on anything here. Databricks and related names are trademarks of their respective owners.</aside>
+
+<main class="wrap">
+
+<header class="hero">
+  <div class="eyebrow">Module 03 · Data Transformation and Modeling · Lesson 15 of 16</div>
+  <h1>Building gold objects for BI and analytics</h1>
+  <p class="lede">A gold table is built for the questions people ask. The usual shape is a central table of events (facts) surrounded by tables that describe them (dimensions). Getting this shape right makes every report simpler and every number easier to trust.</p>
+  <dl class="where">
+    <div><dt>Module</dt><dd>03 Data Transformation and Modeling (22% of the exam)</dd></div>
+    <div><dt>Exam objective</dt><dd>3.6 Understand the difference between, and how to build, gold-layer objects such as materialized views, views, streaming tables, and tables for BI and analytics teams in Unity Catalog. This lesson covers building them.</dd></div>
+    <div><dt>Time to read</dt><dd>About 14 minutes</dd></div>
+    <div><dt>Before this</dt><dd><a href="14-gold-objects.html">03-14 Gold objects</a> · <a href="11-aggregations.html">03-11 Aggregations</a> · <a href="04-joins-inner-left.html">03-04 Joins</a></dd></div>
+  </dl>
+</header>
+
+<section id="idea">
+  <div class="sec-num">The idea</div>
+  <h2>Facts in the middle, descriptions around</h2>
+  <p>A <a href="../../glossary.html#fact-table">fact table</a> records things that happened, one row per event: a sale, a delivery, a visit. Each row holds numbers to add up (quantity, amount) and the keys that point to who, what, where and when.</p>
+  <p>A <a href="../../glossary.html#dimension-table">dimension table</a> describes one of those keys: one row per shop, per product, per customer, per calendar day. It holds the names and attributes that reports group and filter by.</p>
+  <p>Put together, a fact table in the middle and dimensions around it look like a star, so this layout is called a <a href="../../glossary.html#star-schema">star schema</a>. It is the most common shape for BI.</p>
+  <p>Two decisions come first, before any SQL is written:</p>
+  <ul>
+    <li><strong>The grain.</strong> What does one fact row represent? One sale line? One order? One shop per day? Write it down in one sentence. Every later choice depends on it.</li>
+    <li><strong>The questions.</strong> Which numbers will people ask for, and which words will they slice them by? Those words become dimensions.</li>
+  </ul>
+  <div class="analogy">
+    <span class="tag">Everyday analogy</span>
+    <p><strong>A school register.</strong> Each lesson is a fact: who attended, which class, what time. The pupil list, the class list and the calendar are the dimensions. A teacher who wants "attendance by class by term" just joins the register to the class list and groups it. The register is kept at the finest grain, one line per pupil per lesson, so any question can be answered from it later.</p>
+  </div>
+</section>
+
+<section id="how">
+  <div class="sec-num">How it works</div>
+  <h2>A star, built in order</h2>
+  <div class="stage">
+    <svg class="tall" viewBox="0 0 360 340" role="img" aria-label="A central sales fact table with foreign keys to shop, product and date dimension tables around it. A summary gold table is built by joining and aggregating the fact with its dimensions.">
+      <defs><path id="s1" d="M180 156 V110"/><path id="s2" d="M180 210 V256"/><path id="s3" d="M150 180 H96"/><path id="s4" d="M210 180 H264"/></defs>
+      <g class="wire"><use href="#s1"/><use href="#s2"/><use href="#s3"/><use href="#s4"/></g>
+      <g class="mover">
+        <circle r="5" class="dot"><animateMotion dur="1.6s" repeatCount="indefinite"><mpath href="#s1"/></animateMotion></circle>
+        <circle r="5" class="dot"><animateMotion dur="1.6s" begin="-0.4s" repeatCount="indefinite"><mpath href="#s3"/></animateMotion></circle>
+        <circle r="5" class="dot-ok"><animateMotion dur="1.6s" begin="-0.8s" repeatCount="indefinite"><mpath href="#s2"/></animateMotion></circle>
+        <circle r="5" class="dot"><animateMotion dur="1.6s" begin="-1.2s" repeatCount="indefinite"><mpath href="#s4"/></animateMotion></circle>
+      </g>
+      <rect class="box-acc" x="110" y="112" width="140" height="66" rx="8"/><text class="t-b" x="180" y="134" text-anchor="middle">fact_sales</text><text class="t-m" x="180" y="152" text-anchor="middle">one row per sale line</text><text class="t-m" x="180" y="168" text-anchor="middle">amount, qty, keys</text>
+      <rect class="box" x="6" y="152" width="90" height="56" rx="8"/><text class="t-b" x="51" y="176" text-anchor="middle">dim_shop</text><text class="t-m" x="51" y="194" text-anchor="middle">name, city</text>
+      <rect class="box" x="264" y="152" width="90" height="56" rx="8"/><text class="t-b" x="309" y="176" text-anchor="middle">dim_product</text><text class="t-m" x="309" y="194" text-anchor="middle">item, category</text>
+      <rect class="box" x="90" y="20" width="180" height="56" rx="8"/><text class="t-b" x="180" y="42" text-anchor="middle">dim_date</text><text class="t-m" x="180" y="60" text-anchor="middle">day, week, month</text>
+      <rect class="box-soft" x="60" y="256" width="240" height="72" rx="8"/><text class="t-b" x="180" y="280" text-anchor="middle">gold: sales_by_shop_month</text><text class="t-m" x="180" y="300" text-anchor="middle">join, group, aggregate</text><text class="t-m" x="180" y="318" text-anchor="middle">one row per shop per month</text>
+      <text class="t-m" x="8" y="232">arrows: keys that link a fact</text><text class="t-m" x="8" y="246">row to a description row</text>
+    </svg>
+  </div>
+  <p>The gold summary is built by joining the fact table to its dimensions and grouping by the attributes people choose. Each step is one of the skills from earlier lessons: joins (03-04), aggregations (03-11) and column names chosen for readers.</p>
+</section>
+
+<section id="demo">
+  <div class="sec-num">Try it</div>
+  <h2>Choose the grain and the grouping</h2>
+  <p>The fact table below has one row per sale line. Choose which dimensions to group by. Watch the row count of the gold table change, and notice that the totals stay the same at every grain.</p>
+  <div class="stage">
+    <div class="ctrls">
+      <label class="tog"><input type="checkbox" id="gShop" checked> by shop</label>
+      <label class="tog"><input type="checkbox" id="gMonth"> by month</label>
+      <label class="tog"><input type="checkbox" id="gItem"> by item</label>
+      <button id="dBuild" type="button" class="primary">Build the gold table</button>
+    </div>
+    <div class="panes">
+      <div class="pane"><h4>fact_sales (one row per sale line)</h4><div id="pFact"></div></div>
+      <div class="pane"><h4 id="hGold">Gold table</h4><div id="pGold"></div><p class="cap" id="pCheck"></p></div>
+    </div>
+    <div class="log" id="dLog" role="log" aria-label="What happened"></div>
+  </div>
+</section>
+
+<section id="code">
+  <div class="sec-num">Code</div>
+  <h2>Building a star and its gold summary</h2>
+<pre><code><span class="c-k">from</span> pyspark.sql <span class="c-k">import</span> functions <span class="c-k">as</span> F
+
+sales  = spark.table(<span class="c-s">"bakery.silver.sales"</span>)        <span class="c-c"># grain: one row per sale line</span>
+shops  = spark.table(<span class="c-s">"bakery.silver.shops"</span>)        <span class="c-c"># one row per shop</span>
+dates  = spark.table(<span class="c-s">"bakery.silver.dim_date"</span>)     <span class="c-c"># one row per calendar day</span>
+
+<span class="c-c"># Attach the descriptions to each sale line. Left joins keep every sale.</span>
+enriched = (sales
+    .join(shops, on=<span class="c-s">"shop_id"</span>, how=<span class="c-s">"left"</span>)
+    .join(dates, on=<span class="c-s">"sale_date"</span>, how=<span class="c-s">"left"</span>))
+
+<span class="c-c"># The gold summary: names people read, grouped by what they ask about.</span>
+gold = (enriched
+    .groupBy(<span class="c-s">"shop_name"</span>, <span class="c-s">"month_name"</span>)
+    .agg(F.sum(<span class="c-s">"amount"</span>).alias(<span class="c-s">"total_sales"</span>),
+         F.count(<span class="c-s">"*"</span>).alias(<span class="c-s">"sale_lines"</span>)))
+
+gold.write.mode(<span class="c-s">"overwrite"</span>).saveAsTable(<span class="c-s">"bakery.gold.sales_by_shop_month"</span>)</code></pre>
+<pre><code><span class="c-c">-- The same summary as a materialized view, so BI reads a stored result.</span>
+<span class="c-k">CREATE OR REPLACE MATERIALIZED VIEW</span> bakery.gold.sales_by_shop_month <span class="c-k">AS</span>
+<span class="c-k">SELECT</span> s.shop_name, d.month_name,
+       <span class="c-k">SUM</span>(f.amount) <span class="c-k">AS</span> total_sales,
+       <span class="c-k">COUNT</span>(*)       <span class="c-k">AS</span> sale_lines
+<span class="c-k">FROM</span> bakery.silver.sales <span class="c-k">AS</span> f
+<span class="c-k">LEFT JOIN</span> bakery.silver.shops <span class="c-k">AS</span> s <span class="c-k">ON</span> f.shop_id = s.shop_id
+<span class="c-k">LEFT JOIN</span> bakery.silver.dim_date <span class="c-k">AS</span> d <span class="c-k">ON</span> f.sale_date = d.sale_date
+<span class="c-k">GROUP BY</span> s.shop_name, d.month_name;</code></pre>
+  <p class="note">Naming matters for BI: plain, readable column names such as <code>total_sales</code> and <code>shop_name</code>, consistent across gold tables, and the grain written into the table comment. Grant the analysts group <code>SELECT</code> on the gold schema rather than on silver (lesson 01-03).</p>
+</section>
+
+<section id="whatif">
+  <div class="sec-num">What if I change this?</div>
+  <h2>Modelling decisions</h2>
+  <div class="tbl"><table class="whatif">
+    <tr><th>Change</th><th>Effect</th></tr>
+    <tr><td>Make the grain coarser (shop per month instead of sale line)</td><td>Far fewer rows and faster reports. Questions about single sales can no longer be answered from this table.</td></tr>
+    <tr><td>Keep the finest grain in the fact table</td><td>Every question can be answered. Summaries are built on top, as views or materialized views.</td></tr>
+    <tr><td>Group by a dimension with duplicate keys</td><td>Totals are inflated (lesson 03-04). Check key uniqueness in each dimension first.</td></tr>
+    <tr><td>Use an inner join to the shop dimension</td><td>Sales at unknown shops disappear from every report. A left join keeps them visible.</td></tr>
+    <tr><td>Store the dimension attributes in the fact table too</td><td>Simpler queries, but the table becomes wide and every shop rename must be applied to many rows.</td></tr>
+    <tr><td>Add a column that users never ask for</td><td>Clutter. Gold tables should answer the agreed questions, nothing more.</td></tr>
+    <tr><td>Change a column name a report depends on</td><td>The report breaks. Rename with a view that keeps the old name, or announce the change.</td></tr>
+  </table></div>
+</section>
+
+<section id="compare">
+  <div class="sec-num">Compare</div>
+  <h2>Fact and dimension, side by side</h2>
+  <div class="tbl"><table>
+    <tr><th></th><th>Fact table</th><th>Dimension table</th></tr>
+    <tr><td>Holds</td><td>Events and the numbers attached to them</td><td>Descriptions: names, categories, attributes</td></tr>
+    <tr><td>Rows grow with</td><td>Activity: every sale adds rows</td><td>Things in the business: new shops, new products</td></tr>
+    <tr><td>Typical columns</td><td>Keys, amounts, quantities, dates</td><td>One key, plus names and attributes</td></tr>
+    <tr><td>Typical use</td><td>Summed, counted and averaged</td><td>Grouped by and filtered on</td></tr>
+    <tr><td>Often a</td><td>Streaming table, or a materialized view on silver</td><td>Plain table or materialized view</td></tr>
+  </table></div>
+  <h3>Summary levels</h3>
+  <div class="grid3">
+    <div class="card"><span class="tag">Fine grain</span><p>One row per event. Flexible, large, the basis for everything else.</p></div>
+    <div class="card"><span class="tag">Daily or monthly</span><p>One row per shop per period. The usual dashboard level.</p></div>
+    <div class="card"><span class="tag">Headline</span><p>One row per region or company. Quick, but answers only a few questions.</p></div>
+  </div>
+</section>
+
+<section id="scenarios">
+  <div class="sec-num">Real life</div>
+  <h2>Gold tables in use</h2>
+  <div class="tbl"><table>
+    <tr><th>Scenario</th><th>What happens</th><th>Fix</th></tr>
+    <tr><td>Two dashboards show different totals for the same month</td><td>One joined the shop dimension with an inner join, the other with a left join</td><td>Use one agreed gold table, with left joins, for both</td></tr>
+    <tr><td>A shop was renamed and its history splits into two names</td><td>The shop name was copied into the fact table</td><td>Join to the dimension so the current name applies to the whole history</td></tr>
+    <tr><td>Analysts ask for daily figures, but the gold table is monthly</td><td>The grain was chosen too coarse</td><td>Add a daily gold object built from the same fact table</td></tr>
+    <tr><td>A new shop's sales are missing from the monthly report</td><td>The dimension was not updated, and the join dropped the unknown shop</td><td>Left join, and an alert when a sale has no matching shop</td></tr>
+    <tr><td>Finance asks which summary a number came from</td><td>No record of the grain or the logic</td><td>Write the grain in a table comment, and keep the definition in a view or materialized view that can be read</td></tr>
+  </table></div>
+</section>
+
+<section id="traps">
+  <div class="sec-num">Don't confuse these</div>
+  <h2>Modelling traps</h2>
+  <div class="grid2">
+    <div class="card trap"><span class="tag">Fact vs dimension</span><p>Facts record events and hold numbers. Dimensions describe the things the events refer to.</p></div>
+    <div class="card trap"><span class="tag">Grain first</span><p>Decide what one row means before anything else. Mixing grains in one table gives wrong totals.</p></div>
+    <div class="card trap"><span class="tag">Star vs snowflake</span><p>A star keeps each dimension flat. A snowflake splits dimensions into sub-tables. Stars are simpler for BI.</p></div>
+    <div class="card trap"><span class="tag">Gold is for readers</span><p>Silver keeps detail for engineers. Gold is shaped for the people who read reports, with readable names.</p></div>
+  </div>
+</section>
+
+<section id="quiz">
+  <div class="sec-num">Check yourself</div>
+  <h2>Quiz</h2>
+  <div class="quiz">
+    <fieldset>
+      <legend>1. In a star schema, what does a fact table hold?</legend>
+      <label><input type="radio"> Descriptions such as shop names</label>
+      <label><input type="radio" data-correct> Events, with the numbers to add up and keys to descriptions</label>
+      <label><input type="radio"> Only the schema of the other tables</label>
+      <p class="explain" hidden>Facts record what happened. Dimensions hold the descriptions the facts point to.</p>
+    </fieldset>
+    <fieldset>
+      <legend>2. Which decision must be made first when designing a gold table?</legend>
+      <label><input type="radio"> The name of the dashboard</label>
+      <label><input type="radio" data-correct> The grain: what one row represents</label>
+      <label><input type="radio"> The number of columns</label>
+      <p class="explain" hidden>Every other choice depends on what one row means.</p>
+    </fieldset>
+    <fieldset>
+      <legend>3. Why use a left join from sales to the shop dimension?</legend>
+      <label><input type="radio"> It is faster than an inner join</label>
+      <label><input type="radio" data-correct> So sales with an unknown shop are still counted in the totals</label>
+      <label><input type="radio"> It removes duplicate sales</label>
+      <p class="explain" hidden>An inner join would silently drop sales whose shop is missing from the dimension.</p>
+    </fieldset>
+    <fieldset>
+      <legend>4. In the demo, what stayed the same as the grain got coarser?</legend>
+      <label><input type="radio"> The number of rows</label>
+      <label><input type="radio" data-correct> The total sales</label>
+      <label><input type="radio"> The number of sale lines per group</label>
+      <p class="explain" hidden>Grouping only regroups the same sales. The total is preserved; the row count and the per-group counts change.</p>
+    </fieldset>
+    <fieldset>
+      <legend>5. Why avoid a gold summary that groups by a dimension with duplicate keys?</legend>
+      <label><input type="radio"> It makes the query fail</label>
+      <label><input type="radio" data-correct> Each sale is repeated for each duplicate, inflating totals</label>
+      <label><input type="radio"> It is slower to store</label>
+      <p class="explain" hidden>A duplicate key matches the same sale more than once in the join.</p>
+    </fieldset>
+  </div>
+</section>
+
+<section id="wrap">
+  <div class="sec-num">Wrap up</div>
+  <h2>Key takeaways</h2>
+  <ul>
+    <li>Choose the grain first, then the questions, then the shape.</li>
+    <li>Facts hold events and numbers. Dimensions hold the descriptions.</li>
+    <li>Use left joins so that no event disappears from the totals.</li>
+    <li>Gold summaries are built by joining, grouping and aggregating, with readable names.</li>
+    <li>Store a stable, documented grain, so every report answers the same question the same way.</li>
+  </ul>
+  <h3>Glossary terms used</h3>
+  <p><a href="../../glossary.html#fact-table">fact table</a> · <a href="../../glossary.html#dimension-table">dimension table</a> · <a href="../../glossary.html#star-schema">star schema</a> · <a href="../../glossary.html#grain">grain</a> · <a href="../../glossary.html#gold">gold</a> · <a href="../../glossary.html#join">join</a></p>
+  <h3>Official docs</h3>
+  <ul>
+    <li><a href="https://docs.databricks.com/aws/en/transform/data-modeling">Data modeling on Databricks</a></li>
+    <li><a href="https://docs.databricks.com/aws/en/lakehouse/medallion">Medallion architecture</a></li>
+    <li><a href="https://docs.databricks.com/aws/en/ldp/best-practices/dimensional-modeling">Dimensional modeling in Lakeflow pipelines</a></li>
+  </ul>
+  <p class="cap">Last verified: 16 November 2026</p>
+</section>
+
+</main>
+
+<script>
+(function () {
+  var C = window.Course, $ = function (id) { return document.getElementById(id); }, L = $('dLog');
+  var SHOPS = { 1: 'North', 2: 'South', 3: 'East' }, ITEMS = { 1: 'Loaf', 2: 'Bun' }, MONTHS = { 1: 'Nov', 2: 'Dec' };
+  var FACT = [
+    { shop: 1, item: 1, month: 1, amount: 4 }, { shop: 1, item: 2, month: 1, amount: 1 }, { shop: 2, item: 1, month: 1, amount: 3 },
+    { shop: 2, item: 2, month: 2, amount: 1 }, { shop: 3, item: 1, month: 2, amount: 6 }, { shop: 1, item: 1, month: 2, amount: 4 }, { shop: 3, item: 2, month: 1, amount: 2 }
+  ];
+  $('pFact').innerHTML = C.table(FACT.map(function (f) { return { shop: SHOPS[f.shop], item: ITEMS[f.item], month: MONTHS[f.month], amount: f.amount }; }));
+  $('dBuild').onclick = function () {
+    var keys = [];
+    if ($('gShop').checked) keys.push('shop'); if ($('gMonth').checked) keys.push('month'); if ($('gItem').checked) keys.push('item');
+    var g = {};
+    FACT.forEach(function (f) {
+      var k = keys.map(function (x) { return x + ':' + f[x]; }).join('|') || 'all';
+      if (!g[k]) { g[k] = { total: 0, lines: 0, parts: {} }; keys.forEach(function (x) { g[k].parts[x] = f[x]; }); }
+      g[k].total += f.amount; g[k].lines += 1;
+    });
+    var rows = Object.keys(g).map(function (k) {
+      var p = g[k].parts, o = {};
+      if (p.shop) o.shop = SHOPS[p.shop]; if (p.month) o.month = MONTHS[p.month]; if (p.item) o.item = ITEMS[p.item];
+      o.total_sales = g[k].total; o.sale_lines = g[k].lines; return o;
+    });
+    var total = rows.reduce(function (a, r) { return a + r.total_sales; }, 0), real = FACT.reduce(function (a, f) { return a + f.amount; }, 0);
+    $('hGold').textContent = 'GROUP BY ' + (keys.join(', ') || '(nothing)');
+    $('pGold').innerHTML = C.table(rows);
+    $('pCheck').textContent = rows.length + ' row(s). Total sales ' + total + (total === real ? ' matches the fact table (' + real + ').' : ' DOES NOT match (' + real + '). Check the grouping.');
+    C.log(L, total === real ? 'ok' : 'bad', 'Grouped by ' + (keys.join(', ') || 'nothing') + ': ' + rows.length + ' row(s), total ' + total + '.');
+    C.bump($('pGold'));
+  };
+  C.log(L, 'skip', 'Pick the grouping and build the gold table.');
+  $('dBuild').onclick();
+})();
+</script>
+</body>
+</html>

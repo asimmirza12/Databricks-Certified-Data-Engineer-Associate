@@ -1,0 +1,277 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>03-04 Joins: inner and left · DE Associate course</title>
+<link rel="stylesheet" href="../../assets/course.css">
+<script src="../../assets/course.js"></script>
+</head>
+<body data-lesson="03-04">
+
+<aside class="disclaimer" aria-label="Disclaimer"><strong>Learning resource only.</strong> This is an independent, unofficial study guide made for learning purposes. It is not affiliated with, endorsed by or sponsored by Databricks. Databricks features change often, so always check the details in the <a href="https://docs.databricks.com">official Databricks documentation</a> and the official exam guide on databricks.com before relying on anything here. Databricks and related names are trademarks of their respective owners.</aside>
+
+<main class="wrap">
+
+<header class="hero">
+  <div class="eyebrow">Module 03 · Data Transformation and Modeling · Lesson 4 of 16</div>
+  <h1>Joins: inner and left</h1>
+  <p class="lede">Useful answers usually need two tables at once: the orders and the shops they came from. A join puts them side by side. The kind of join decides what happens to rows that have no partner.</p>
+  <dl class="where">
+    <div><dt>Module</dt><dd>03 Data Transformation and Modeling (22% of the exam)</dd></div>
+    <div><dt>Exam objective</dt><dd>3.2 Combine datasets: inner, left, broadcast, multi-key and cross joins, plus union and union all. This lesson covers inner and left joins.</dd></div>
+    <div><dt>Time to read</dt><dd>About 13 minutes</dd></div>
+    <div><dt>Before this</dt><dd><a href="01-dataframes-and-sql.html">03-01 DataFrames and SQL</a></dd></div>
+  </dl>
+</header>
+
+<section id="idea">
+  <div class="sec-num">The idea</div>
+  <h2>Match rows on a shared value</h2>
+  <p>A <a href="../../glossary.html#join">join</a> combines two tables sideways. For each row in the first table, it looks for rows in the second table that share a value in a chosen column, and glues the matching rows together into one wider row.</p>
+  <p>The shared column is called the <a href="../../glossary.html#join-key">join key</a>. If orders have a <code>shop_id</code> and shops have a <code>shop_id</code>, that is the key.</p>
+  <p>The two tables are called left and right, simply by the order you write them. The different kinds of join differ in one thing only: <strong>what to do with a row that finds no match.</strong></p>
+  <ul>
+    <li>An <a href="../../glossary.html#inner-join">inner join</a> keeps only rows that found a match. Unmatched rows from either side disappear.</li>
+    <li>A <a href="../../glossary.html#left-join">left join</a> keeps every row from the left table. Where there is no match on the right, the right-hand columns are filled with NULL.</li>
+  </ul>
+  <p>Those two are by far the most used. Their relatives follow the same logic: a right join keeps everything from the right, and a full join keeps everything from both.</p>
+  <div class="analogy">
+    <span class="tag">Everyday analogy</span>
+    <p><strong>Matching party invitations to replies.</strong> You have a list of people invited and a pile of reply cards. An inner join gives you only the guests who replied: invitation and reply together. A left join, starting from the invitations, gives you everyone you invited, with the reply beside their name if there is one and a blank if not. That blank is exactly how you spot who has not answered.</p>
+  </div>
+</section>
+
+<section id="how">
+  <div class="sec-num">How it works</div>
+  <h2>Which rows survive</h2>
+  <div class="stage">
+    <svg class="tall" viewBox="0 0 360 380" role="img" aria-label="Orders on the left and shops on the right are matched on shop id. An inner join keeps only matched rows. A left join keeps all orders, with empty shop details where there was no match.">
+      <defs><path id="o1" d="M150 52 H210"/><path id="o2" d="M150 78 H210"/></defs>
+      <text class="t-b" x="80" y="18" text-anchor="middle">orders (left)</text><text class="t-b" x="280" y="18" text-anchor="middle">shops (right)</text>
+      <g class="box"><rect x="10" y="26" width="140" height="104" rx="6"/><rect x="210" y="26" width="140" height="78" rx="6"/></g>
+      <g class="wire"><path d="M10 52 H150 M10 78 H150 M10 104 H150 M210 52 H350 M210 78 H350"/><use href="#o1"/><use href="#o2"/></g>
+      <text class="t-m" x="18" y="44">order  shop_id</text><text class="t-m" x="218" y="44">shop_id  name</text>
+      <text class="mono" x="18" y="70">101    N</text><text class="mono" x="18" y="96">102    S</text><text class="mono" x="18" y="122">103    X</text>
+      <text class="mono" x="218" y="70">N        North</text><text class="mono" x="218" y="96">S        South</text>
+      <text class="t-m" x="180" y="122" text-anchor="middle">X has no shop</text>
+      <g class="mover">
+        <circle r="5" class="dot-ok"><animateMotion dur="1.6s" repeatCount="indefinite"><mpath href="#o1"/></animateMotion></circle>
+        <circle r="5" class="dot-ok"><animateMotion dur="1.6s" begin="-0.8s" repeatCount="indefinite"><mpath href="#o2"/></animateMotion></circle>
+      </g>
+      <text class="t-b" x="10" y="166">Inner join: matched rows only</text>
+      <rect class="box-acc" x="10" y="176" width="340" height="66" rx="6"/>
+      <text class="mono" x="20" y="198">101   N   North</text><text class="mono" x="20" y="220">102   S   South</text>
+      <text class="t-m" x="340" y="234" text-anchor="end">2 rows. Order 103 is gone.</text>
+      <text class="t-b" x="10" y="274">Left join: every order kept</text>
+      <rect class="box-acc" x="10" y="284" width="340" height="88" rx="6"/>
+      <text class="mono" x="20" y="306">101   N   North</text><text class="mono" x="20" y="328">102   S   South</text><text class="mono" x="20" y="350">103   X   NULL</text>
+      <text class="t-m" x="340" y="364" text-anchor="end">3 rows. No shop name for 103.</text>
+    </svg>
+  </div>
+  <h3>One row can match many</h3>
+  <p>A join does not promise one output row per input row. If a key value appears twice on the right, each matching left row is output twice. If it appears twice on both sides, you get four rows. This is the commonest cause of numbers that are mysteriously too high after a join.</p>
+  <p>Before joining, ask: is the key unique in the table I am looking things up in? A shops table should have one row per shop. If it has two rows for North, every North order is counted twice.</p>
+</section>
+
+<section id="demo">
+  <div class="sec-num">Try it</div>
+  <h2>Join orders to shops</h2>
+  <p>Order 104 belongs to a shop that is not in the shops table, and the East shop has no orders. Try each kind of join and watch those two rows. Then add a duplicate shop row and look at the totals.</p>
+  <div class="stage">
+    <div class="ctrls">
+      <label class="tog">Join type: <select id="dHow"><option value="inner">inner</option><option value="left">left</option><option value="right">right</option><option value="full">full</option><option value="left_anti">left_anti (left rows with no match)</option><option value="left_semi">left_semi (left rows that have a match)</option></select></label>
+      <label class="tog"><input type="checkbox" id="dDup"> Shops table has North twice by mistake</label>
+      <button id="dGo" type="button" class="primary">Join</button>
+    </div>
+    <div class="panes">
+      <div class="pane"><h4>orders (left)</h4><div id="pL"></div></div>
+      <div class="pane"><h4>shops (right)</h4><div id="pR"></div></div>
+      <div class="pane"><h4 id="hOut">Result</h4><div id="pOut"></div><p class="cap" id="pSum"></p></div>
+    </div>
+    <div class="log" id="dLog" role="log" aria-label="What happened"></div>
+  </div>
+</section>
+
+<section id="code">
+  <div class="sec-num">Code</div>
+  <h2>Writing joins</h2>
+<pre><code>orders = spark.table(<span class="c-s">"bakery.silver.orders"</span>)     <span class="c-c"># order_id, shop_id, price</span>
+shops  = spark.table(<span class="c-s">"bakery.silver.shops"</span>)      <span class="c-c"># shop_id, shop_name, city</span>
+
+<span class="c-c"># INNER: only orders whose shop is known. "inner" is the default if you leave it out.</span>
+known = orders.join(shops, on=<span class="c-s">"shop_id"</span>, how=<span class="c-s">"inner"</span>)
+
+<span class="c-c"># LEFT: every order. shop_name and city are NULL where the shop is unknown.</span>
+all_orders = orders.join(shops, on=<span class="c-s">"shop_id"</span>, how=<span class="c-s">"left"</span>)
+
+<span class="c-c"># When the key columns have different names, spell out the condition.</span>
+all_orders = orders.join(shops, orders.shop_id == shops.id, <span class="c-s">"left"</span>)
+
+<span class="c-c"># A quick data check: which orders point at a shop that does not exist?</span>
+orphans = orders.join(shops, on=<span class="c-s">"shop_id"</span>, how=<span class="c-s">"left_anti"</span>)</code></pre>
+<pre><code><span class="c-c">-- The same in SQL.</span>
+<span class="c-k">SELECT</span> o.order_id, o.price, s.shop_name
+<span class="c-k">FROM</span> bakery.silver.orders <span class="c-k">AS</span> o
+<span class="c-k">INNER JOIN</span> bakery.silver.shops <span class="c-k">AS</span> s
+  <span class="c-k">ON</span> o.shop_id = s.shop_id;
+
+<span class="c-k">SELECT</span> o.order_id, o.price, s.shop_name
+<span class="c-k">FROM</span> bakery.silver.orders <span class="c-k">AS</span> o
+<span class="c-k">LEFT JOIN</span> bakery.silver.shops <span class="c-k">AS</span> s
+  <span class="c-k">ON</span> o.shop_id = s.shop_id;
+
+<span class="c-c">-- Check that the lookup key really is unique before trusting a join.</span>
+<span class="c-k">SELECT</span> shop_id, <span class="c-k">COUNT</span>(*) <span class="c-k">AS</span> n
+<span class="c-k">FROM</span> bakery.silver.shops
+<span class="c-k">GROUP BY</span> shop_id
+<span class="c-k">HAVING COUNT</span>(*) &gt; 1;</code></pre>
+  <p class="note">Joining with <code>on="shop_id"</code> gives one <code>shop_id</code> column in the result. Joining with a condition such as <code>orders.shop_id == shops.shop_id</code> keeps both, and you then have two columns with the same name to sort out.</p>
+</section>
+
+<section id="whatif">
+  <div class="sec-num">What if I change this?</div>
+  <h2>Join type by join type</h2>
+  <div class="tbl"><table class="whatif">
+    <tr><th>Change</th><th>Effect</th></tr>
+    <tr><td><code>how="inner"</code>, or nothing</td><td>Only rows with a match on both sides. Unmatched rows are dropped without warning.</td></tr>
+    <tr><td><code>how="left"</code></td><td>Every left row is kept. Right-hand columns are NULL where there was no match.</td></tr>
+    <tr><td><code>how="right"</code></td><td>The mirror image: every right row is kept.</td></tr>
+    <tr><td><code>how="full"</code></td><td>Every row from both sides, with NULLs wherever one side had no partner.</td></tr>
+    <tr><td><code>how="left_anti"</code></td><td>Only left rows that found <em>no</em> match, with left columns only. Ideal for finding missing references.</td></tr>
+    <tr><td><code>how="left_semi"</code></td><td>Only left rows that <em>did</em> find a match, with left columns only and never duplicated.</td></tr>
+    <tr><td>The key is not unique on the right</td><td>Left rows are repeated once per match. Totals of left-side amounts come out too high.</td></tr>
+    <tr><td>The key is NULL on some rows</td><td>NULL never equals NULL, so those rows match nothing. An inner join drops them.</td></tr>
+    <tr><td>Swap the order of the tables in a left join</td><td>A different result. "Left" means the table written first.</td></tr>
+  </table></div>
+</section>
+
+<section id="compare">
+  <div class="sec-num">Compare</div>
+  <h2>All the join types on one page</h2>
+  <div class="tbl"><table>
+    <tr><th>Type</th><th>Unmatched left rows</th><th>Unmatched right rows</th><th>Columns returned</th><th>Typical use</th></tr>
+    <tr><td>inner</td><td>Dropped</td><td>Dropped</td><td>Both sides</td><td>Only complete, matched records</td></tr>
+    <tr><td>left</td><td>Kept, with NULLs</td><td>Dropped</td><td>Both sides</td><td>Add details to a main table without losing rows</td></tr>
+    <tr><td>right</td><td>Dropped</td><td>Kept, with NULLs</td><td>Both sides</td><td>Rare. Usually rewritten as a left join.</td></tr>
+    <tr><td>full</td><td>Kept, with NULLs</td><td>Kept, with NULLs</td><td>Both sides</td><td>Comparing two lists to see what each is missing</td></tr>
+    <tr><td>left_semi</td><td>Dropped</td><td>-</td><td>Left only</td><td>"Orders that belong to a known shop"</td></tr>
+    <tr><td>left_anti</td><td>Kept (only these)</td><td>-</td><td>Left only</td><td>"Orders with no known shop"</td></tr>
+  </table></div>
+</section>
+
+<section id="scenarios">
+  <div class="sec-num">Real life</div>
+  <h2>Joins that go wrong quietly</h2>
+  <div class="tbl"><table>
+    <tr><th>Scenario</th><th>What happens</th><th>Fix</th></tr>
+    <tr><td>Total sales fall after adding shop names to the report</td><td>An inner join dropped orders whose shop is missing from the shops table</td><td>Use a left join, and fix the shops table</td></tr>
+    <tr><td>Total sales rise after the same change</td><td>The shops table has duplicate rows, so orders were repeated</td><td>Deduplicate the lookup table, and check key uniqueness first</td></tr>
+    <tr><td>Marketing wants customers who have never ordered</td><td>That is "left rows with no match"</td><td><code>customers</code> left_anti join <code>orders</code></td></tr>
+    <tr><td>A left join seems to return no extra details at all</td><td>The keys differ slightly: <code>"N"</code> against <code>"N "</code></td><td>Trim and standardise keys in silver (lesson 03-03)</td></tr>
+    <tr><td>After a join, a later step fails with "ambiguous column"</td><td>Both tables had a column of the same name and both were kept</td><td>Join with <code>on="key"</code>, or rename or drop one column before joining</td></tr>
+  </table></div>
+</section>
+
+<section id="traps">
+  <div class="sec-num">Don't confuse these</div>
+  <h2>Join traps</h2>
+  <div class="grid2">
+    <div class="card trap"><span class="tag">Inner vs left</span><p>Inner loses unmatched rows. Left keeps all left rows. If a question says "without losing any orders", the answer is a left join from orders.</p></div>
+    <div class="card trap"><span class="tag">Left anti vs left join with a filter</span><p><code>left_anti</code> and "left join, then keep rows where the right key is NULL" give the same rows. The anti join says it directly.</p></div>
+    <div class="card trap"><span class="tag">Join vs union</span><p>A join adds columns by matching rows. A union stacks rows on top of each other (lesson 03-06).</p></div>
+    <div class="card trap"><span class="tag">More rows after a join</span><p>Not a bug in Spark. It means a key was not unique. Every match produces a row.</p></div>
+  </div>
+</section>
+
+<section id="quiz">
+  <div class="sec-num">Check yourself</div>
+  <h2>Quiz</h2>
+  <div class="quiz">
+    <fieldset>
+      <legend>1. Orders has 100 rows. Five of them have a <code>shop_id</code> that is not in shops. How many rows does an inner join return, if shop IDs are unique in shops?</legend>
+      <label><input type="radio"> 100</label>
+      <label><input type="radio" data-correct> 95</label>
+      <label><input type="radio"> 105</label>
+      <p class="explain" hidden>An inner join keeps only matched rows, so the five orphans are dropped.</p>
+    </fieldset>
+    <fieldset>
+      <legend>2. The same two tables with a left join from orders. How many rows?</legend>
+      <label><input type="radio" data-correct> 100</label>
+      <label><input type="radio"> 95</label>
+      <label><input type="radio"> 5</label>
+      <p class="explain" hidden>Every left row is kept. The five orphans have NULL in the shop columns.</p>
+    </fieldset>
+    <fieldset>
+      <legend>3. Which join type lists the orders that have no matching shop?</legend>
+      <label><input type="radio"> inner</label>
+      <label><input type="radio"> left_semi</label>
+      <label><input type="radio" data-correct> left_anti</label>
+      <p class="explain" hidden>An anti join returns left rows that found no partner. A semi join returns the ones that did.</p>
+    </fieldset>
+    <fieldset>
+      <legend>4. In the demo, what happened to the result when the shops table held North twice?</legend>
+      <label><input type="radio"> Nothing changed</label>
+      <label><input type="radio" data-correct> Every North order appeared twice, inflating the total</label>
+      <label><input type="radio"> The join failed with an error</label>
+      <p class="explain" hidden>Each order matched two shop rows, so it was output twice. Spark raises no error for this.</p>
+    </fieldset>
+    <fieldset>
+      <legend>5. In PySpark, what is the default join type if <code>how</code> is left out?</legend>
+      <label><input type="radio" data-correct> inner</label>
+      <label><input type="radio"> left</label>
+      <label><input type="radio"> full</label>
+      <p class="explain" hidden>The default is inner, which is why unmatched rows can vanish unnoticed.</p>
+    </fieldset>
+  </div>
+</section>
+
+<section id="wrap">
+  <div class="sec-num">Wrap up</div>
+  <h2>Key takeaways</h2>
+  <ul>
+    <li>A join matches rows from two tables on a key and puts them side by side.</li>
+    <li>Inner keeps only matches. Left keeps every left row, with NULLs where there is no match.</li>
+    <li>Inner is the default, and it drops unmatched rows silently.</li>
+    <li>A key that is not unique multiplies rows and inflates totals.</li>
+    <li>Use <code>left_anti</code> to find rows with no partner.</li>
+  </ul>
+  <h3>Glossary terms used</h3>
+  <p><a href="../../glossary.html#join">join</a> · <a href="../../glossary.html#join-key">join key</a> · <a href="../../glossary.html#inner-join">inner join</a> · <a href="../../glossary.html#left-join">left join</a> · <a href="../../glossary.html#null">NULL</a></p>
+  <h3>Official docs</h3>
+  <ul>
+    <li><a href="https://docs.databricks.com/aws/en/transform/join">Work with joins on Databricks</a></li>
+    <li><a href="https://docs.databricks.com/aws/en/sql/language-manual/sql-ref-syntax-qry-select-join">JOIN (SQL reference)</a></li>
+  </ul>
+  <p class="cap">Last verified: 16 November 2026</p>
+</section>
+
+</main>
+
+<script>
+(function () {
+  var C = window.Course, $ = function (id) { return document.getElementById(id); }, L = $('dLog');
+  var ORDERS = [{ order_id: 101, shop_id: 'N', price: 4 }, { order_id: 102, shop_id: 'S', price: 3 }, { order_id: 103, shop_id: 'N', price: 2 }, { order_id: 104, shop_id: 'X', price: 5 }];
+  function shops() { var s = [{ shop_id: 'N', name: 'North' }, { shop_id: 'S', name: 'South' }, { shop_id: 'E', name: 'East' }]; if ($('dDup').checked) s.splice(1, 0, { shop_id: 'N', name: 'North (copy)' }); return s; }
+  function run() {
+    var how = $('dHow').value, R = shops(), out = [], used = {};
+    ORDERS.forEach(function (o) {
+      var m = R.filter(function (s, i) { if (s.shop_id === o.shop_id) { used[i] = 1; return true; } return false; });
+      if (how === 'left_anti') { if (!m.length) out.push({ order_id: o.order_id, shop_id: o.shop_id, price: o.price }); return; }
+      if (how === 'left_semi') { if (m.length) out.push({ order_id: o.order_id, shop_id: o.shop_id, price: o.price }); return; }
+      m.forEach(function (s) { out.push({ order_id: o.order_id, shop_id: o.shop_id, price: o.price, name: s.name }); });
+      if (!m.length && (how === 'left' || how === 'full')) out.push({ order_id: o.order_id, shop_id: o.shop_id, price: o.price, name: null });
+    });
+    if (how === 'right' || how === 'full') R.forEach(function (s, i) { if (!used[i]) out.push({ order_id: null, shop_id: s.shop_id, price: null, name: s.name }); });
+    var total = out.reduce(function (a, r) { return a + (r.price || 0); }, 0), real = ORDERS.reduce(function (a, r) { return a + r.price; }, 0);
+    $('pL').innerHTML = C.table(ORDERS); $('pR').innerHTML = C.table(R); $('pOut').innerHTML = C.table(out);
+    $('hOut').textContent = 'Result: ' + how;
+    $('pSum').textContent = out.length + ' row(s). Sum of price: ' + total + ' (the 4 real orders sum to ' + real + ').';
+    C.log(L, total > real ? 'bad' : 'ok', how + ($('dDup').checked ? ', duplicate shop' : '') + ': ' + out.length + ' rows, price total ' + total + (total > real ? '. TOO HIGH: orders were repeated by the duplicate key.' : total < real ? '. Lower than ' + real + ': unmatched orders were dropped.' : '.'));
+  }
+  $('dGo').onclick = run; $('dHow').onchange = run; $('dDup').onchange = run;
+  run();
+})();
+</script>
+</body>
+</html>

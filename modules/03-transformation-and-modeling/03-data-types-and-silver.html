@@ -1,0 +1,296 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>03-03 Standardising data types and writing silver tables · DE Associate course</title>
+<link rel="stylesheet" href="../../assets/course.css">
+<script src="../../assets/course.js"></script>
+</head>
+<body data-lesson="03-03">
+
+<aside class="disclaimer" aria-label="Disclaimer"><strong>Learning resource only.</strong> This is an independent, unofficial study guide made for learning purposes. It is not affiliated with, endorsed by or sponsored by Databricks. Databricks features change often, so always check the details in the <a href="https://docs.databricks.com">official Databricks documentation</a> and the official exam guide on databricks.com before relying on anything here. Databricks and related names are trademarks of their respective owners.</aside>
+
+<main class="wrap">
+
+<header class="hero">
+  <div class="eyebrow">Module 03 · Data Transformation and Modeling · Lesson 3 of 16</div>
+  <h1>Standardising data types and writing silver tables</h1>
+  <p class="lede">In bronze, almost everything is text. A price is the characters "4.50". A date is the characters "16/11/2026". This lesson turns text into real numbers and dates, then saves the result as a silver table.</p>
+  <dl class="where">
+    <div><dt>Module</dt><dd>03 Data Transformation and Modeling (22% of the exam)</dd></div>
+    <div><dt>Exam objective</dt><dd>3.1 Read raw (bronze) tables with PySpark or SQL, deal with missing values, fix data types and save the result as silver tables. This lesson covers types and saving.</dd></div>
+    <div><dt>Time to read</dt><dd>About 14 minutes</dd></div>
+    <div><dt>Before this</dt><dd><a href="02-cleaning-nulls.html">03-02 Cleaning nulls</a></dd></div>
+  </dl>
+</header>
+
+<section id="idea">
+  <div class="sec-num">The idea</div>
+  <h2>Make every column the type it claims to be</h2>
+  <p>A column's <a href="../../glossary.html#data-type">data type</a> tells Spark what kind of thing it holds. Types matter because they decide what you can do. You can add numbers, but not text. You can ask "which is later?" of two dates, but not of two pieces of text that happen to look like dates.</p>
+  <p>Changing a value from one type to another is called <a href="../../glossary.html#cast">casting</a>. Casting text <code>"4.50"</code> to a decimal gives the number 4.50.</p>
+  <p>The catch is values that cannot be converted. What is <code>"n/a"</code> as a number? There are two possible reactions, and you choose which you want:</p>
+  <ul>
+    <li><code>cast</code> is strict. Where the strict setting called ANSI mode is on, a value that cannot be converted makes the whole query fail.</li>
+    <li><code>try_cast</code> is forgiving. A value that cannot be converted becomes NULL and the query carries on.</li>
+  </ul>
+  <p>"Standardising" also means making text consistent, so that <code>"north "</code>, <code>"NORTH"</code> and <code>"North"</code> all become the same value. Otherwise a report shows three shops where there is one.</p>
+  <p>When the columns are clean and correctly typed, you write the result to a <a href="../../glossary.html#silver">silver</a> table.</p>
+  <div class="analogy">
+    <span class="tag">Everyday analogy</span>
+    <p><strong>Sorting a drawer of loose change from a holiday.</strong> Everything is a "coin" until you sort it. Then pounds go in one pile, euros in another, and the button that was in there goes aside. Only after sorting can you count how much money you have. Casting is the sorting. The button is the value that will not convert.</p>
+  </div>
+</section>
+
+<section id="how">
+  <div class="sec-num">How it works</div>
+  <h2>From text to typed columns</h2>
+  <div class="stage">
+    <svg class="tall" viewBox="0 0 360 350" role="img" aria-label="A bronze row of text values passes through trimming, standardising and casting, and becomes a silver row with an integer, clean text, a decimal and a date.">
+      <defs><path id="t1" d="M180 86 V118"/><path id="t2" d="M180 198 V230"/></defs>
+      <g class="wire"><use href="#t1"/><use href="#t2"/></g>
+      <g class="mover">
+        <circle r="5" class="dot"><animateMotion dur="1.4s" repeatCount="indefinite"><mpath href="#t1"/></animateMotion></circle>
+        <circle r="5" class="dot-ok"><animateMotion dur="1.4s" begin="-0.7s" repeatCount="indefinite"><mpath href="#t2"/></animateMotion></circle>
+      </g>
+      <rect class="box m-bronze" x="10" y="8" width="340" height="78" rx="8"/>
+      <text class="t-b" x="24" y="28">Bronze: all STRING</text>
+      <text class="mono" x="24" y="50">"101"   " north "   "£4.50"   "16/11/2026"</text>
+      <text class="t-m" x="24" y="72">order_id   shop          price       order_date</text>
+      <rect class="box-acc" x="50" y="118" width="260" height="80" rx="8"/>
+      <text class="t-b" x="180" y="138" text-anchor="middle">Standardise and cast</text>
+      <text class="t-m" x="180" y="156" text-anchor="middle">trim spaces · fix letter case</text><text class="t-m" x="180" y="172" text-anchor="middle">strip the £ sign · convert types</text><text class="t-m" x="180" y="188" text-anchor="middle">parse the date with its pattern</text>
+      <rect class="box m-silver" x="10" y="230" width="340" height="78" rx="8"/>
+      <text class="t-b" x="24" y="250">Silver: proper types</text>
+      <text class="mono" x="24" y="272">101     "North"     4.50      2026-11-16</text>
+      <text class="t-m" x="24" y="294">INT     STRING      DECIMAL   DATE</text>
+      <text class="t-m" x="180" y="334" text-anchor="middle">Now prices add up and dates sort correctly.</text>
+    </svg>
+  </div>
+  <h3>The types you will use most</h3>
+  <div class="grid3">
+    <div class="card"><span class="tag">Whole numbers</span><p><code>INT</code> and, for very large values, <code>BIGINT</code>. IDs and counts.</p></div>
+    <div class="card"><span class="tag">Exact decimals</span><p><code>DECIMAL(10,2)</code>: up to 10 digits, 2 of them after the point. The right type for money.</p></div>
+    <div class="card"><span class="tag">Approximate decimals</span><p><code>DOUBLE</code>. Fast, but can be off in the last decimal place. Fine for measurements, not for money.</p></div>
+    <div class="card"><span class="tag">Text</span><p><code>STRING</code>. Anything.</p></div>
+    <div class="card"><span class="tag">Dates and times</span><p><code>DATE</code> is a calendar day. <code>TIMESTAMP</code> is a day and a time.</p></div>
+    <div class="card"><span class="tag">True or false</span><p><code>BOOLEAN</code>.</p></div>
+  </div>
+</section>
+
+<section id="demo">
+  <div class="sec-num">Try it</div>
+  <h2>Cast a column of awkward values</h2>
+  <p>Pick a column of raw text and a target type. Compare strict <code>cast</code> with forgiving <code>try_cast</code>, with ANSI mode on and off. Then tick "clean first" and see how many more values survive.</p>
+  <div class="stage">
+    <div class="ctrls">
+      <label class="tog">Column: <select id="dCol"><option value="price">price (text)</option><option value="qty">qty (text)</option><option value="order_date">order_date (text)</option></select></label>
+      <label class="tog">Function: <select id="dFn"><option>cast</option><option>try_cast</option></select></label>
+      <label class="tog"><input type="checkbox" id="dAnsi" checked> ANSI mode on</label>
+      <label class="tog"><input type="checkbox" id="dClean"> Clean first (trim, strip £, give the date pattern)</label>
+      <button id="dGo" type="button" class="primary">Run</button>
+    </div>
+    <div class="panes">
+      <div class="pane"><h4 id="hRes">Result</h4><div id="pRes"></div></div>
+      <div class="pane"><h4>Converted</h4><div class="big" id="pOk">-</div><h4>Became NULL</h4><div class="big" id="pNull">-</div></div>
+    </div>
+    <div class="log" id="dLog" role="log" aria-label="What happened"></div>
+    <p class="cap">Target types: price to DECIMAL(10,2), qty to INT, order_date to DATE.</p>
+  </div>
+</section>
+
+<section id="code">
+  <div class="sec-num">Code</div>
+  <h2>Bronze to silver, start to finish</h2>
+<pre><code><span class="c-k">from</span> pyspark.sql <span class="c-k">import</span> functions <span class="c-k">as</span> F
+
+bronze = spark.table(<span class="c-s">"bakery.bronze.orders_raw"</span>)
+
+silver = (bronze
+    <span class="c-c"># IDs: text to whole number. try_cast gives NULL for anything that is not a number.</span>
+    .withColumn(<span class="c-s">"order_id"</span>, F.col(<span class="c-s">"order_id"</span>).try_cast(<span class="c-s">"int"</span>))
+
+    <span class="c-c"># Text: remove stray spaces, then make the capitals consistent.</span>
+    .withColumn(<span class="c-s">"shop"</span>, F.initcap(F.trim(<span class="c-s">"shop"</span>)))
+
+    <span class="c-c"># Money: strip everything that is not a digit or a point, then make it a decimal.</span>
+    .withColumn(<span class="c-s">"price"</span>,
+        F.regexp_replace(<span class="c-s">"price"</span>, <span class="c-s">"[^0-9.]"</span>, <span class="c-s">""</span>).try_cast(<span class="c-s">"decimal(10,2)"</span>))
+
+    <span class="c-c"># Dates: say what pattern the text is in. dd/MM/yyyy means day, month, year.</span>
+    .withColumn(<span class="c-s">"order_date"</span>, F.try_to_timestamp(<span class="c-s">"order_date"</span>, F.lit(<span class="c-s">"dd/MM/yyyy"</span>)).cast(<span class="c-s">"date"</span>))
+
+    .dropna(subset=[<span class="c-s">"order_id"</span>]))
+
+<span class="c-c"># Save as a silver table. "overwrite" replaces the table's contents with this result.</span>
+silver.write.mode(<span class="c-s">"overwrite"</span>).saveAsTable(<span class="c-s">"bakery.silver.orders"</span>)</code></pre>
+<pre><code><span class="c-c">-- The same in SQL: create the silver table from a query.</span>
+<span class="c-k">CREATE OR REPLACE TABLE</span> bakery.silver.orders <span class="c-k">AS</span>
+<span class="c-k">SELECT</span>
+  try_cast(order_id <span class="c-k">AS INT</span>)                                         <span class="c-k">AS</span> order_id,
+  initcap(trim(shop))                                               <span class="c-k">AS</span> shop,
+  try_cast(regexp_replace(price, <span class="c-s">'[^0-9.]'</span>, <span class="c-s">''</span>) <span class="c-k">AS DECIMAL</span>(10,2))   <span class="c-k">AS</span> price,
+  try_to_date(order_date, <span class="c-s">'dd/MM/yyyy'</span>)                             <span class="c-k">AS</span> order_date
+<span class="c-k">FROM</span> bakery.bronze.orders_raw
+<span class="c-k">WHERE</span> try_cast(order_id <span class="c-k">AS INT</span>) <span class="c-k">IS NOT NULL</span>;</code></pre>
+  <p class="note">Function availability depends on the runtime version. <code>try_cast</code> and <code>try_to_date</code> are long-standing in Databricks SQL. The PySpark column method <code>.try_cast()</code> and <code>F.try_to_timestamp</code> are newer. If your runtime lacks one, <code>F.expr("try_cast(price AS DECIMAL(10,2))")</code> does the same job. Verify in the docs for your runtime.</p>
+</section>
+
+<section id="whatif">
+  <div class="sec-num">What if I change this?</div>
+  <h2>Casting and writing options</h2>
+  <div class="tbl"><table class="whatif">
+    <tr><th>Change</th><th>Effect</th></tr>
+    <tr><td><code>cast</code> on a value that will not convert, ANSI mode on</td><td>The query fails with an error naming the bad value. Nothing is written.</td></tr>
+    <tr><td><code>cast</code> on the same value, ANSI mode off</td><td>The value quietly becomes NULL.</td></tr>
+    <tr><td><code>try_cast</code>, either mode</td><td>The value becomes NULL and the query continues. Count the NULLs afterwards to see how many failed.</td></tr>
+    <tr><td>Parse <code>"16/11/2026"</code> as a date with no pattern</td><td>It does not match the default year-month-day layout, so it fails or becomes NULL. Give the pattern.</td></tr>
+    <tr><td>Use <code>DOUBLE</code> for money</td><td>Totals can be off by a tiny fraction of a penny. Use <code>DECIMAL</code>.</td></tr>
+    <tr><td>Cast the number 4.99 to <code>INT</code></td><td>You get 4. The fraction is cut off, not rounded.</td></tr>
+    <tr><td>Skip <code>trim</code> on a text key</td><td><code>"North "</code> and <code>"North"</code> stay different values, and later joins and groupings split them.</td></tr>
+    <tr><td><code>mode("append")</code> instead of <code>"overwrite"</code></td><td>The rows are added to what is already in the table. Rerunning the same load doubles the data.</td></tr>
+    <tr><td>Write a DataFrame whose columns do not match an existing table</td><td>Refused by schema enforcement (lesson 01-02), unless you opt in to schema evolution.</td></tr>
+  </table></div>
+</section>
+
+<section id="compare">
+  <div class="sec-num">Compare</div>
+  <h2>cast or try_cast</h2>
+  <div class="tbl"><table>
+    <tr><th></th><th>cast</th><th>try_cast</th></tr>
+    <tr><td>Value converts cleanly</td><td>Converted</td><td>Converted</td></tr>
+    <tr><td>Value cannot convert, ANSI mode on</td><td>Query fails</td><td>NULL</td></tr>
+    <tr><td>Value cannot convert, ANSI mode off</td><td>NULL</td><td>NULL</td></tr>
+    <tr><td>Good for</td><td>Data you expect to be clean, where a bad value should stop the run</td><td>Raw data, where bad values are expected and will be handled</td></tr>
+  </table></div>
+  <p class="note">Whether ANSI mode is on by default depends on the compute. SQL warehouses and serverless have it on. Older classic runtimes had it off. Do not assume: check, or use <code>try_cast</code> where you want forgiving behaviour.</p>
+  <h3>Ways to save the result</h3>
+  <div class="grid3">
+    <div class="card"><span class="tag">overwrite</span><p>Replace the table's contents. Simple and safe to rerun. Reprocesses everything each time.</p></div>
+    <div class="card"><span class="tag">append</span><p>Add rows. Right for genuinely new data. Dangerous to rerun.</p></div>
+    <div class="card"><span class="tag">MERGE</span><p>Update matching rows and insert new ones (lesson 01-02). Right for incremental loads with changes.</p></div>
+  </div>
+</section>
+
+<section id="scenarios">
+  <div class="sec-num">Real life</div>
+  <h2>Type problems you will meet</h2>
+  <div class="tbl"><table>
+    <tr><th>Scenario</th><th>What happens</th><th>Fix</th></tr>
+    <tr><td>Sorting by price puts 10.00 before 9.00</td><td>The column is text, and text sorts character by character</td><td>Cast it to <code>DECIMAL</code></td></tr>
+    <tr><td>A nightly job fails because one row has price "TBC"</td><td>Strict <code>cast</code> under ANSI mode stops on the first bad value</td><td>Use <code>try_cast</code>, then count and investigate the NULLs</td></tr>
+    <tr><td>Every order date is NULL after casting</td><td>The text is day/month/year and no pattern was given</td><td>Parse with the pattern <code>dd/MM/yyyy</code></td></tr>
+    <tr><td>Sales by shop lists "North", "north" and "NORTH "</td><td>The text was never standardised</td><td><code>initcap(trim(shop))</code> in silver</td></tr>
+    <tr><td>Silver has twice the rows of bronze</td><td>The job used <code>append</code> and ran twice</td><td>Use <code>overwrite</code> or <code>MERGE</code> so that reruns are safe</td></tr>
+  </table></div>
+</section>
+
+<section id="traps">
+  <div class="sec-num">Don't confuse these</div>
+  <h2>Type traps</h2>
+  <div class="grid2">
+    <div class="card trap"><span class="tag">cast vs try_cast</span><p><code>cast</code> can fail the query. <code>try_cast</code> never does: it returns NULL instead.</p></div>
+    <div class="card trap"><span class="tag">DECIMAL vs DOUBLE</span><p>DECIMAL is exact and suits money. DOUBLE is approximate.</p></div>
+    <div class="card trap"><span class="tag">DATE vs TIMESTAMP</span><p>DATE has no time of day. TIMESTAMP does. Casting a TIMESTAMP to DATE drops the time.</p></div>
+    <div class="card trap"><span class="tag">overwrite vs append</span><p><code>overwrite</code> replaces. <code>append</code> adds. Only <code>overwrite</code> is safe to run twice.</p></div>
+  </div>
+</section>
+
+<section id="quiz">
+  <div class="sec-num">Check yourself</div>
+  <h2>Quiz</h2>
+  <div class="quiz">
+    <fieldset>
+      <legend>1. With ANSI mode on, what does <code>CAST('n/a' AS INT)</code> do?</legend>
+      <label><input type="radio"> Returns 0</label>
+      <label><input type="radio"> Returns NULL</label>
+      <label><input type="radio" data-correct> Fails with an error</label>
+      <p class="explain" hidden>Under ANSI mode a strict cast refuses a value it cannot convert. <code>try_cast</code> would return NULL.</p>
+    </fieldset>
+    <fieldset>
+      <legend>2. Which type should hold prices?</legend>
+      <label><input type="radio"> STRING</label>
+      <label><input type="radio"> DOUBLE</label>
+      <label><input type="radio" data-correct> DECIMAL(10,2)</label>
+      <p class="explain" hidden>DECIMAL stores exact values. DOUBLE can introduce tiny errors, and STRING cannot be added up.</p>
+    </fieldset>
+    <fieldset>
+      <legend>3. A text column holds dates such as <code>16/11/2026</code>. What do you need to convert it?</legend>
+      <label><input type="radio"> Nothing. A plain cast works.</label>
+      <label><input type="radio" data-correct> The pattern of the text, such as <code>dd/MM/yyyy</code></label>
+      <label><input type="radio"> To cast it to INT first</label>
+      <p class="explain" hidden>The default layout is year-month-day. Any other layout must be described with a pattern.</p>
+    </fieldset>
+    <fieldset>
+      <legend>4. In the demo, what happened to "£4.50" with <code>try_cast</code> and no cleaning?</legend>
+      <label><input type="radio"> It became 4.50</label>
+      <label><input type="radio" data-correct> It became NULL</label>
+      <label><input type="radio"> The query failed</label>
+      <p class="explain" hidden>The £ sign makes it not a number. <code>try_cast</code> returns NULL. Stripping the sign first lets it convert.</p>
+    </fieldset>
+    <fieldset>
+      <legend>5. A silver load uses <code>mode("append")</code> and is accidentally run twice. What is the result?</legend>
+      <label><input type="radio"> Nothing. The second run is skipped.</label>
+      <label><input type="radio" data-correct> Every row is in the table twice</label>
+      <label><input type="radio"> The table is emptied</label>
+      <p class="explain" hidden><code>append</code> adds rows every time. It does not check whether they were added before.</p>
+    </fieldset>
+  </div>
+</section>
+
+<section id="wrap">
+  <div class="sec-num">Wrap up</div>
+  <h2>Key takeaways</h2>
+  <ul>
+    <li>Bronze columns are mostly text. Silver columns have real types.</li>
+    <li><code>cast</code> can fail on bad values. <code>try_cast</code> returns NULL instead.</li>
+    <li>Clean before casting: trim spaces, strip symbols, give dates their pattern.</li>
+    <li>Use DECIMAL for money, DATE or TIMESTAMP for time, INT for whole numbers.</li>
+    <li>Save with <code>overwrite</code> or <code>MERGE</code> so the load is safe to rerun.</li>
+  </ul>
+  <h3>Glossary terms used</h3>
+  <p><a href="../../glossary.html#data-type">data type</a> · <a href="../../glossary.html#cast">cast</a> · <a href="../../glossary.html#ansi-mode">ANSI mode</a> · <a href="../../glossary.html#silver">silver</a> · <a href="../../glossary.html#schema-enforcement">schema enforcement</a></p>
+  <h3>Official docs</h3>
+  <ul>
+    <li><a href="https://docs.databricks.com/aws/en/sql/language-manual/sql-ref-datatypes">Data types</a></li>
+    <li><a href="https://docs.databricks.com/aws/en/sql/language-manual/functions/cast">cast function</a></li>
+    <li><a href="https://docs.databricks.com/aws/en/sql/language-manual/functions/try_cast">try_cast function</a></li>
+    <li><a href="https://docs.databricks.com/aws/en/tables/">Tables on Databricks</a></li>
+  </ul>
+  <p class="cap">Last verified: 16 November 2026</p>
+</section>
+
+</main>
+
+<script>
+(function () {
+  var C = window.Course, $ = function (id) { return document.getElementById(id); }, L = $('dLog');
+  var RAW = { price: ['4.50', ' 3.00 ', '£4.50', 'n/a', '2'], qty: ['2', ' 6', '7', 'two', ''], order_date: ['2026-11-16', '16/11/2026', '17/11/2026', 'yesterday', '2026-11-18'] };
+  /* Convert one text value. Returns the converted text, or null when it cannot be converted. */
+  function convert(col, v, clean) {
+    if (clean) v = v.trim();
+    if (col === 'price') { if (clean) v = v.replace(/[^0-9.]/g, ''); return /^\d+(\.\d+)?$/.test(v) ? (+v).toFixed(2) : null; }
+    if (col === 'qty') return /^-?\d+(\.\d+)?$/.test(v) ? String(Math.trunc(+v)) : null;
+    var m = v.match(/^(\d{4})-(\d{2})-(\d{2})$/); if (m) return v;
+    m = clean && v.match(/^(\d{2})\/(\d{2})\/(\d{4})$/); return m ? m[3] + '-' + m[2] + '-' + m[1] : null;
+  }
+  $('dGo').onclick = function () {
+    var col = $('dCol').value, strict = $('dFn').value === 'cast' && $('dAnsi').checked, clean = $('dClean').checked;
+    var out = RAW[col].map(function (v) { return { raw: '"' + v + '"', result: convert(col, v, clean) }; });
+    var bad = out.filter(function (r) { return r.result === null; });
+    $('hRes').textContent = $('dFn').value + '(' + col + ')';
+    if (strict && bad.length) {
+      $('pRes').innerHTML = '<p class="note trap">Query FAILED on ' + C.esc(bad[0].raw) + '. Nothing was returned.</p>'; $('pOk').textContent = '0'; $('pNull').textContent = '-';
+      C.log(L, 'bad', 'cast, ANSI on' + (clean ? ', cleaned' : '') + ': error on ' + bad[0].raw + '. The whole query stopped.');
+    } else {
+      $('pRes').innerHTML = C.table(out); $('pOk').textContent = out.length - bad.length; $('pNull').textContent = bad.length;
+      C.log(L, bad.length ? 'skip' : 'ok', $('dFn').value + ($('dAnsi').checked ? ', ANSI on' : ', ANSI off') + (clean ? ', cleaned' : '') + ': ' + (out.length - bad.length) + ' converted, ' + bad.length + ' became NULL.');
+    }
+    C.bump($('pOk'));
+  };
+  $('dGo').onclick();
+})();
+</script>
+</body>
+</html>

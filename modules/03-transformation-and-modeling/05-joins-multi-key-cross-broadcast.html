@@ -1,0 +1,317 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>03-05 Joins: multiple keys, cross join, broadcast join · DE Associate course</title>
+<link rel="stylesheet" href="../../assets/course.css">
+<script src="../../assets/course.js"></script>
+</head>
+<body data-lesson="03-05">
+
+<aside class="disclaimer" aria-label="Disclaimer"><strong>Learning resource only.</strong> This is an independent, unofficial study guide made for learning purposes. It is not affiliated with, endorsed by or sponsored by Databricks. Databricks features change often, so always check the details in the <a href="https://docs.databricks.com">official Databricks documentation</a> and the official exam guide on databricks.com before relying on anything here. Databricks and related names are trademarks of their respective owners.</aside>
+
+<main class="wrap">
+
+<header class="hero">
+  <div class="eyebrow">Module 03 · Data Transformation and Modeling · Lesson 5 of 16</div>
+  <h1>Joins: multiple keys, cross join, broadcast join</h1>
+  <p class="lede">Three more things about joins. Sometimes one column is not enough to match on. Sometimes you want every combination. And sometimes the way Spark performs the join matters more than the join itself.</p>
+  <dl class="where">
+    <div><dt>Module</dt><dd>03 Data Transformation and Modeling (22% of the exam)</dd></div>
+    <div><dt>Exam objective</dt><dd>3.2 Combine datasets: inner, left, broadcast, multi-key and cross joins, plus union and union all. This lesson covers multi-key, cross and broadcast joins.</dd></div>
+    <div><dt>Time to read</dt><dd>About 14 minutes</dd></div>
+    <div><dt>Before this</dt><dd><a href="04-joins-inner-left.html">03-04 Joins: inner and left</a></dd></div>
+  </dl>
+</header>
+
+<section id="idea">
+  <div class="sec-num">The idea</div>
+  <h2>Three separate ideas</h2>
+  <p><strong>Joining on multiple keys.</strong> One column does not always identify a row. A price list might have one row per item <em>per shop</em>, because the same loaf costs more in one shop than another. To find the right price for an order you must match on both the item and the shop. Match on the item alone and each order finds several prices.</p>
+  <p><strong>Cross join.</strong> A <a href="../../glossary.html#cross-join">cross join</a> has no key at all. It pairs every row of one table with every row of the other. Three shops crossed with four dates gives twelve rows: every shop on every date. That is useful for building a complete grid. It is also dangerous: a thousand rows crossed with a thousand rows is a million.</p>
+  <p><strong>Broadcast join.</strong> This is not a different result. It is a different <em>way of doing</em> a join, and it gives the same answer faster when one table is small.</p>
+  <p>Normally, to join two big tables, Spark must rearrange both so that rows with the same key end up on the same executor. That rearranging is called a <a href="../../glossary.html#shuffle">shuffle</a>, and moving data between machines is the slowest thing Spark does. But if one table is small, Spark can skip all of that. It sends a complete copy of the small table to every executor. Each executor then joins its share of the big table against its own local copy. Nothing in the big table has to move. Sending one thing to everyone is called broadcasting, so this is a <a href="../../glossary.html#broadcast-join">broadcast join</a>.</p>
+  <div class="analogy">
+    <span class="tag">Everyday analogy</span>
+    <p><strong>Marking exam papers with a price list.</strong> Ten markers each have a pile of order slips and need to look up prices. The slow way: gather all slips and all price cards into one hall and sort both by item so they can be paired. The fast way: photocopy the one-page price list and give a copy to each marker, who stays at their desk. That photocopy is the broadcast. It only works because the price list is small. You would not photocopy a telephone directory for everyone.</p>
+  </div>
+</section>
+
+<section id="how">
+  <div class="sec-num">How it works</div>
+  <h2>Shuffle join against broadcast join</h2>
+  <div class="stage">
+    <svg class="tall" viewBox="0 0 360 400" role="img" aria-label="Top: a shuffle join moves rows of both tables between executors so matching keys meet. Bottom: a broadcast join copies the small table to every executor and the big table does not move.">
+      <defs>
+        <path id="x1" d="M70 96 C 120 70, 240 70, 290 96"/><path id="x2" d="M290 116 C 240 142, 120 142, 70 116"/>
+        <path id="y1" d="M180 250 C 180 280, 70 280, 70 304"/><path id="y2" d="M180 250 V304"/><path id="y3" d="M180 250 C 180 280, 290 280, 290 304"/>
+      </defs>
+      <text class="t-b" x="10" y="20">Shuffle join</text><text class="t-m" x="100" y="20">both tables are rearranged</text>
+      <g class="wire"><use href="#x1"/><use href="#x2"/></g>
+      <g class="box"><rect x="10" y="76" width="100" height="60" rx="8"/><rect x="130" y="76" width="100" height="60" rx="8"/><rect x="250" y="76" width="100" height="60" rx="8"/></g>
+      <text class="t-b" x="60" y="100" text-anchor="middle">Executor 1</text><text class="t-b" x="180" y="100" text-anchor="middle">Executor 2</text><text class="t-b" x="300" y="100" text-anchor="middle">Executor 3</text>
+      <text class="t-m" x="60" y="120" text-anchor="middle">big + small</text><text class="t-m" x="180" y="120" text-anchor="middle">big + small</text><text class="t-m" x="300" y="120" text-anchor="middle">big + small</text>
+      <text class="t-m" x="180" y="164" text-anchor="middle">rows travel between machines so keys line up</text>
+      <text class="t-b" x="10" y="208">Broadcast join</text><text class="t-m" x="118" y="208">only the small table travels</text>
+      <g class="wire"><use href="#y1"/><use href="#y2"/><use href="#y3"/></g>
+      <rect class="box-acc" x="120" y="220" width="120" height="30" rx="6"/><text x="180" y="240" text-anchor="middle">small table</text>
+      <g class="box"><rect x="10" y="304" width="100" height="60" rx="8"/><rect x="130" y="304" width="100" height="60" rx="8"/><rect x="250" y="304" width="100" height="60" rx="8"/></g>
+      <text class="t-b" x="60" y="328" text-anchor="middle">Executor 1</text><text class="t-b" x="180" y="328" text-anchor="middle">Executor 2</text><text class="t-b" x="300" y="328" text-anchor="middle">Executor 3</text>
+      <text class="t-m" x="60" y="348" text-anchor="middle">its big rows + copy</text><text class="t-m" x="180" y="348" text-anchor="middle">its big rows + copy</text><text class="t-m" x="300" y="348" text-anchor="middle">its big rows + copy</text>
+      <text class="t-m" x="180" y="388" text-anchor="middle">the big table stays exactly where it is</text>
+      <g class="mover">
+        <circle r="5" class="dot"><animateMotion dur="2.2s" repeatCount="indefinite"><mpath href="#x1"/></animateMotion></circle>
+        <circle r="5" class="dot"><animateMotion dur="2.2s" begin="-1.1s" repeatCount="indefinite"><mpath href="#x2"/></animateMotion></circle>
+        <circle r="5" class="dot-ok"><animateMotion dur="1.6s" repeatCount="indefinite"><mpath href="#y1"/></animateMotion></circle>
+        <circle r="5" class="dot-ok"><animateMotion dur="1.6s" begin="-0.5s" repeatCount="indefinite"><mpath href="#y2"/></animateMotion></circle>
+        <circle r="5" class="dot-ok"><animateMotion dur="1.6s" begin="-1s" repeatCount="indefinite"><mpath href="#y3"/></animateMotion></circle>
+      </g>
+    </svg>
+  </div>
+  <p>Spark often chooses a broadcast join by itself, when it can see that one table is under a size limit (lesson 03-13). You can also ask for one with a <strong>hint</strong>: a note in your code that tells Spark which table to broadcast.</p>
+</section>
+
+<section id="demo">
+  <div class="sec-num">Try it</div>
+  <h2>Three small experiments</h2>
+  <h3>1. One key or two?</h3>
+  <p>Prices differ by shop. Join orders to prices on the item only, then on item and shop.</p>
+  <div class="stage">
+    <div class="ctrls">
+      <label class="tog">Join on: <select id="kOn"><option value="1">item</option><option value="2">item and shop</option></select></label>
+    </div>
+    <div class="panes">
+      <div class="pane"><h4>orders</h4><div id="kL"></div></div>
+      <div class="pane"><h4>prices</h4><div id="kR"></div></div>
+      <div class="pane"><h4>Result</h4><div id="kOut"></div><p class="cap" id="kSum"></p></div>
+    </div>
+  </div>
+  <h3>2. How big is a cross join?</h3>
+  <div class="stage">
+    <div class="ctrls">
+      <label class="tog">Rows on the left: <select id="cA"><option>3</option><option>1000</option><option>1000000</option></select></label>
+      <label class="tog">Rows on the right: <select id="cB"><option>4</option><option>365</option><option>1000000</option></select></label>
+    </div>
+    <div class="panes"><div class="pane"><h4>Rows produced</h4><div class="big" id="cOut"></div><p class="cap" id="cWhy"></p></div></div>
+  </div>
+  <h3>3. Shuffle or broadcast?</h3>
+  <p>A 50 GB orders table is joined to a lookup table. Change the lookup's size and whether you broadcast it.</p>
+  <div class="stage">
+    <div class="ctrls">
+      <label class="tog">Lookup table size: <select id="bS"><option value="0.005">5 MB</option><option value="0.5">500 MB</option><option value="20">20 GB</option></select></label>
+      <label class="tog"><input type="checkbox" id="bB" checked> Broadcast the lookup table</label>
+      <button id="bGo" type="button" class="primary">Run the join</button>
+    </div>
+    <div class="panes">
+      <div class="pane"><h4>Data moved between machines</h4><div class="big" id="bMove">-</div><div class="meter"><i id="bBar"></i></div></div>
+      <div class="pane"><h4>Outcome</h4><div class="big" id="bRes">-</div><p class="cap" id="bWhy"></p></div>
+    </div>
+    <div class="log" id="dLog" role="log" aria-label="What happened"></div>
+    <p class="cap">Model: 10 executors with 8 GB of memory each. A broadcast copy must fit comfortably in memory on the driver and on every executor.</p>
+  </div>
+</section>
+
+<section id="code">
+  <div class="sec-num">Code</div>
+  <h2>Writing each kind</h2>
+<pre><code><span class="c-k">from</span> pyspark.sql <span class="c-k">import</span> functions <span class="c-k">as</span> F
+
+orders = spark.table(<span class="c-s">"bakery.silver.orders"</span>)       <span class="c-c"># order_id, item, shop, qty</span>
+prices = spark.table(<span class="c-s">"bakery.silver.prices"</span>)       <span class="c-c"># item, shop, price: one row per item per shop</span>
+shops  = spark.table(<span class="c-s">"bakery.silver.shops"</span>)        <span class="c-c"># small: a handful of rows</span>
+
+<span class="c-c"># MULTIPLE KEYS: a list of column names. Both must match.</span>
+priced = orders.join(prices, on=[<span class="c-s">"item"</span>, <span class="c-s">"shop"</span>], how=<span class="c-s">"left"</span>)
+
+<span class="c-c"># The same with an explicit condition, joined by &amp; ("and").</span>
+priced = orders.join(prices,
+    (orders.item == prices.item) &amp; (orders.shop == prices.shop), <span class="c-s">"left"</span>)
+
+<span class="c-c"># CROSS JOIN: every shop paired with every date. Gives a complete grid.</span>
+dates = spark.sql(<span class="c-s">"SELECT explode(sequence(DATE'2026-11-01', DATE'2026-11-30')) AS day"</span>)
+grid  = shops.select(<span class="c-s">"shop"</span>).crossJoin(dates)       <span class="c-c"># rows = shops x 30</span>
+
+<span class="c-c"># BROADCAST JOIN: same result as a normal join, done without shuffling orders.</span>
+with_shop = orders.join(F.broadcast(shops), on=<span class="c-s">"shop"</span>, how=<span class="c-s">"left"</span>)</code></pre>
+<pre><code><span class="c-c">-- Multiple keys in SQL.</span>
+<span class="c-k">SELECT</span> o.order_id, o.qty * p.price <span class="c-k">AS</span> amount
+<span class="c-k">FROM</span> bakery.silver.orders <span class="c-k">AS</span> o
+<span class="c-k">LEFT JOIN</span> bakery.silver.prices <span class="c-k">AS</span> p
+  <span class="c-k">ON</span> o.item = p.item <span class="c-k">AND</span> o.shop = p.shop;
+
+<span class="c-c">-- Cross join.</span>
+<span class="c-k">SELECT</span> s.shop, d.day
+<span class="c-k">FROM</span> bakery.silver.shops <span class="c-k">AS</span> s
+<span class="c-k">CROSS JOIN</span> bakery.silver.calendar <span class="c-k">AS</span> d;
+
+<span class="c-c">-- Broadcast hint: a comment-like note right after SELECT.</span>
+<span class="c-k">SELECT</span> <span class="c-c">/*+ BROADCAST(s) */</span> o.order_id, s.city
+<span class="c-k">FROM</span> bakery.silver.orders <span class="c-k">AS</span> o
+<span class="c-k">LEFT JOIN</span> bakery.silver.shops <span class="c-k">AS</span> s <span class="c-k">ON</span> o.shop = s.shop;</code></pre>
+</section>
+
+<section id="whatif">
+  <div class="sec-num">What if I change this?</div>
+  <h2>Consequences</h2>
+  <div class="tbl"><table class="whatif">
+    <tr><th>Change</th><th>Effect</th></tr>
+    <tr><td>Join on one key when rows are identified by two</td><td>Each row matches several rows on the other side. The result has too many rows and amounts are counted several times.</td></tr>
+    <tr><td>Join on two keys when one would do</td><td>Harmless if both are right. But a mismatch in the extra key, such as a stray space, now makes rows fail to match.</td></tr>
+    <tr><td><code>crossJoin</code> two large tables</td><td>The row count is the two sizes multiplied. A job that never finishes, or runs out of memory.</td></tr>
+    <tr><td>Write a join and forget the condition</td><td>It becomes a cross join by accident. Always check the row count after a join.</td></tr>
+    <tr><td>Broadcast a small table</td><td>The shuffle of the big table is avoided. The join is often several times faster.</td></tr>
+    <tr><td>Broadcast a table that is too big</td><td>The copies do not fit in memory. The job fails with an out-of-memory error, or is slower than a shuffle would have been.</td></tr>
+    <tr><td>Add a broadcast hint to the big side</td><td>Spark tries to do as you ask, with the bad result above. Hint the small side.</td></tr>
+    <tr><td>Leave the choice to Spark</td><td>It broadcasts automatically when a table is under its size threshold. A hint is for when you know better than its estimate.</td></tr>
+  </table></div>
+</section>
+
+<section id="compare">
+  <div class="sec-num">Compare</div>
+  <h2>Shuffle join or broadcast join</h2>
+  <div class="tbl"><table>
+    <tr><th></th><th>Shuffle join (sort-merge)</th><th>Broadcast join</th></tr>
+    <tr><td>What moves</td><td>Rows of both tables</td><td>Only the small table, copied to every executor</td></tr>
+    <tr><td>Works for</td><td>Any sizes</td><td>One side small enough to fit in memory</td></tr>
+    <tr><td>Speed</td><td>Slower, because of the shuffle</td><td>Faster, with no shuffle of the big side</td></tr>
+    <tr><td>Main risk</td><td>Skew: one key with far more rows than the rest</td><td>Out of memory if the "small" table is not small</td></tr>
+    <tr><td>Result</td><td colspan="2">Identical. Only the method differs.</td></tr>
+  </table></div>
+  <h3>Three ideas, kept apart</h3>
+  <div class="grid3">
+    <div class="card"><span class="tag">Multi-key</span><p>About <em>matching</em>: two or more columns must all be equal.</p></div>
+    <div class="card"><span class="tag">Cross</span><p>About the <em>result</em>: no matching, every combination.</p></div>
+    <div class="card"><span class="tag">Broadcast</span><p>About <em>performance</em>: how the join is carried out. The result does not change.</p></div>
+  </div>
+</section>
+
+<section id="scenarios">
+  <div class="sec-num">Real life</div>
+  <h2>Where these show up</h2>
+  <div class="tbl"><table>
+    <tr><th>Scenario</th><th>What happens</th><th>Fix</th></tr>
+    <tr><td>Revenue triples after joining orders to a price list</td><td>Prices are per item per shop, but the join used the item only, so each order met three prices</td><td>Join on item and shop</td></tr>
+    <tr><td>A report must show zero sales for shops with no orders on a day</td><td>Days with no orders are simply absent from the data</td><td>Cross join shops with dates to make the full grid, then left join the sales onto it</td></tr>
+    <tr><td>A join of a huge fact table to a 200-row lookup takes 40 minutes</td><td>Spark is shuffling the huge table</td><td>Broadcast the lookup table</td></tr>
+    <tr><td>A job starts failing with out-of-memory after a lookup table grew</td><td>A broadcast hint is forcing a table that is no longer small</td><td>Remove the hint and let Spark choose</td></tr>
+    <tr><td>A query produces billions of rows from two modest tables</td><td>The join condition was left out or is always true</td><td>Add the correct condition</td></tr>
+  </table></div>
+</section>
+
+<section id="traps">
+  <div class="sec-num">Don't confuse these</div>
+  <h2>Join traps, part two</h2>
+  <div class="grid2">
+    <div class="card trap"><span class="tag">Broadcast is not a join type</span><p>You still choose inner or left. Broadcast only decides how Spark performs it. The rows returned are the same.</p></div>
+    <div class="card trap"><span class="tag">Cross join vs full join</span><p>A full join still matches on a key and keeps unmatched rows. A cross join matches on nothing and pairs everything with everything.</p></div>
+    <div class="card trap"><span class="tag">&amp; vs and</span><p>In PySpark conditions, combine with <code>&amp;</code> and wrap each part in brackets. Python's word <code>and</code> does not work on columns.</p></div>
+    <div class="card trap"><span class="tag">Hint vs command</span><p>A hint is a strong suggestion. Spark normally follows it, which is why a wrong hint does real damage.</p></div>
+  </div>
+</section>
+
+<section id="quiz">
+  <div class="sec-num">Check yourself</div>
+  <h2>Quiz</h2>
+  <div class="quiz">
+    <fieldset>
+      <legend>1. A cross join of a 20-row table and a 50-row table returns how many rows?</legend>
+      <label><input type="radio"> 50</label>
+      <label><input type="radio"> 70</label>
+      <label><input type="radio" data-correct> 1,000</label>
+      <p class="explain" hidden>Every row is paired with every row: 20 times 50.</p>
+    </fieldset>
+    <fieldset>
+      <legend>2. What does a broadcast join avoid?</legend>
+      <label><input type="radio" data-correct> Shuffling the large table</label>
+      <label><input type="radio"> Reading the small table</label>
+      <label><input type="radio"> Unmatched rows</label>
+      <p class="explain" hidden>The small table is copied to each executor, so the large table's rows can be joined where they already are.</p>
+    </fieldset>
+    <fieldset>
+      <legend>3. Which table should be broadcast when joining a 2-billion-row fact table to a 300-row lookup table?</legend>
+      <label><input type="radio"> The fact table</label>
+      <label><input type="radio" data-correct> The lookup table</label>
+      <label><input type="radio"> Both</label>
+      <p class="explain" hidden>Only a table small enough to fit in memory on every executor can be broadcast.</p>
+    </fieldset>
+    <fieldset>
+      <legend>4. In the first demo, joining on the item alone gave too many rows. Why?</legend>
+      <label><input type="radio"> Spark duplicates rows at random</label>
+      <label><input type="radio" data-correct> Each item has a price row for every shop, so one order matched several</label>
+      <label><input type="radio"> Left joins always add rows</label>
+      <p class="explain" hidden>The price list is unique per item and shop together, not per item. Both columns are needed to pick one row.</p>
+    </fieldset>
+    <fieldset>
+      <legend>5. How do you ask for a broadcast join in PySpark?</legend>
+      <label><input type="radio"> <code>how="broadcast"</code></label>
+      <label><input type="radio" data-correct> Wrap the small DataFrame in <code>F.broadcast(...)</code></label>
+      <label><input type="radio"> <code>.crossJoin(...)</code></label>
+      <p class="explain" hidden>The join type stays inner or left. <code>F.broadcast</code> marks which side to copy to the executors.</p>
+    </fieldset>
+  </div>
+</section>
+
+<section id="wrap">
+  <div class="sec-num">Wrap up</div>
+  <h2>Key takeaways</h2>
+  <ul>
+    <li>Join on every column needed to identify one row. Too few keys multiplies rows.</li>
+    <li>A cross join pairs everything with everything. Its size is the two row counts multiplied.</li>
+    <li>A broadcast join copies a small table to every executor and avoids a shuffle.</li>
+    <li>Broadcast changes speed, not results. Broadcast only the small side.</li>
+    <li>Spark broadcasts small tables automatically. A hint overrides its judgement.</li>
+  </ul>
+  <h3>Glossary terms used</h3>
+  <p><a href="../../glossary.html#join">join</a> · <a href="../../glossary.html#join-key">join key</a> · <a href="../../glossary.html#cross-join">cross join</a> · <a href="../../glossary.html#broadcast-join">broadcast join</a> · <a href="../../glossary.html#shuffle">shuffle</a> · <a href="../../glossary.html#executor">executor</a></p>
+  <h3>Official docs</h3>
+  <ul>
+    <li><a href="https://docs.databricks.com/aws/en/transform/join">Work with joins on Databricks</a></li>
+    <li><a href="https://docs.databricks.com/aws/en/sql/language-manual/sql-ref-syntax-qry-select-join">JOIN (SQL reference)</a></li>
+    <li><a href="https://docs.databricks.com/aws/en/sql/language-manual/sql-ref-syntax-qry-select-hints">Hints</a></li>
+    <li><a href="https://docs.databricks.com/aws/en/optimizations/aqe">Adaptive query execution</a></li>
+  </ul>
+  <p class="cap">Last verified: 16 November 2026</p>
+</section>
+
+</main>
+
+<script>
+(function () {
+  var C = window.Course, $ = function (id) { return document.getElementById(id); }, L = $('dLog');
+  /* 1. one key or two */
+  var O = [{ order_id: 1, item: 'Loaf', shop: 'North', qty: 2 }, { order_id: 2, item: 'Loaf', shop: 'South', qty: 1 }, { order_id: 3, item: 'Bun', shop: 'North', qty: 6 }];
+  var P = [{ item: 'Loaf', shop: 'North', price: 4 }, { item: 'Loaf', shop: 'South', price: 3 }, { item: 'Bun', shop: 'North', price: 1 }, { item: 'Bun', shop: 'South', price: 1 }];
+  function keys() {
+    var two = $('kOn').value === '2', out = [];
+    O.forEach(function (o) { P.forEach(function (p) { if (o.item === p.item && (!two || o.shop === p.shop)) out.push({ order_id: o.order_id, item: o.item, order_shop: o.shop, price_shop: p.shop, amount: o.qty * p.price }); }); });
+    var tot = out.reduce(function (a, r) { return a + r.amount; }, 0);
+    $('kL').innerHTML = C.table(O); $('kR').innerHTML = C.table(P); $('kOut').innerHTML = C.table(out);
+    $('kSum').textContent = out.length + ' rows for 3 orders. Total amount ' + tot + (two ? ' (correct).' : ' (too high: each order met every shop\'s price).');
+  }
+  $('kOn').onchange = keys; keys();
+  /* 2. cross join size */
+  function cross() {
+    var n = +$('cA').value * +$('cB').value;
+    $('cOut').textContent = n.toLocaleString();
+    $('cWhy').textContent = n > 1e9 ? 'A trillion rows. This would never finish.' : n > 1e5 ? 'Large. Make sure you really want every combination.' : 'Small enough to be a useful grid.';
+  }
+  $('cA').onchange = $('cB').onchange = cross; cross();
+  /* 3. shuffle vs broadcast */
+  var BIG = 50, EXEC = 10, MEM = 8;
+  $('bGo').onclick = function () {
+    var s = +$('bS').value, b = $('bB').checked, moved, res, why, cls;
+    if (!b) { moved = BIG + s; res = 'Works, slowly'; why = 'Both tables were shuffled so matching keys could meet.'; cls = 'skip'; }
+    else if (s > MEM / 4) { moved = s * EXEC; res = 'Out of memory'; why = 'A ' + s + ' GB copy does not fit comfortably in ' + MEM + ' GB of executor memory.'; cls = 'bad'; }
+    else { moved = s * EXEC; res = 'Works, fast'; why = 'Only ' + EXEC + ' copies of the small table moved. The 50 GB table stayed put.'; cls = 'ok'; }
+    $('bMove').textContent = (moved < 1 ? Math.round(moved * 1000) + ' MB' : moved.toFixed(1) + ' GB');
+    $('bBar').style.width = Math.min(100, 100 * moved / (BIG + 20)) + '%';
+    $('bRes').textContent = res; $('bWhy').textContent = why;
+    C.log(L, cls, 'Lookup ' + $('bS').selectedOptions[0].text + ', ' + (b ? 'broadcast' : 'shuffle') + ': ' + $('bMove').textContent + ' moved. ' + res + '.');
+    C.bump($('bRes'));
+  };
+  $('bGo').onclick();
+})();
+</script>
+</body>
+</html>

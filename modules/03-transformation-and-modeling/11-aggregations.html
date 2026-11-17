@@ -1,0 +1,311 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>03-11 Aggregations · DE Associate course</title>
+<link rel="stylesheet" href="../../assets/course.css">
+<script src="../../assets/course.js"></script>
+</head>
+<body data-lesson="03-11">
+
+<aside class="disclaimer" aria-label="Disclaimer"><strong>Learning resource only.</strong> This is an independent, unofficial study guide made for learning purposes. It is not affiliated with, endorsed by or sponsored by Databricks. Databricks features change often, so always check the details in the <a href="https://docs.databricks.com">official Databricks documentation</a> and the official exam guide on databricks.com before relying on anything here. Databricks and related names are trademarks of their respective owners.</aside>
+
+<main class="wrap">
+
+<header class="hero">
+  <div class="eyebrow">Module 03 · Data Transformation and Modeling · Lesson 11 of 16</div>
+  <h1>Aggregations: count, approx_count_distinct, mean, summary</h1>
+  <p class="lede">Nobody reads a million rows. They read "total sales by shop". Aggregation is how many rows become a few numbers, and it is the heart of every gold table.</p>
+  <dl class="where">
+    <div><dt>Module</dt><dd>03 Data Transformation and Modeling (22% of the exam)</dd></div>
+    <div><dt>Exam objective</dt><dd>3.4 Remove duplicates and calculate aggregates such as counts, approximate distinct counts, averages and summaries. This lesson covers aggregates.</dd></div>
+    <div><dt>Time to read</dt><dd>About 13 minutes</dd></div>
+    <div><dt>Before this</dt><dd><a href="08-filtering-rows.html">03-08 Filtering rows</a> · <a href="02-cleaning-nulls.html">03-02 Cleaning nulls</a></dd></div>
+  </dl>
+</header>
+
+<section id="idea">
+  <div class="sec-num">The idea</div>
+  <h2>Many rows in, one number out</h2>
+  <p>To <a href="../../glossary.html#aggregate">aggregate</a> is to boil many rows down into one summary value. Count them. Add up a column. Find the average, the smallest, the largest.</p>
+  <p>On its own, an aggregate turns a whole table into a single row. More often you want one summary <em>per something</em>: per shop, per day, per item. That is <a href="../../glossary.html#group-by">grouping</a>. You name a column to group by. Spark sorts the rows into piles that share a value in that column, and works out the aggregates for each pile. The result has one row per pile.</p>
+  <p>The exam names four aggregates in particular:</p>
+  <ul>
+    <li><code>count</code>: how many rows.</li>
+    <li><code>approx_count_distinct</code>: roughly how many <em>different</em> values a column has. It gives up a little accuracy to be much faster on big data.</li>
+    <li><code>mean</code> (also called <code>avg</code>): the average.</li>
+    <li><code>summary</code>: not one number but a ready-made table of statistics for every numeric column, handy for a first look at data.</li>
+  </ul>
+  <div class="analogy">
+    <span class="tag">Everyday analogy</span>
+    <p><strong>Counting the day's takings.</strong> You tip the till onto the table. Counting every coin as one heap gives a single total. Sorting coins into piles by type first, then counting each pile, gives a total per type. Sorting into piles is the grouping. Counting each pile is the aggregate. And if someone only asks "roughly how many different kinds of coin are there?", a glance is quicker than an exact inventory.</p>
+  </div>
+</section>
+
+<section id="how">
+  <div class="sec-num">How it works</div>
+  <h2>Sort into groups, then summarise each</h2>
+  <div class="stage">
+    <svg class="tall" viewBox="0 0 360 370" role="img" aria-label="Six order rows are sorted into two groups by shop. Each group is reduced to one row holding a count and a total.">
+      <defs><path id="g1" d="M100 130 C 100 150, 90 150, 90 168"/><path id="g2" d="M260 130 C 260 150, 270 150, 270 168"/><path id="g3" d="M90 252 C 90 276, 150 280, 160 296"/><path id="g4" d="M270 252 C 270 276, 210 280, 200 296"/></defs>
+      <g class="wire"><use href="#g1"/><use href="#g2"/><use href="#g3"/><use href="#g4"/></g>
+      <g class="mover">
+        <circle r="5" class="dot"><animateMotion dur="1.5s" repeatCount="indefinite"><mpath href="#g1"/></animateMotion></circle>
+        <circle r="5" class="dot"><animateMotion dur="1.5s" begin="-0.7s" repeatCount="indefinite"><mpath href="#g2"/></animateMotion></circle>
+        <circle r="5" class="dot-ok"><animateMotion dur="1.5s" begin="-0.3s" repeatCount="indefinite"><mpath href="#g3"/></animateMotion></circle>
+        <circle r="5" class="dot-ok"><animateMotion dur="1.5s" begin="-1s" repeatCount="indefinite"><mpath href="#g4"/></animateMotion></circle>
+      </g>
+      <rect class="box-soft" x="20" y="8" width="320" height="122" rx="8"/>
+      <text class="t-m" x="32" y="26">shop    price</text>
+      <text class="mono" x="32" y="46">North   4</text><text class="mono" x="32" y="64">South   3</text><text class="mono" x="32" y="82">North   2</text>
+      <text class="mono" x="190" y="46">South   1</text><text class="mono" x="190" y="64">North   6</text><text class="mono" x="190" y="82">South   5</text>
+      <text class="t-m" x="180" y="118" text-anchor="middle">6 rows, mixed</text>
+      <rect class="box" x="20" y="168" width="140" height="84" rx="8"/><text class="t-b" x="90" y="188" text-anchor="middle">group: North</text><text class="mono" x="90" y="210" text-anchor="middle">4, 2, 6</text><text class="t-m" x="90" y="238" text-anchor="middle">3 rows</text>
+      <rect class="box" x="200" y="168" width="140" height="84" rx="8"/><text class="t-b" x="270" y="188" text-anchor="middle">group: South</text><text class="mono" x="270" y="210" text-anchor="middle">3, 1, 5</text><text class="t-m" x="270" y="238" text-anchor="middle">3 rows</text>
+      <rect class="box-acc" x="60" y="296" width="240" height="66" rx="8"/>
+      <text class="t-m" x="74" y="314">shop    count   sum</text>
+      <text class="mono" x="74" y="334">North   3       12</text><text class="mono" x="74" y="352">South   3       9</text>
+    </svg>
+    <p class="cap">One output row per group. Grouping needs a shuffle, because rows of the same shop must be brought together.</p>
+  </div>
+  <h3>Counting has three meanings</h3>
+  <ul>
+    <li><code>count(*)</code> counts rows, whatever is in them.</li>
+    <li><code>count(price)</code> counts rows where <code>price</code> is not NULL.</li>
+    <li><code>count(DISTINCT customer)</code> counts how many different customers there are.</li>
+  </ul>
+  <p>The third is expensive on large data, because Spark has to remember every distinct value it has seen. <code>approx_count_distinct</code> replaces that memory with a clever small sketch. The answer is an estimate, by default within about 5% of the truth, and it is produced far more quickly.</p>
+</section>
+
+<section id="demo">
+  <div class="sec-num">Try it</div>
+  <h2>Group and summarise</h2>
+  <p>Eight orders. One has no price. Choose what to group by, and compare the three kinds of count. Then look at <code>summary()</code>.</p>
+  <div class="stage">
+    <div class="ctrls">
+      <label class="tog">Group by: <select id="dBy"><option value="">(nothing: whole table)</option><option>shop</option><option>item</option></select></label>
+      <label class="tog">Keep groups where count(*) is at least: <select id="dHav"><option>1</option><option>3</option><option>4</option></select></label>
+      <button id="dSum" type="button">Show summary() of price</button>
+    </div>
+    <div class="panes">
+      <div class="pane"><h4>orders</h4><div id="pIn"></div></div>
+      <div class="pane"><h4 id="hOut">Result</h4><div id="pOut"></div></div>
+    </div>
+    <div class="log" id="dLog" role="log" aria-label="What happened"></div>
+    <p class="cap">On data this small, the approximate distinct count equals the exact one. The difference only appears on large data.</p>
+  </div>
+</section>
+
+<section id="code">
+  <div class="sec-num">Code</div>
+  <h2>Aggregating in both languages</h2>
+<pre><code><span class="c-k">from</span> pyspark.sql <span class="c-k">import</span> functions <span class="c-k">as</span> F
+
+orders = spark.table(<span class="c-s">"bakery.silver.orders"</span>)
+
+<span class="c-c"># The whole table as one row.</span>
+orders.agg(F.count(<span class="c-s">"*"</span>).alias(<span class="c-s">"orders"</span>), F.mean(<span class="c-s">"price"</span>).alias(<span class="c-s">"avg_price"</span>))
+
+<span class="c-c"># One row per shop, with several aggregates.</span>
+by_shop = (orders
+    .groupBy(<span class="c-s">"shop"</span>)
+    .agg(
+        F.count(<span class="c-s">"*"</span>).alias(<span class="c-s">"orders"</span>),                               <span class="c-c"># rows</span>
+        F.count(<span class="c-s">"price"</span>).alias(<span class="c-s">"priced_orders"</span>),                    <span class="c-c"># rows with a price</span>
+        F.countDistinct(<span class="c-s">"customer_id"</span>).alias(<span class="c-s">"customers"</span>),          <span class="c-c"># exact, slower</span>
+        F.approx_count_distinct(<span class="c-s">"customer_id"</span>).alias(<span class="c-s">"customers_est"</span>),  <span class="c-c"># estimate, faster</span>
+        F.sum(<span class="c-s">"price"</span>).alias(<span class="c-s">"total_sales"</span>),
+        F.mean(<span class="c-s">"price"</span>).alias(<span class="c-s">"avg_price"</span>),
+        F.min(<span class="c-s">"price"</span>).alias(<span class="c-s">"cheapest"</span>),
+        F.max(<span class="c-s">"price"</span>).alias(<span class="c-s">"dearest"</span>)))
+
+<span class="c-c"># Keep only some groups: filter AFTER aggregating.</span>
+busy = by_shop.filter(F.col(<span class="c-s">"orders"</span>) &gt;= 100)
+
+<span class="c-c"># A quick statistical look at every numeric column.</span>
+display(orders.summary())                         <span class="c-c"># count, mean, stddev, min, 25%, 50%, 75%, max</span>
+display(orders.select(<span class="c-s">"price"</span>).summary(<span class="c-s">"count"</span>, <span class="c-s">"mean"</span>, <span class="c-s">"max"</span>))   <span class="c-c"># just the ones you name</span>
+display(orders.describe())                        <span class="c-c"># the shorter version: no percentiles</span></code></pre>
+<pre><code><span class="c-k">SELECT</span>
+  shop,
+  <span class="c-k">COUNT</span>(*)                           <span class="c-k">AS</span> orders,
+  <span class="c-k">COUNT</span>(price)                       <span class="c-k">AS</span> priced_orders,
+  <span class="c-k">COUNT</span>(<span class="c-k">DISTINCT</span> customer_id)        <span class="c-k">AS</span> customers,
+  approx_count_distinct(customer_id) <span class="c-k">AS</span> customers_est,
+  <span class="c-k">SUM</span>(price)                         <span class="c-k">AS</span> total_sales,
+  <span class="c-k">AVG</span>(price)                         <span class="c-k">AS</span> avg_price
+<span class="c-k">FROM</span> bakery.silver.orders
+<span class="c-k">WHERE</span> order_date &gt;= <span class="c-s">'2026-11-01'</span>       <span class="c-c">-- filters ROWS, before grouping</span>
+<span class="c-k">GROUP BY</span> shop
+<span class="c-k">HAVING COUNT</span>(*) &gt;= 100                 <span class="c-c">-- filters GROUPS, after aggregating</span>
+<span class="c-k">ORDER BY</span> total_sales <span class="c-k">DESC</span>;</code></pre>
+</section>
+
+<section id="whatif">
+  <div class="sec-num">What if I change this?</div>
+  <h2>What each choice does</h2>
+  <div class="tbl"><table class="whatif">
+    <tr><th>Change</th><th>Effect</th></tr>
+    <tr><td><code>count("*")</code> to <code>count("price")</code></td><td>Rows where price is NULL are no longer counted.</td></tr>
+    <tr><td><code>countDistinct</code> to <code>approx_count_distinct</code></td><td>Much less memory and time on large data. The answer may be a few per cent off.</td></tr>
+    <tr><td><code>approx_count_distinct("customer_id", 0.01)</code></td><td>The second argument is the allowed error. Smaller means more accurate and more costly. The default is 0.05, about 5%.</td></tr>
+    <tr><td>Group by a column that contains NULLs</td><td>The NULLs form a group of their own, shown with NULL as its label.</td></tr>
+    <tr><td>Select a column that is neither grouped nor aggregated</td><td>An error. Each output row stands for many input rows, so Spark cannot know which value to show.</td></tr>
+    <tr><td>Filter with <code>WHERE</code> instead of <code>HAVING</code></td><td><code>WHERE</code> removes rows before the totals are worked out. <code>HAVING</code> removes whole groups afterwards. They answer different questions.</td></tr>
+    <tr><td><code>mean</code> of a column with NULLs</td><td>NULLs are skipped. The average is over the rows that have a value.</td></tr>
+    <tr><td><code>summary()</code> to <code>describe()</code></td><td>You lose the 25%, 50% and 75% values. <code>describe</code> gives count, mean, standard deviation, min and max only.</td></tr>
+    <tr><td>Group by many columns at once</td><td>One row per combination that occurs. With enough columns you are barely summarising at all.</td></tr>
+  </table></div>
+</section>
+
+<section id="compare">
+  <div class="sec-num">Compare</div>
+  <h2>Exact or approximate distinct count</h2>
+  <div class="tbl"><table>
+    <tr><th></th><th>countDistinct / COUNT(DISTINCT)</th><th>approx_count_distinct</th></tr>
+    <tr><td>Answer</td><td>Exact</td><td>An estimate, by default within about 5%</td></tr>
+    <tr><td>Cost on large data</td><td>High: every distinct value must be tracked</td><td>Low: a small fixed-size sketch</td></tr>
+    <tr><td>Use for</td><td>Finance, billing, anything that must reconcile</td><td>Dashboards and trends, such as "about how many visitors"</td></tr>
+  </table></div>
+  <h3>The everyday aggregates</h3>
+  <div class="grid3">
+    <div class="card"><span class="tag">count</span><p>How many. <code>count(*)</code> for rows, <code>count(col)</code> for non-NULL values.</p></div>
+    <div class="card"><span class="tag">sum / mean</span><p>The total and the average. Both skip NULLs. <code>avg</code> is another name for <code>mean</code>.</p></div>
+    <div class="card"><span class="tag">min / max</span><p>The smallest and largest. They also work on dates and text.</p></div>
+  </div>
+  <h3>What summary() shows</h3>
+  <p>For each numeric column: <strong>count</strong> of non-NULL values, <strong>mean</strong>, <strong>stddev</strong> (standard deviation, a measure of how spread out the values are), <strong>min</strong>, the <strong>25%</strong>, <strong>50%</strong> and <strong>75%</strong> points (a quarter, half and three quarters of values lie below them; 50% is the median), and <strong>max</strong>.</p>
+</section>
+
+<section id="scenarios">
+  <div class="sec-num">Real life</div>
+  <h2>Aggregates in use</h2>
+  <div class="tbl"><table>
+    <tr><th>Scenario</th><th>What happens</th><th>Fix</th></tr>
+    <tr><td>A dashboard shows "unique visitors today" over two billion events and takes minutes</td><td>An exact distinct count over a huge column</td><td><code>approx_count_distinct</code>: a 5% margin is fine for a trend</td></tr>
+    <tr><td>Finance needs the number of distinct paying customers for an invoice</td><td>An estimate is not acceptable</td><td>The exact <code>COUNT(DISTINCT ...)</code></td></tr>
+    <tr><td>A new dataset arrives and nobody knows what is in it</td><td>You need ranges, averages and gaps at a glance</td><td><code>summary()</code></td></tr>
+    <tr><td>"Number of orders" and "number of prices" differ</td><td><code>count(*)</code> against <code>count(price)</code>: some prices are NULL</td><td>That difference is the number of missing prices. Use it as a quality check.</td></tr>
+    <tr><td>A query for "shops with over 1,000 sales" is written with <code>WHERE total &gt; 1000</code> and fails</td><td>The total does not exist yet when <code>WHERE</code> runs</td><td>Use <code>HAVING</code></td></tr>
+  </table></div>
+</section>
+
+<section id="traps">
+  <div class="sec-num">Don't confuse these</div>
+  <h2>Aggregate traps</h2>
+  <div class="grid2">
+    <div class="card trap"><span class="tag">count(*) vs count(col)</span><p><code>count(*)</code> counts rows. <code>count(col)</code> skips rows where that column is NULL.</p></div>
+    <div class="card trap"><span class="tag">WHERE vs HAVING</span><p><code>WHERE</code> filters rows before grouping. <code>HAVING</code> filters groups after it.</p></div>
+    <div class="card trap"><span class="tag">summary vs describe</span><p>Both give count, mean, stddev, min and max. Only <code>summary</code> adds the 25%, 50% and 75% values.</p></div>
+    <div class="card trap"><span class="tag">distinct vs count distinct</span><p><code>distinct()</code> returns the different rows. <code>countDistinct</code> returns how many there are.</p></div>
+  </div>
+</section>
+
+<section id="quiz">
+  <div class="sec-num">Check yourself</div>
+  <h2>Quiz</h2>
+  <div class="quiz">
+    <fieldset>
+      <legend>1. A table has 10 rows and 2 of them have a NULL price. What do <code>count(*)</code> and <code>count(price)</code> return?</legend>
+      <label><input type="radio"> 10 and 10</label>
+      <label><input type="radio" data-correct> 10 and 8</label>
+      <label><input type="radio"> 8 and 8</label>
+      <p class="explain" hidden><code>count(*)</code> counts every row. <code>count(price)</code> counts only rows with a price.</p>
+    </fieldset>
+    <fieldset>
+      <legend>2. When is <code>approx_count_distinct</code> the better choice?</legend>
+      <label><input type="radio"> When the number must be exact for billing</label>
+      <label><input type="radio" data-correct> When the data is very large and a small error is acceptable</label>
+      <label><input type="radio"> When the column has no duplicates</label>
+      <p class="explain" hidden>It trades a little accuracy for a large saving in time and memory.</p>
+    </fieldset>
+    <fieldset>
+      <legend>3. Which clause keeps only shops whose total sales exceed 1,000?</legend>
+      <label><input type="radio"> <code>WHERE SUM(price) &gt; 1000</code></label>
+      <label><input type="radio" data-correct> <code>HAVING SUM(price) &gt; 1000</code></label>
+      <label><input type="radio"> <code>GROUP BY SUM(price) &gt; 1000</code></label>
+      <p class="explain" hidden>Conditions on aggregates go in <code>HAVING</code>, which runs after the groups are formed.</p>
+    </fieldset>
+    <fieldset>
+      <legend>4. What does <code>summary()</code> give that <code>describe()</code> does not?</legend>
+      <label><input type="radio"> The mean</label>
+      <label><input type="radio"> The count</label>
+      <label><input type="radio" data-correct> The 25%, 50% and 75% values</label>
+      <p class="explain" hidden>Both give count, mean, stddev, min and max. The percentiles are extra in <code>summary</code>.</p>
+    </fieldset>
+    <fieldset>
+      <legend>5. In the demo, grouping by shop, why was North's <code>count(price)</code> lower than its <code>count(*)</code>?</legend>
+      <label><input type="radio"> A duplicate was removed</label>
+      <label><input type="radio" data-correct> One North order has no price</label>
+      <label><input type="radio"> <code>count(price)</code> counts distinct prices</label>
+      <p class="explain" hidden>A NULL price is a row, so it is counted by <code>count(*)</code>, but it is not a value, so <code>count(price)</code> skips it.</p>
+    </fieldset>
+  </div>
+</section>
+
+<section id="wrap">
+  <div class="sec-num">Wrap up</div>
+  <h2>Key takeaways</h2>
+  <ul>
+    <li>Aggregates reduce many rows to summary values. Grouping gives one result row per group.</li>
+    <li><code>count(*)</code> counts rows. <code>count(col)</code> skips NULLs. Sums and means skip NULLs too.</li>
+    <li><code>approx_count_distinct</code> estimates distinct values quickly, within about 5% by default.</li>
+    <li><code>WHERE</code> filters rows before grouping. <code>HAVING</code> filters groups after.</li>
+    <li><code>summary()</code> gives count, mean, stddev, min, quartiles and max for a first look.</li>
+  </ul>
+  <h3>Glossary terms used</h3>
+  <p><a href="../../glossary.html#aggregate">aggregate</a> · <a href="../../glossary.html#group-by">group by</a> · <a href="../../glossary.html#null">NULL</a> · <a href="../../glossary.html#shuffle">shuffle</a></p>
+  <h3>Official docs</h3>
+  <ul>
+    <li><a href="https://docs.databricks.com/aws/en/sql/language-manual/sql-ref-syntax-qry-select-groupby">GROUP BY clause</a></li>
+    <li><a href="https://docs.databricks.com/aws/en/sql/language-manual/functions/approx_count_distinct">approx_count_distinct function</a></li>
+    <li><a href="https://spark.apache.org/docs/latest/api/python/reference/pyspark.sql/dataframe.html">PySpark DataFrame reference (agg, summary, describe)</a></li>
+  </ul>
+  <p class="cap">Last verified: 16 November 2026</p>
+</section>
+
+</main>
+
+<script>
+(function () {
+  var C = window.Course, $ = function (id) { return document.getElementById(id); }, L = $('dLog');
+  var DATA = [
+    { shop: 'North', item: 'Loaf', customer: 'c1', price: 4 }, { shop: 'North', item: 'Bun', customer: 'c2', price: 1 }, { shop: 'North', item: 'Loaf', customer: 'c1', price: 4 },
+    { shop: 'North', item: 'Cake', customer: 'c3', price: null }, { shop: 'South', item: 'Loaf', customer: 'c4', price: 3 }, { shop: 'South', item: 'Bun', customer: 'c4', price: 1 },
+    { shop: 'South', item: 'Bun', customer: 'c5', price: 2 }, { shop: 'East', item: 'Cake', customer: 'c6', price: 6 }
+  ];
+  $('pIn').innerHTML = C.table(DATA);
+  function agg(rows) {
+    var p = rows.map(function (r) { return r.price; }).filter(function (x) { return x !== null; }), cust = {};
+    rows.forEach(function (r) { cust[r.customer] = 1; });
+    var sum = p.reduce(function (a, b) { return a + b; }, 0);
+    return { 'count(*)': rows.length, 'count(price)': p.length, 'count(DISTINCT customer)': Object.keys(cust).length, 'approx_count_distinct': Object.keys(cust).length, 'sum(price)': sum, 'mean(price)': p.length ? (sum / p.length).toFixed(2) : null };
+  }
+  function run() {
+    var by = $('dBy').value, min = +$('dHav').value, out;
+    if (!by) out = [agg(DATA)];
+    else {
+      var g = {}; DATA.forEach(function (r) { (g[r[by]] = g[r[by]] || []).push(r); });
+      out = Object.keys(g).map(function (k) { var a = agg(g[k]), o = {}; o[by] = k; Object.keys(a).forEach(function (x) { o[x] = a[x]; }); return o; });
+    }
+    var all = out.length; out = out.filter(function (r) { return r['count(*)'] >= min; });
+    $('hOut').textContent = by ? 'GROUP BY ' + by + (min > 1 ? ' HAVING count(*) >= ' + min : '') : 'Whole table';
+    $('pOut').innerHTML = C.table(out);
+    C.log(L, 'ok', (by ? 'Grouped by ' + by + ': ' + all + ' group(s)' : 'No grouping: 1 row') + (min > 1 ? ', ' + out.length + ' kept by HAVING' : '') + '. count(*) and count(price) differ wherever a price is NULL.');
+  }
+  /* summary(): count, mean, stddev, min, quartiles, max of the non-NULL prices. */
+  $('dSum').onclick = function () {
+    var p = DATA.map(function (r) { return r.price; }).filter(function (x) { return x !== null; }).sort(function (a, b) { return a - b; }), n = p.length;
+    var mean = p.reduce(function (a, b) { return a + b; }, 0) / n, sd = Math.sqrt(p.reduce(function (a, b) { return a + (b - mean) * (b - mean); }, 0) / (n - 1));
+    function pct(q) { return p[Math.min(n - 1, Math.ceil(q * n) - 1)]; }
+    $('hOut').textContent = 'orders.select("price").summary()';
+    $('pOut').innerHTML = C.table([['count', n], ['mean', mean.toFixed(2)], ['stddev', sd.toFixed(2)], ['min', p[0]], ['25%', pct(0.25)], ['50%', pct(0.5)], ['75%', pct(0.75)], ['max', p[n - 1]]].map(function (x) { return { summary: x[0], price: x[1] }; }));
+    C.log(L, 'ok', 'summary(): ' + n + ' non-NULL prices out of ' + DATA.length + ' rows. The NULL is not counted.');
+  };
+  $('dBy').onchange = $('dHav').onchange = run;
+  run();
+})();
+</script>
+</body>
+</html>

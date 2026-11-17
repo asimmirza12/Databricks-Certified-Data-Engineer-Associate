@@ -1,0 +1,289 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>03-10 Deduplication · DE Associate course</title>
+<link rel="stylesheet" href="../../assets/course.css">
+<script src="../../assets/course.js"></script>
+</head>
+<body data-lesson="03-10">
+
+<aside class="disclaimer" aria-label="Disclaimer"><strong>Learning resource only.</strong> This is an independent, unofficial study guide made for learning purposes. It is not affiliated with, endorsed by or sponsored by Databricks. Databricks features change often, so always check the details in the <a href="https://docs.databricks.com">official Databricks documentation</a> and the official exam guide on databricks.com before relying on anything here. Databricks and related names are trademarks of their respective owners.</aside>
+
+<main class="wrap">
+
+<header class="hero">
+  <div class="eyebrow">Module 03 · Data Transformation and Modeling · Lesson 10 of 16</div>
+  <h1>Deduplication</h1>
+  <p class="lede">The same order arrives twice. A file is sent again. A record is updated and both versions are kept. Duplicates are normal in raw data, and removing them properly is one of the main jobs of a silver table.</p>
+  <dl class="where">
+    <div><dt>Module</dt><dd>03 Data Transformation and Modeling (22% of the exam)</dd></div>
+    <div><dt>Exam objective</dt><dd>3.4 Remove duplicates and calculate aggregates such as counts, approximate distinct counts, averages and summaries. This lesson covers removing duplicates.</dd></div>
+    <div><dt>Time to read</dt><dd>About 12 minutes</dd></div>
+    <div><dt>Before this</dt><dd><a href="08-filtering-rows.html">03-08 Filtering rows</a></dd></div>
+  </dl>
+</header>
+
+<section id="idea">
+  <div class="sec-num">The idea</div>
+  <h2>First decide what "the same" means</h2>
+  <p><a href="../../glossary.html#deduplication">Deduplication</a> means keeping one copy of each thing and removing the rest. The hard part is not the removing. It is deciding which rows count as copies of each other. There are two answers, and they need different tools.</p>
+  <ul>
+    <li><strong>Exact duplicates.</strong> Two rows identical in every column. Usually caused by loading the same data twice. Any one of them will do, because they are the same.</li>
+    <li><strong>Duplicates by key.</strong> Two rows with the same order ID, but different values elsewhere. Usually caused by an order being updated: first "placed", later "shipped". These are not interchangeable. You must choose <em>which</em> one to keep, and normally you want the most recent.</li>
+  </ul>
+  <p>Three tools cover these cases:</p>
+  <ul>
+    <li><code>distinct()</code> removes exact duplicates. It compares whole rows.</li>
+    <li><code>dropDuplicates(["order_id"])</code> keeps one row for each value of the columns you list. It does not let you say which one.</li>
+    <li><strong>Ranking and keeping the first.</strong> Number the rows within each order ID from newest to oldest, then keep number 1. This is the only one of the three that lets you choose.</li>
+  </ul>
+  <div class="analogy">
+    <span class="tag">Everyday analogy</span>
+    <p><strong>Clearing out a contacts list.</strong> If an entry was imported twice and both copies are identical, delete either one. But if you have two entries for the same friend, one with an old phone number and one with a new, you do not delete at random. You keep the newer one. First you had to decide that "same person" was your test, not "identical entry".</p>
+  </div>
+</section>
+
+<section id="how">
+  <div class="sec-num">How it works</div>
+  <h2>Three ways, three results</h2>
+  <div class="stage">
+    <svg class="tall" viewBox="0 0 360 400" role="img" aria-label="Four rows: order 101 twice identically, and order 102 twice with different status and time. Distinct removes only the identical copy. dropDuplicates on order id keeps one arbitrary row per order. Ranking by time keeps the latest row per order.">
+      <defs><path id="q1" d="M180 126 V150"/></defs>
+      <g class="wire"><use href="#q1"/></g>
+      <g class="mover"><circle r="5" class="dot"><animateMotion dur="1.2s" repeatCount="indefinite"><mpath href="#q1"/></animateMotion></circle></g>
+      <rect class="box-soft" x="20" y="8" width="320" height="118" rx="8"/>
+      <text class="t-m" x="32" y="26">order_id  status   updated</text>
+      <text class="mono" x="32" y="48">101       placed   09:00</text>
+      <text class="mono" x="32" y="68">101       placed   09:00   exact copy</text>
+      <text class="mono" x="32" y="88">102       placed   09:05</text>
+      <text class="mono" x="32" y="108">102       shipped  11:30   later version</text>
+      <rect class="box" x="6" y="150" width="112" height="150" rx="8"/>
+      <text class="t-b" x="62" y="170" text-anchor="middle">distinct()</text>
+      <text class="mono" x="14" y="194">101 placed</text><text class="mono" x="14" y="214">102 placed</text><text class="mono" x="14" y="234">102 shipped</text>
+      <text class="t-m" x="62" y="262" text-anchor="middle">3 rows.</text><text class="t-m" x="62" y="278" text-anchor="middle">102 still twice</text>
+      <rect class="box" x="124" y="150" width="112" height="150" rx="8"/>
+      <text class="t-b" x="180" y="170" text-anchor="middle">dropDuplicates</text><text class="t-m" x="180" y="184" text-anchor="middle">(["order_id"])</text>
+      <text class="mono" x="132" y="208">101 placed</text><text class="mono" x="132" y="228">102 ???</text>
+      <text class="t-m" x="180" y="262" text-anchor="middle">2 rows. Which 102</text><text class="t-m" x="180" y="278" text-anchor="middle">is not defined</text>
+      <rect class="box-acc" x="242" y="150" width="112" height="150" rx="8"/>
+      <text class="t-b" x="298" y="170" text-anchor="middle">Rank, keep 1</text><text class="t-m" x="298" y="184" text-anchor="middle">newest first</text>
+      <text class="mono" x="250" y="208">101 placed</text><text class="mono" x="250" y="228">102 shipped</text>
+      <text class="t-m" x="298" y="262" text-anchor="middle">2 rows. Always</text><text class="t-m" x="298" y="278" text-anchor="middle">the latest</text>
+      <text class="t-m" x="180" y="330" text-anchor="middle">Only the third lets you say which copy survives.</text>
+      <text class="t-m" x="180" y="352" text-anchor="middle">"Rank" = number the rows inside each order_id group,</text>
+      <text class="t-m" x="180" y="368" text-anchor="middle">ordered by updated, newest first.</text>
+    </svg>
+  </div>
+  <p>The ranking uses a <a href="../../glossary.html#window-function">window function</a>. A window function works something out for each row by looking at a group of related rows, without collapsing them into one. Here the group is "all rows with this order ID", and the thing worked out is each row's position when sorted by time. The function is called <code>row_number</code>.</p>
+</section>
+
+<section id="demo">
+  <div class="sec-num">Try it</div>
+  <h2>Deduplicate the same table three ways</h2>
+  <p>Six rows for three orders. One is an exact copy and two orders have later versions. Run each method. For <code>dropDuplicates</code>, press "Run again" a few times: which version of an order survives is not promised, and the demo picks at random to make that visible.</p>
+  <div class="stage">
+    <div class="ctrls">
+      <label class="tog">Method: <select id="dHow">
+        <option value="distinct">distinct()</option>
+        <option value="drop">dropDuplicates(["order_id"])</option>
+        <option value="latest">row_number() by updated, newest first, keep 1</option>
+        <option value="first">row_number() by updated, oldest first, keep 1</option>
+      </select></label>
+      <button id="dGo" type="button" class="primary">Run again</button>
+    </div>
+    <div class="panes">
+      <div class="pane"><h4>Before: 6 rows</h4><div id="pIn"></div></div>
+      <div class="pane"><h4>After</h4><div id="pOut"></div><p class="cap" id="pWhy"></p></div>
+    </div>
+    <div class="log" id="dLog" role="log" aria-label="What happened"></div>
+  </div>
+</section>
+
+<section id="code">
+  <div class="sec-num">Code</div>
+  <h2>Each method</h2>
+<pre><code><span class="c-k">from</span> pyspark.sql <span class="c-k">import</span> functions <span class="c-k">as</span> F
+<span class="c-k">from</span> pyspark.sql.window <span class="c-k">import</span> Window
+
+orders = spark.table(<span class="c-s">"bakery.bronze.orders_raw"</span>)
+
+<span class="c-c"># 1. Exact duplicates: rows identical in every column.</span>
+no_copies = orders.distinct()
+no_copies = orders.dropDuplicates()          <span class="c-c"># with no arguments, the same thing</span>
+
+<span class="c-c"># 2. One row per key. WHICH row is kept is not defined.</span>
+one_each = orders.dropDuplicates([<span class="c-s">"order_id"</span>])
+
+<span class="c-c"># 3. One row per key, and you choose which: the most recent.</span>
+newest_first = Window.partitionBy(<span class="c-s">"order_id"</span>).orderBy(F.col(<span class="c-s">"updated_at"</span>).desc())
+
+latest = (orders
+    .withColumn(<span class="c-s">"rn"</span>, F.row_number().over(newest_first))   <span class="c-c"># 1 = newest in its group</span>
+    .filter(F.col(<span class="c-s">"rn"</span>) == 1)
+    .drop(<span class="c-s">"rn"</span>))
+
+latest.write.mode(<span class="c-s">"overwrite"</span>).saveAsTable(<span class="c-s">"bakery.silver.orders"</span>)</code></pre>
+<pre><code><span class="c-c">-- 1. Exact duplicates.</span>
+<span class="c-k">SELECT DISTINCT</span> * <span class="c-k">FROM</span> bakery.bronze.orders_raw;
+
+<span class="c-c">-- 3. Latest row per order. QUALIFY filters on the result of a window function.</span>
+<span class="c-k">SELECT</span> *
+<span class="c-k">FROM</span> bakery.bronze.orders_raw
+<span class="c-k">QUALIFY</span> row_number() <span class="c-k">OVER</span> (<span class="c-k">PARTITION BY</span> order_id <span class="c-k">ORDER BY</span> updated_at <span class="c-k">DESC</span>) = 1;
+
+<span class="c-c">-- Before removing anything, look: which keys appear more than once?</span>
+<span class="c-k">SELECT</span> order_id, <span class="c-k">COUNT</span>(*) <span class="c-k">AS</span> copies
+<span class="c-k">FROM</span> bakery.bronze.orders_raw
+<span class="c-k">GROUP BY</span> order_id
+<span class="c-k">HAVING COUNT</span>(*) &gt; 1;</code></pre>
+  <p class="note">In a stream, <code>dropDuplicates</code> has to remember every key it has ever seen, which grows without end. Streaming deduplication therefore needs a time limit, set with a watermark. That is beyond this exam's scope, but know that batch and streaming deduplication differ.</p>
+</section>
+
+<section id="whatif">
+  <div class="sec-num">What if I change this?</div>
+  <h2>Which rows survive</h2>
+  <div class="tbl"><table class="whatif">
+    <tr><th>Change</th><th>Effect</th></tr>
+    <tr><td><code>distinct()</code> on rows that differ in any column</td><td>Both are kept. A different timestamp or a trailing space is enough to make rows "not the same".</td></tr>
+    <tr><td><code>dropDuplicates()</code> with no columns</td><td>Same as <code>distinct()</code>.</td></tr>
+    <tr><td><code>dropDuplicates(["order_id"])</code></td><td>One row per order ID. Which one is kept can differ from run to run.</td></tr>
+    <tr><td><code>dropDuplicates(["order_id", "shop"])</code></td><td>One row per combination. The same order ID in two shops is kept twice.</td></tr>
+    <tr><td>Sort first, then <code>dropDuplicates</code>, hoping to keep the first</td><td>Not reliable. Spark does not promise that the sort order survives into the deduplication.</td></tr>
+    <tr><td><code>row_number</code> ordered descending instead of ascending</td><td>You keep the newest instead of the oldest.</td></tr>
+    <tr><td>Two rows tie on the ordering column</td><td><code>row_number</code> still gives 1 and 2, in an order that is not defined. Add a second ordering column to break ties.</td></tr>
+    <tr><td>Deduplicate before standardising text</td><td><code>"North"</code> and <code>"north "</code> are seen as different, so duplicates slip through. Clean first, then deduplicate.</td></tr>
+  </table></div>
+</section>
+
+<section id="compare">
+  <div class="sec-num">Compare</div>
+  <h2>Choosing a method</h2>
+  <div class="tbl"><table>
+    <tr><th></th><th>distinct()</th><th>dropDuplicates(cols)</th><th>row_number, keep 1</th></tr>
+    <tr><td>Compares</td><td>Whole rows</td><td>The listed columns</td><td>The partition columns</td></tr>
+    <tr><td>You choose which row is kept</td><td>Not needed: they are identical</td><td>No</td><td>Yes, by the ordering</td></tr>
+    <tr><td>Same result every run</td><td>Yes</td><td>Not guaranteed</td><td>Yes, if ties are broken</td></tr>
+    <tr><td>Use for</td><td>Data loaded twice</td><td>Copies where any version will do</td><td>Updated records: keep the latest</td></tr>
+    <tr><td>SQL form</td><td><code>SELECT DISTINCT</code></td><td>None directly</td><td><code>QUALIFY row_number() ... = 1</code></td></tr>
+  </table></div>
+</section>
+
+<section id="scenarios">
+  <div class="sec-num">Real life</div>
+  <h2>Duplicates and their causes</h2>
+  <div class="tbl"><table>
+    <tr><th>Scenario</th><th>What happens</th><th>Fix</th></tr>
+    <tr><td>A supplier re-sent yesterday's file and every row is in bronze twice</td><td>Exact copies</td><td><code>distinct()</code> in the step that builds silver</td></tr>
+    <tr><td>An orders feed sends a new row each time an order's status changes</td><td>Several rows per order, all different</td><td>Keep the latest per order with <code>row_number</code></td></tr>
+    <tr><td>Two runs of the same job give different silver tables</td><td><code>dropDuplicates(["order_id"])</code> kept a different version each time</td><td>Use <code>row_number</code> with an explicit ordering</td></tr>
+    <tr><td><code>distinct()</code> removed nothing, though the data "looks" duplicated</td><td>Rows differ in a load timestamp column added at ingestion</td><td>Deduplicate on the business key, not on whole rows</td></tr>
+    <tr><td>Sales are still double after deduplicating</td><td>The duplicates were created later, by a join on a non-unique key</td><td>Fix the join (lesson 03-04). Deduplicating afterwards hides the cause.</td></tr>
+  </table></div>
+</section>
+
+<section id="traps">
+  <div class="sec-num">Don't confuse these</div>
+  <h2>Deduplication traps</h2>
+  <div class="grid2">
+    <div class="card trap"><span class="tag">distinct vs dropDuplicates</span><p>With no columns they are the same. Only <code>dropDuplicates</code> can be told to look at particular columns.</p></div>
+    <div class="card trap"><span class="tag">"One per key" is not "the latest"</span><p><code>dropDuplicates</code> gives you one row per key. It makes no promise about which. For "latest", rank.</p></div>
+    <div class="card trap"><span class="tag">row_number vs rank</span><p><code>row_number</code> gives 1, 2, 3 with no repeats, so "= 1" is always exactly one row. <code>rank</code> gives tied rows the same number, so "= 1" can return several.</p></div>
+    <div class="card trap"><span class="tag">WHERE vs QUALIFY</span><p><code>WHERE</code> cannot use a window function. <code>QUALIFY</code> is the filter that can.</p></div>
+  </div>
+</section>
+
+<section id="quiz">
+  <div class="sec-num">Check yourself</div>
+  <h2>Quiz</h2>
+  <div class="quiz">
+    <fieldset>
+      <legend>1. Two rows have the same order ID but different status values. What does <code>distinct()</code> do?</legend>
+      <label><input type="radio"> Keeps the newer one</label>
+      <label><input type="radio" data-correct> Keeps both</label>
+      <label><input type="radio"> Keeps one at random</label>
+      <p class="explain" hidden><code>distinct</code> compares whole rows. They differ in status, so they are not duplicates to it.</p>
+    </fieldset>
+    <fieldset>
+      <legend>2. You need exactly one row per order, and it must be the most recent version. Which approach?</legend>
+      <label><input type="radio"> <code>distinct()</code></label>
+      <label><input type="radio"> <code>dropDuplicates(["order_id"])</code></label>
+      <label><input type="radio" data-correct> <code>row_number()</code> over each order, newest first, keeping 1</label>
+      <p class="explain" hidden>Only the ranking approach lets you state which row to keep.</p>
+    </fieldset>
+    <fieldset>
+      <legend>3. What does <code>dropDuplicates(["order_id"])</code> promise about the row it keeps for each order?</legend>
+      <label><input type="radio"> It is the first one in the file</label>
+      <label><input type="radio"> It is the latest one</label>
+      <label><input type="radio" data-correct> Nothing. Any one of them may be kept.</label>
+      <p class="explain" hidden>The choice is not defined and can change between runs.</p>
+    </fieldset>
+    <fieldset>
+      <legend>4. In the demo, how many rows did <code>distinct()</code> leave from the six?</legend>
+      <label><input type="radio"> 3</label>
+      <label><input type="radio" data-correct> 5</label>
+      <label><input type="radio"> 6</label>
+      <p class="explain" hidden>Only the one exact copy was removed. The later versions of two orders differ, so they stayed.</p>
+    </fieldset>
+    <fieldset>
+      <legend>5. Which SQL clause filters on the result of a window function such as <code>row_number()</code>?</legend>
+      <label><input type="radio"> <code>WHERE</code></label>
+      <label><input type="radio"> <code>HAVING</code></label>
+      <label><input type="radio" data-correct> <code>QUALIFY</code></label>
+      <p class="explain" hidden><code>QUALIFY</code> exists for exactly this. <code>WHERE</code> runs before window functions are worked out.</p>
+    </fieldset>
+  </div>
+</section>
+
+<section id="wrap">
+  <div class="sec-num">Wrap up</div>
+  <h2>Key takeaways</h2>
+  <ul>
+    <li>Decide first what makes two rows "the same": every column, or a key.</li>
+    <li><code>distinct()</code> removes exact copies only.</li>
+    <li><code>dropDuplicates([key])</code> keeps one row per key, without promising which.</li>
+    <li>To keep the latest, number rows per key with <code>row_number</code> and keep 1.</li>
+    <li>Clean and standardise before deduplicating, or near-copies slip through.</li>
+  </ul>
+  <h3>Glossary terms used</h3>
+  <p><a href="../../glossary.html#deduplication">deduplication</a> · <a href="../../glossary.html#window-function">window function</a> · <a href="../../glossary.html#join-key">key</a> · <a href="../../glossary.html#silver">silver</a></p>
+  <h3>Official docs</h3>
+  <ul>
+    <li><a href="https://docs.databricks.com/aws/en/sql/language-manual/sql-ref-syntax-qry-select-qualify">QUALIFY clause</a></li>
+    <li><a href="https://spark.apache.org/docs/latest/api/python/reference/pyspark.sql/dataframe.html">PySpark DataFrame reference (distinct, dropDuplicates)</a></li>
+    <li><a href="https://docs.databricks.com/aws/en/transform/">Transform data</a></li>
+  </ul>
+  <p class="cap">Last verified: 16 November 2026</p>
+</section>
+
+</main>
+
+<script>
+(function () {
+  var C = window.Course, $ = function (id) { return document.getElementById(id); }, L = $('dLog');
+  var DATA = [
+    { order_id: 101, status: 'placed', updated: '09:00' }, { order_id: 101, status: 'placed', updated: '09:00' },
+    { order_id: 102, status: 'placed', updated: '09:05' }, { order_id: 102, status: 'shipped', updated: '11:30' },
+    { order_id: 103, status: 'placed', updated: '10:10' }, { order_id: 103, status: 'cancelled', updated: '10:40' }
+  ];
+  $('pIn').innerHTML = C.table(DATA);
+  function groups() { var g = {}; DATA.forEach(function (r) { (g[r.order_id] = g[r.order_id] || []).push(r); }); return g; }
+  function run() {
+    var how = $('dHow').value, out, why, g = groups();
+    if (how === 'distinct') { var seen = {}; out = DATA.filter(function (r) { var k = JSON.stringify(r); if (seen[k]) return false; seen[k] = 1; return true; }); why = 'Only the identical copy of order 101 was removed. Orders 102 and 103 still have two rows each.'; }
+    else if (how === 'drop') { out = Object.keys(g).map(function (k) { return g[k][Math.floor(Math.random() * g[k].length)]; }); why = 'One row per order. Which version was kept is arbitrary: run it again.'; }
+    else {
+      var newest = how === 'latest';
+      out = Object.keys(g).map(function (k) { return g[k].slice().sort(function (a, b) { return (a.updated < b.updated ? -1 : a.updated > b.updated ? 1 : 0) * (newest ? -1 : 1); })[0]; });
+      why = 'One row per order, always the ' + (newest ? 'latest' : 'earliest') + ' version. The same every run.';
+    }
+    $('pOut').innerHTML = C.table(out); $('pWhy').textContent = why;
+    C.log(L, how === 'drop' ? 'skip' : 'ok', $('dHow').selectedOptions[0].text + ': ' + out.length + ' rows. Statuses kept: ' + out.map(function (r) { return r.order_id + ' ' + r.status; }).join(', ') + '.');
+  }
+  $('dGo').onclick = run; $('dHow').onchange = run;
+  run();
+})();
+</script>
+</body>
+</html>

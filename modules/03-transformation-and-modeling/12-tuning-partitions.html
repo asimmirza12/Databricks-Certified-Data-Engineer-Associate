@@ -1,0 +1,284 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>03-12 Tuning: shuffle partitions and default parallelism · DE Associate course</title>
+<link rel="stylesheet" href="../../assets/course.css">
+<script src="../../assets/course.js"></script>
+</head>
+<body data-lesson="03-12">
+
+<aside class="disclaimer" aria-label="Disclaimer"><strong>Learning resource only.</strong> This is an independent, unofficial study guide made for learning purposes. It is not affiliated with, endorsed by or sponsored by Databricks. Databricks features change often, so always check the details in the <a href="https://docs.databricks.com">official Databricks documentation</a> and the official exam guide on databricks.com before relying on anything here. Databricks and related names are trademarks of their respective owners.</aside>
+
+<main class="wrap">
+
+<header class="hero">
+  <div class="eyebrow">Module 03 · Data Transformation and Modeling · Lesson 12 of 16</div>
+  <h1>Tuning: shuffle partitions and default parallelism</h1>
+  <p class="lede">Joins and group-bys make Spark move data between machines. How many pieces it cuts that data into is a setting you can change, and the right number makes the difference between a quick job and a painful one.</p>
+  <dl class="where">
+    <div><dt>Module</dt><dd>03 Data Transformation and Modeling (22% of the exam)</dd></div>
+    <div><dt>Exam objective</dt><dd>3.5 Know the basic Spark tuning settings (shuffle partitions, default parallelism, executor and driver memory, automatic broadcast threshold) and check whether a change helped. This lesson covers the first two.</dd></div>
+    <div><dt>Time to read</dt><dd>About 13 minutes</dd></div>
+    <div><dt>Before this</dt><dd><a href="04-joins-inner-left.html">03-04 Joins</a> · <a href="11-aggregations.html">03-11 Aggregations</a> · <a href="../00-foundations/05-what-is-spark.html">00-05 What is Apache Spark?</a></dd></div>
+  </dl>
+</header>
+
+<section id="idea">
+  <div class="sec-num">The idea</div>
+  <h2>How many pieces after a shuffle?</h2>
+  <p>Recall from lesson 00-05 that Spark works on data in chunks called <a href="../../glossary.html#partition">partitions</a>, one task per partition.</p>
+  <p>Some operations need related rows to be in the same place. To add up sales per shop, all of North's rows must meet. To join orders to customers, matching keys must meet. Spark achieves this by redistributing every row to a new partition chosen by its key. That redistribution is a <a href="../../glossary.html#shuffle">shuffle</a>.</p>
+  <p>After a shuffle the data sits in a fresh set of partitions. How many? That is decided by one setting:</p>
+  <p class="note"><code>spark.sql.shuffle.partitions</code>: the number of partitions used after a shuffle in DataFrame and SQL work. Its default is <strong>200</strong>.</p>
+  <p>200 is a fixed guess that knows nothing about your data. For a tiny table it is far too many: Spark creates 200 tasks to handle a handful of rows each, and spends longer organising than working. For a huge table it is far too few: each partition is enormous, does not fit in memory, and has to be written to disk partway through.</p>
+  <p>The second setting in the exam objective is a relative:</p>
+  <p class="note"><code>spark.default.parallelism</code>: the default number of partitions for the older, low-level RDD interface. It does <strong>not</strong> control DataFrame or SQL shuffles.</p>
+  <div class="analogy">
+    <span class="tag">Everyday analogy</span>
+    <p><strong>Sorting post into pigeonholes.</strong> A sorting office must split the day's letters among a wall of pigeonholes. With 200 pigeonholes and 20 letters, clerks walk the length of the wall to place one letter each: lots of walking, little sorting. With 200 pigeonholes and 20 million letters, every hole overflows onto the floor. The right number of holes depends on how much post there is today.</p>
+  </div>
+</section>
+
+<section id="how">
+  <div class="sec-num">How it works</div>
+  <h2>Too few, about right, too many</h2>
+  <div class="stage">
+    <svg class="tall" viewBox="0 0 360 380" role="img" aria-label="The same data after a shuffle with three settings. Too few partitions: each is huge and spills to disk. About right: partitions fit in memory. Too many: hundreds of tiny partitions with overhead for each.">
+      <defs><path id="p0" d="M180 46 V70"/></defs>
+      <g class="wire"><use href="#p0"/></g>
+      <g class="mover"><circle r="5" class="dot"><animateMotion dur="1.2s" repeatCount="indefinite"><mpath href="#p0"/></animateMotion></circle></g>
+      <rect class="box-soft" x="70" y="8" width="220" height="38" rx="8"/><text x="180" y="32" text-anchor="middle">groupBy or join: a shuffle</text>
+      <text class="t-b" x="10" y="92">Too few</text><text class="t-m" x="72" y="92">each partition is huge</text>
+      <g class="box-acc"><rect x="10" y="100" width="160" height="50" rx="6"/><rect x="180" y="100" width="170" height="50" rx="6"/></g>
+      <text class="t-m" x="90" y="130" text-anchor="middle">does not fit: spills to disk</text><text class="t-m" x="265" y="130" text-anchor="middle">does not fit: spills to disk</text>
+      <text class="t-b" x="10" y="186">About right</text><text class="t-m" x="96" y="186">each fits in memory</text>
+      <g class="box-acc"><rect x="10" y="194" width="50" height="50" rx="6"/><rect x="68" y="194" width="50" height="50" rx="6"/><rect x="126" y="194" width="50" height="50" rx="6"/><rect x="184" y="194" width="50" height="50" rx="6"/><rect x="242" y="194" width="50" height="50" rx="6"/><rect x="300" y="194" width="50" height="50" rx="6"/></g>
+      <text class="t-b" x="10" y="280">Too many</text><text class="t-m" x="84" y="280">tiny pieces, each needing a task</text>
+      <g class="box-acc">
+        <rect x="10" y="288" width="12" height="50" rx="2"/><rect x="26" y="288" width="12" height="50" rx="2"/><rect x="42" y="288" width="12" height="50" rx="2"/><rect x="58" y="288" width="12" height="50" rx="2"/><rect x="74" y="288" width="12" height="50" rx="2"/><rect x="90" y="288" width="12" height="50" rx="2"/><rect x="106" y="288" width="12" height="50" rx="2"/><rect x="122" y="288" width="12" height="50" rx="2"/><rect x="138" y="288" width="12" height="50" rx="2"/><rect x="154" y="288" width="12" height="50" rx="2"/><rect x="170" y="288" width="12" height="50" rx="2"/><rect x="186" y="288" width="12" height="50" rx="2"/><rect x="202" y="288" width="12" height="50" rx="2"/><rect x="218" y="288" width="12" height="50" rx="2"/><rect x="234" y="288" width="12" height="50" rx="2"/><rect x="250" y="288" width="12" height="50" rx="2"/><rect x="266" y="288" width="12" height="50" rx="2"/><rect x="282" y="288" width="12" height="50" rx="2"/><rect x="298" y="288" width="12" height="50" rx="2"/><rect x="314" y="288" width="12" height="50" rx="2"/><rect x="330" y="288" width="12" height="50" rx="2"/>
+      </g>
+      <text class="t-m" x="180" y="364" text-anchor="middle">The same data each time. Only the number of pieces changes.</text>
+    </svg>
+  </div>
+  <h3>Let Spark choose</h3>
+  <p>Modern Spark has a feature called <a href="../../glossary.html#aqe">adaptive query execution</a>, or AQE. It watches a query while it runs. After a shuffle it looks at how much data actually arrived and merges small partitions together, so a starting value of 200 no longer hurts small jobs so much.</p>
+  <p>Databricks goes one step further. If you set <code>spark.sql.shuffle.partitions</code> to the word <code>auto</code>, Spark picks the number itself from the size of the data. On serverless compute, <code>auto</code> is already the default. This is why the usual advice today is: do not hand-tune this number unless you have measured a problem.</p>
+  <h3>The tuning loop</h3>
+  <p>The objective says to "re-measure". Tuning is not guessing a better number. It is a loop:</p>
+  <ol>
+    <li><strong>Measure</strong> the job as it is. Note the run time, and look at the shuffle in the Spark UI.</li>
+    <li><strong>Change one setting.</strong> Only one, or you will not know what made the difference.</li>
+    <li><strong>Measure again</strong> on the same data, and compare.</li>
+    <li>Keep the change only if it helped.</li>
+  </ol>
+</section>
+
+<section id="demo">
+  <div class="sec-num">Try it</div>
+  <h2>Find the right number, and prove it</h2>
+  <p>Choose how much data the job shuffles and how many shuffle partitions to use. Each run is added to the measurement log, so you can compare. Find the best setting for 1 GB, then for 500 GB. Is it the same number?</p>
+  <div class="stage">
+    <div class="ctrls">
+      <label class="tog">Data shuffled: <select id="dSize"><option value="1">1 GB</option><option value="50">50 GB</option><option value="500">500 GB</option></select></label>
+      <label class="tog">spark.sql.shuffle.partitions: <select id="dParts"><option>8</option><option selected>200</option><option>2000</option><option>20000</option><option value="auto">auto</option></select></label>
+      <button id="dRun" type="button" class="primary">Run and measure</button>
+      <button id="dReset" type="button">Clear measurements</button>
+    </div>
+    <div class="panes">
+      <div class="pane"><h4>This run</h4><div class="big" id="pTime">-</div><p class="cap" id="pWhy"></p><div class="item"><span>partitions used</span><span id="pN">-</span></div><div class="item"><span>size of each</span><span id="pEach">-</span></div></div>
+      <div class="pane"><h4>Measurement log</h4><div id="pLog"></div></div>
+    </div>
+    <div class="log" id="dLog" role="log" aria-label="What happened"></div>
+    <p class="cap">A simple model, not a benchmark: 16 cores, a small fixed cost per task, and a heavy penalty when a partition is too large for memory. <code>auto</code> aims for partitions of roughly 256 MB.</p>
+  </div>
+</section>
+
+<section id="code">
+  <div class="sec-num">Code</div>
+  <h2>Reading and setting the values</h2>
+<pre><code><span class="c-c"># What is it now?</span>
+print(spark.conf.get(<span class="c-s">"spark.sql.shuffle.partitions"</span>))
+
+<span class="c-c"># Change it for this session. It applies to shuffles that happen from now on.</span>
+spark.conf.set(<span class="c-s">"spark.sql.shuffle.partitions"</span>, <span class="c-s">"64"</span>)
+
+<span class="c-c"># On Databricks: let Spark choose from the size of the data.</span>
+spark.conf.set(<span class="c-s">"spark.sql.shuffle.partitions"</span>, <span class="c-s">"auto"</span>)</code></pre>
+<pre><code><span class="c-c">-- The same from SQL.</span>
+<span class="c-k">SET</span> spark.sql.shuffle.partitions;            <span class="c-c">-- show the current value</span>
+<span class="c-k">SET</span> spark.sql.shuffle.partitions = <span class="c-k">auto</span>;     <span class="c-c">-- change it</span></code></pre>
+  <p>And the measuring half of the loop:</p>
+<pre><code><span class="c-k">import</span> time
+<span class="c-k">from</span> pyspark.sql <span class="c-k">import</span> functions <span class="c-k">as</span> F
+
+<span class="c-k">def</span> timed_run(label):
+    start = time.time()
+    (spark.table(<span class="c-s">"bakery.silver.orders"</span>)
+        .groupBy(<span class="c-s">"shop"</span>, <span class="c-s">"order_date"</span>)          <span class="c-c"># this is the shuffle</span>
+        .agg(F.sum(<span class="c-s">"price"</span>).alias(<span class="c-s">"sales"</span>))
+        .write.mode(<span class="c-s">"overwrite"</span>).saveAsTable(<span class="c-s">"bakery.gold.daily_sales"</span>))   <span class="c-c"># an action, so it really runs</span>
+    print(label, round(time.time() - start, 1), <span class="c-s">"seconds"</span>)
+
+timed_run(<span class="c-s">"baseline"</span>)                                          <span class="c-c"># 1. measure</span>
+spark.conf.set(<span class="c-s">"spark.sql.shuffle.partitions"</span>, <span class="c-s">"auto"</span>)        <span class="c-c"># 2. change ONE thing</span>
+timed_run(<span class="c-s">"after change"</span>)                                      <span class="c-c"># 3. measure again</span></code></pre>
+  <p class="note"><code>spark.default.parallelism</code> is different: it is fixed when the compute starts, in the compute's Spark configuration. You cannot change it from a running notebook, and it does not affect the DataFrame code above anyway.</p>
+</section>
+
+<section id="whatif">
+  <div class="sec-num">What if I change this?</div>
+  <h2>The setting and its side effects</h2>
+  <div class="tbl"><table class="whatif">
+    <tr><th>Change</th><th>Effect</th></tr>
+    <tr><td>Leave <code>spark.sql.shuffle.partitions</code> at 200 for a small table</td><td>Up to 200 tiny tasks. AQE usually merges them, which hides most of the cost.</td></tr>
+    <tr><td>Leave it at 200 for a very large shuffle</td><td>Each partition is many gigabytes. Tasks run out of memory and spill to disk, or fail.</td></tr>
+    <tr><td>Raise it for a large shuffle</td><td>Smaller partitions that fit in memory. Usually much faster.</td></tr>
+    <tr><td>Raise it far too high</td><td>Tens of thousands of tiny tasks. The driver spends its time scheduling them, and writing a table can create a flood of tiny files.</td></tr>
+    <tr><td>Set it to <code>auto</code></td><td>Spark sizes the shuffle from the data. The sensible default on Databricks, and the actual default on serverless.</td></tr>
+    <tr><td>Change <code>spark.default.parallelism</code> to speed up a DataFrame join</td><td>No effect. That setting is for RDD operations.</td></tr>
+    <tr><td>Change the setting partway through a notebook</td><td>Only shuffles run afterwards use the new value.</td></tr>
+    <tr><td>Change two settings at once and re-measure</td><td>You cannot tell which change helped, or whether one helped and the other hurt.</td></tr>
+    <tr><td>Try to set other Spark settings on serverless</td><td>Most are not allowed there. Shuffle partitions is one of the few that is.</td></tr>
+  </table></div>
+</section>
+
+<section id="compare">
+  <div class="sec-num">Compare</div>
+  <h2>The two settings side by side</h2>
+  <div class="tbl"><table>
+    <tr><th></th><th>spark.sql.shuffle.partitions</th><th>spark.default.parallelism</th></tr>
+    <tr><td>Applies to</td><td>DataFrame and SQL shuffles: joins, <code>groupBy</code>, <code>distinct</code>, sorting</td><td>RDD operations</td></tr>
+    <tr><td>Default</td><td>200 (or <code>auto</code> on serverless)</td><td>Depends on the compute, usually its total number of cores</td></tr>
+    <tr><td>Change it</td><td>At any time, with <code>spark.conf.set</code> or <code>SET</code></td><td>Only in the compute's configuration, before it starts</td></tr>
+    <tr><td>Matters for this exam's code</td><td>Yes</td><td>Rarely. Know what it is and that it is not the DataFrame one.</td></tr>
+  </table></div>
+  <h3>Signs that the number is wrong</h3>
+  <div class="grid2">
+    <div class="card"><span class="tag">Too few partitions</span><p>A few very long tasks. "Spill" figures in the Spark UI. Out-of-memory failures in a shuffle stage.</p></div>
+    <div class="card"><span class="tag">Too many partitions</span><p>Thousands of tasks that each take milliseconds. A long pause before stages start. Output tables made of very many small files.</p></div>
+  </div>
+</section>
+
+<section id="scenarios">
+  <div class="sec-num">Real life</div>
+  <h2>Tuning stories</h2>
+  <div class="tbl"><table>
+    <tr><th>Scenario</th><th>What happens</th><th>Fix</th></tr>
+    <tr><td>A nightly aggregation over 800 GB keeps failing with out-of-memory errors in its shuffle</td><td>200 partitions means about 4 GB in each</td><td>Raise shuffle partitions, or set <code>auto</code>, and re-measure</td></tr>
+    <tr><td>A job on a 50 MB table takes a minute and writes 200 files</td><td>The fixed default is far too high for it</td><td>Set <code>auto</code>, or a small number</td></tr>
+    <tr><td>An engineer sets <code>spark.default.parallelism</code> to 1000 and a DataFrame job is no faster</td><td>That setting does not govern DataFrame shuffles</td><td>Change <code>spark.sql.shuffle.partitions</code></td></tr>
+    <tr><td>A config of 5,000 partitions copied from another project makes a small job slow</td><td>A number tuned for someone else's data</td><td>Remove it and let <code>auto</code> decide</td></tr>
+    <tr><td>Someone "tunes" five settings and the job is 10% faster</td><td>Nobody knows which change did it</td><td>Go back and change one at a time, measuring each</td></tr>
+  </table></div>
+</section>
+
+<section id="traps">
+  <div class="sec-num">Don't confuse these</div>
+  <h2>Tuning traps</h2>
+  <div class="grid2">
+    <div class="card trap"><span class="tag">shuffle.partitions vs default.parallelism</span><p>The first is for DataFrames and SQL and can be changed at run time. The second is for RDDs and is fixed at start-up.</p></div>
+    <div class="card trap"><span class="tag">200 is a default, not a recommendation</span><p>It is a guess made without seeing your data. It is right only by accident.</p></div>
+    <div class="card trap"><span class="tag">Shuffle partitions vs table partitions</span><p>Shuffle partitions are temporary chunks during a query. Partitioning a table is a way of arranging its stored files. Unrelated.</p></div>
+    <div class="card trap"><span class="tag">More is not better</span><p>Both too few and too many are slow. The goal is partitions that comfortably fit in memory, and no smaller than that.</p></div>
+  </div>
+</section>
+
+<section id="quiz">
+  <div class="sec-num">Check yourself</div>
+  <h2>Quiz</h2>
+  <div class="quiz">
+    <fieldset>
+      <legend>1. What is the default value of <code>spark.sql.shuffle.partitions</code> on classic compute?</legend>
+      <label><input type="radio"> 8</label>
+      <label><input type="radio" data-correct> 200</label>
+      <label><input type="radio"> The number of cores</label>
+      <p class="explain" hidden>The default is 200. On serverless compute the default is <code>auto</code>.</p>
+    </fieldset>
+    <fieldset>
+      <legend>2. Which setting controls the number of partitions after a DataFrame <code>groupBy</code>?</legend>
+      <label><input type="radio" data-correct> <code>spark.sql.shuffle.partitions</code></label>
+      <label><input type="radio"> <code>spark.default.parallelism</code></label>
+      <label><input type="radio"> <code>spark.executor.memory</code></label>
+      <p class="explain" hidden>DataFrame and SQL shuffles use <code>spark.sql.shuffle.partitions</code>. <code>default.parallelism</code> is for RDDs.</p>
+    </fieldset>
+    <fieldset>
+      <legend>3. A very large shuffle with too few partitions typically shows what?</legend>
+      <label><input type="radio"> Thousands of millisecond-long tasks</label>
+      <label><input type="radio" data-correct> A few long tasks that spill to disk or run out of memory</label>
+      <label><input type="radio"> No tasks at all</label>
+      <p class="explain" hidden>Each partition is too big for memory, so tasks spill or fail. Thousands of tiny tasks is the sign of too many partitions.</p>
+    </fieldset>
+    <fieldset>
+      <legend>4. In the demo, was the best partition count for 1 GB also the best for 500 GB?</legend>
+      <label><input type="radio"> Yes</label>
+      <label><input type="radio" data-correct> No. Each data size had a different best fixed number, and only <code>auto</code> suited both.</label>
+      <label><input type="radio"> The setting made no difference</label>
+      <p class="explain" hidden>A fixed number cannot suit every data size. <code>auto</code> chooses from the data.</p>
+    </fieldset>
+    <fieldset>
+      <legend>5. What is the correct way to check whether a tuning change helped?</legend>
+      <label><input type="radio"> Change several settings and see if the job feels faster</label>
+      <label><input type="radio" data-correct> Measure, change one setting, and measure again on the same data</label>
+      <label><input type="radio"> Trust the recommended value from another team</label>
+      <p class="explain" hidden>One change at a time, with a before and an after, is the only way to know what helped.</p>
+    </fieldset>
+  </div>
+</section>
+
+<section id="wrap">
+  <div class="sec-num">Wrap up</div>
+  <h2>Key takeaways</h2>
+  <ul>
+    <li>A shuffle redistributes rows by key for joins, grouping and sorting.</li>
+    <li><code>spark.sql.shuffle.partitions</code> sets the number of partitions afterwards. The default is 200.</li>
+    <li>Too few means huge partitions and spilling. Too many means overhead and tiny files.</li>
+    <li>On Databricks, <code>auto</code> lets Spark choose. It is the default on serverless.</li>
+    <li><code>spark.default.parallelism</code> is for RDDs and does not affect DataFrame shuffles.</li>
+    <li>Tune in a loop: measure, change one thing, measure again.</li>
+  </ul>
+  <h3>Glossary terms used</h3>
+  <p><a href="../../glossary.html#shuffle">shuffle</a> · <a href="../../glossary.html#partition">partition</a> · <a href="../../glossary.html#aqe">adaptive query execution</a> · <a href="../../glossary.html#executor">executor</a></p>
+  <h3>Official docs</h3>
+  <ul>
+    <li><a href="https://docs.databricks.com/aws/en/optimizations/aqe">Adaptive query execution</a></li>
+    <li><a href="https://docs.databricks.com/aws/en/spark/conf">Set Spark configuration properties</a></li>
+    <li><a href="https://spark.apache.org/docs/latest/sql-performance-tuning.html">Apache Spark: performance tuning</a></li>
+    <li><a href="https://spark.apache.org/docs/latest/configuration.html">Apache Spark: configuration</a></li>
+  </ul>
+  <p class="cap">Last verified: 16 November 2026</p>
+</section>
+
+</main>
+
+<script>
+(function () {
+  var C = window.Course, $ = function (id) { return document.getElementById(id); }, L = $('dLog');
+  var CORES = 16, TARGET_MB = 256, FIT_MB = 1024, runs = [];
+  /* Time model: CPU work shared over the cores in use, plus a fixed cost per task, times a penalty if partitions do not fit in memory. */
+  function model(gb, parts) {
+    var mb = gb * 1024, each = mb / parts, used = Math.min(CORES, parts), work = gb * 20 / used, overhead = parts * 0.3 / CORES;
+    var spill = each > FIT_MB ? Math.min(6, 1 + each / FIT_MB) : 1;
+    return { each: each, secs: work * spill + overhead, spill: spill > 1, tiny: each < 8 && parts > 200 };
+  }
+  function fmt(mb) { return mb >= 1024 ? (mb / 1024).toFixed(1) + ' GB' : mb >= 1 ? Math.round(mb) + ' MB' : '< 1 MB'; }
+  function draw() {
+    var best = {}; runs.forEach(function (r) { if (!best[r.gb] || r.secs < best[r.gb]) best[r.gb] = r.secs; });
+    $('pLog').innerHTML = runs.length ? C.table(runs.map(function (r) { return { data: r.gb + ' GB', setting: r.setting, partitions: r.parts, seconds: Math.round(r.secs) + (r.secs === best[r.gb] ? ' (best)' : '') }; })) : '<p class="cap">No runs yet.</p>';
+  }
+  $('dRun').onclick = function () {
+    var gb = +$('dSize').value, setting = $('dParts').value;
+    var parts = setting === 'auto' ? Math.max(CORES / 2, Math.ceil(gb * 1024 / TARGET_MB)) : +setting, m = model(gb, parts);
+    $('pTime').textContent = Math.round(m.secs) + ' s'; $('pN').textContent = parts.toLocaleString(); $('pEach').textContent = fmt(m.each);
+    $('pWhy').textContent = m.spill ? 'Partitions too big for memory: spilling to disk.' : m.tiny ? 'Thousands of tiny tasks: mostly overhead.' : 'Partitions fit in memory.';
+    runs.push({ gb: gb, setting: setting, parts: parts, secs: m.secs });
+    C.log(L, m.spill ? 'bad' : m.tiny ? 'skip' : 'ok', gb + ' GB with ' + setting + (setting === 'auto' ? ' (' + parts + ' partitions)' : '') + ': ' + Math.round(m.secs) + ' s, ' + fmt(m.each) + ' per partition. ' + $('pWhy').textContent);
+    draw(); C.bump($('pTime'));
+  };
+  $('dReset').onclick = function () { runs = []; L.innerHTML = ''; draw(); };
+  draw();
+})();
+</script>
+</body>
+</html>

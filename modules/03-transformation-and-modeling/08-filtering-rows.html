@@ -1,0 +1,294 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>03-08 Filtering rows · DE Associate course</title>
+<link rel="stylesheet" href="../../assets/course.css">
+<script src="../../assets/course.js"></script>
+</head>
+<body data-lesson="03-08">
+
+<aside class="disclaimer" aria-label="Disclaimer"><strong>Learning resource only.</strong> This is an independent, unofficial study guide made for learning purposes. It is not affiliated with, endorsed by or sponsored by Databricks. Databricks features change often, so always check the details in the <a href="https://docs.databricks.com">official Databricks documentation</a> and the official exam guide on databricks.com before relying on anything here. Databricks and related names are trademarks of their respective owners.</aside>
+
+<main class="wrap">
+
+<header class="hero">
+  <div class="eyebrow">Module 03 · Data Transformation and Modeling · Lesson 8 of 16</div>
+  <h1>Filtering rows</h1>
+  <p class="lede">Filtering is choosing which rows to keep. It is the simplest transformation and the one you will write most often. The details are in how conditions combine, and in what happens to rows with missing values.</p>
+  <dl class="where">
+    <div><dt>Module</dt><dd>03 Data Transformation and Modeling (22% of the exam)</dd></div>
+    <div><dt>Exam objective</dt><dd>3.3 Reshape data: add, drop, split and rename columns, filter rows, and turn arrays into rows. This lesson covers filtering.</dd></div>
+    <div><dt>Time to read</dt><dd>About 11 minutes</dd></div>
+    <div><dt>Before this</dt><dd><a href="01-dataframes-and-sql.html">03-01 DataFrames and SQL</a> · <a href="02-cleaning-nulls.html">03-02 Cleaning nulls</a></dd></div>
+  </dl>
+</header>
+
+<section id="idea">
+  <div class="sec-num">The idea</div>
+  <h2>Ask a yes-or-no question of every row</h2>
+  <p>A <a href="../../glossary.html#filter">filter</a> applies one test to each row. The test is a <a href="../../glossary.html#condition">condition</a>: a statement that is true or false for that row, such as "the price is above 3". Rows where it is true are kept. All others are left out.</p>
+  <p>You build bigger tests from small ones with three joining words:</p>
+  <ul>
+    <li><strong>AND</strong>: both parts must be true. Fewer rows pass.</li>
+    <li><strong>OR</strong>: either part may be true. More rows pass.</li>
+    <li><strong>NOT</strong>: the opposite of a test.</li>
+  </ul>
+  <p>In SQL you write those words as they are, after <code>WHERE</code>. In PySpark you write <code>&amp;</code> for AND, <code>|</code> for OR and <code>~</code> for NOT, inside <code>.filter()</code> or its twin <code>.where()</code>.</p>
+  <p>Remember the rule from lesson 03-02. A test on a NULL value is neither true nor false. Since only true rows are kept, rows with a NULL in the tested column are dropped, whichever way round you ask.</p>
+  <div class="analogy">
+    <span class="tag">Everyday analogy</span>
+    <p><strong>A doorman with a checklist.</strong> "Over 18 AND on the guest list" lets in few. "Over 18 OR on the guest list" lets in many. And someone who cannot show any proof of age is not let in under "over 18", nor under "not over 18". The doorman simply cannot say. That person is the NULL.</p>
+  </div>
+</section>
+
+<section id="how">
+  <div class="sec-num">How it works</div>
+  <h2>True passes. False and unknown do not.</h2>
+  <div class="stage">
+    <svg class="tall" viewBox="0 0 360 330" role="img" aria-label="Five rows meet the condition price greater than 3. Two pass because it is true, two fail because it is false, and one with a NULL price fails because the answer is unknown.">
+      <defs><path id="f1" d="M110 62 H250"/><path id="f2" d="M110 150 H250"/></defs>
+      <rect class="box-acc" x="124" y="8" width="112" height="300" rx="8"/>
+      <text class="t-b" x="180" y="30" text-anchor="middle">price &gt; 3 ?</text>
+      <g class="wire"><use href="#f1"/><use href="#f2"/><path d="M110 106 H170 M110 194 H170 M110 238 H170"/></g>
+      <g class="box"><rect x="8" y="46" width="102" height="32" rx="6"/><rect x="8" y="90" width="102" height="32" rx="6"/><rect x="8" y="134" width="102" height="32" rx="6"/><rect x="8" y="178" width="102" height="32" rx="6"/><rect x="8" y="222" width="102" height="32" rx="6"/></g>
+      <text class="mono" x="16" y="67">Loaf    4.50</text><text class="mono" x="16" y="111">Bun     1.00</text><text class="mono" x="16" y="155">Cake    6.00</text><text class="mono" x="16" y="199">Bagel   1.80</text><text class="mono" x="16" y="243">Roll    NULL</text>
+      <text class="t-m" x="180" y="66" text-anchor="middle">true</text><text class="t-m" x="180" y="110" text-anchor="middle">false</text><text class="t-m" x="180" y="154" text-anchor="middle">true</text><text class="t-m" x="180" y="198" text-anchor="middle">false</text><text class="t-b" x="180" y="242" text-anchor="middle">unknown</text>
+      <g class="box"><rect x="250" y="46" width="102" height="32" rx="6"/><rect x="250" y="134" width="102" height="32" rx="6"/></g>
+      <text class="mono" x="258" y="67">Loaf    4.50</text><text class="mono" x="258" y="155">Cake    6.00</text>
+      <text class="t-m" x="180" y="284" text-anchor="middle">2 of 5 rows kept</text>
+      <text class="t-m" x="180" y="324" text-anchor="middle">The Roll is dropped: NULL &gt; 3 is not true.</text>
+      <g class="mover">
+        <circle r="5" class="dot-ok"><animateMotion dur="1.8s" repeatCount="indefinite"><mpath href="#f1"/></animateMotion></circle>
+        <circle r="5" class="dot-ok"><animateMotion dur="1.8s" begin="-0.9s" repeatCount="indefinite"><mpath href="#f2"/></animateMotion></circle>
+      </g>
+    </svg>
+  </div>
+  <h3>Filter early</h3>
+  <p>Every later step has to carry the rows you keep. So put filters as early as you can, before joins and calculations. Spark's optimiser helps: it often moves a filter all the way down to the reading of the files, so that data which fails the test is never read at all. Giving it a clear, simple filter on a real column makes that possible.</p>
+</section>
+
+<section id="demo">
+  <div class="sec-num">Try it</div>
+  <h2>Build a filter</h2>
+  <p>Combine two conditions with AND or OR, or negate the first one. The filter is written out in both languages. Watch the row for the Roll, whose price is NULL.</p>
+  <div class="stage">
+    <div class="ctrls">
+      <label class="tog"><input type="checkbox" id="dNot"> NOT</label>
+      <label class="tog">A: <select id="dA"><option value="price>3">price &gt; 3</option><option value="shop=North">shop is North</option><option value="item^B">item starts with B</option><option value="shop@">shop is North or East</option><option value="price?">price is NULL</option></select></label>
+      <label class="tog"><select id="dJoin"><option value="">(no second condition)</option><option value="and">AND</option><option value="or">OR</option></select></label>
+      <label class="tog">B: <select id="dB"><option value="shop=North">shop is North</option><option value="price>3">price &gt; 3</option><option value="price?">price is NULL</option></select></label>
+    </div>
+    <div class="panes">
+      <div class="pane"><h4>PySpark</h4><pre class="filetext" id="pPy"></pre><h4>SQL</h4><pre class="filetext" id="pSql"></pre></div>
+      <div class="pane"><h4>Every row, and the verdict</h4><div id="pOut"></div><p class="cap" id="pSum"></p></div>
+    </div>
+    <div class="log" id="dLog" role="log" aria-label="What happened"></div>
+  </div>
+</section>
+
+<section id="code">
+  <div class="sec-num">Code</div>
+  <h2>Conditions you will write again and again</h2>
+<pre><code><span class="c-k">from</span> pyspark.sql <span class="c-k">import</span> functions <span class="c-k">as</span> F
+
+orders = spark.table(<span class="c-s">"bakery.silver.orders"</span>)
+
+<span class="c-c"># One condition. filter() and where() are the same method.</span>
+dear = orders.filter(F.col(<span class="c-s">"price"</span>) &gt; 3)
+
+<span class="c-c"># AND is &amp;, OR is |, NOT is ~. Each part MUST be in its own brackets.</span>
+north_dear   = orders.filter((F.col(<span class="c-s">"shop"</span>) == <span class="c-s">"North"</span>) &amp; (F.col(<span class="c-s">"price"</span>) &gt; 3))
+north_or_big = orders.filter((F.col(<span class="c-s">"shop"</span>) == <span class="c-s">"North"</span>) | (F.col(<span class="c-s">"qty"</span>) &gt;= 10))
+not_north    = orders.filter(~(F.col(<span class="c-s">"shop"</span>) == <span class="c-s">"North"</span>))
+
+<span class="c-c"># One of a list of values.</span>
+two_shops = orders.filter(F.col(<span class="c-s">"shop"</span>).isin(<span class="c-s">"North"</span>, <span class="c-s">"East"</span>))
+
+<span class="c-c"># A range, both ends included.</span>
+mid = orders.filter(F.col(<span class="c-s">"price"</span>).between(2, 4))
+
+<span class="c-c"># Text patterns.</span>
+b_items  = orders.filter(F.col(<span class="c-s">"item"</span>).startswith(<span class="c-s">"B"</span>))
+has_seed = orders.filter(F.col(<span class="c-s">"item"</span>).contains(<span class="c-s">"seed"</span>))
+like_b   = orders.filter(F.col(<span class="c-s">"item"</span>).like(<span class="c-s">"B%"</span>))       <span class="c-c"># % stands for any characters</span>
+
+<span class="c-c"># Missing values need their own test.</span>
+no_price = orders.filter(F.col(<span class="c-s">"price"</span>).isNull())
+
+<span class="c-c"># A filter can also be written as a SQL string.</span>
+dear = orders.filter(<span class="c-s">"price &gt; 3 AND shop = 'North'"</span>)</code></pre>
+<pre><code><span class="c-k">SELECT</span> * <span class="c-k">FROM</span> bakery.silver.orders
+<span class="c-k">WHERE</span> shop <span class="c-k">IN</span> (<span class="c-s">'North'</span>, <span class="c-s">'East'</span>)
+  <span class="c-k">AND</span> price <span class="c-k">BETWEEN</span> 2 <span class="c-k">AND</span> 4
+  <span class="c-k">AND</span> item <span class="c-k">LIKE</span> <span class="c-s">'B%'</span>
+  <span class="c-k">AND</span> order_date &gt;= <span class="c-s">'2026-11-01'</span>;
+
+<span class="c-c">-- Keep rows with no price as well as cheap ones.</span>
+<span class="c-k">SELECT</span> * <span class="c-k">FROM</span> bakery.silver.orders
+<span class="c-k">WHERE</span> price &lt;= 3 <span class="c-k">OR</span> price <span class="c-k">IS NULL</span>;</code></pre>
+</section>
+
+<section id="whatif">
+  <div class="sec-num">What if I change this?</div>
+  <h2>Small slips, wrong rows</h2>
+  <div class="tbl"><table class="whatif">
+    <tr><th>Change</th><th>Effect</th></tr>
+    <tr><td>AND to OR</td><td>More rows pass. A row now needs only one of the two tests to be true.</td></tr>
+    <tr><td>Leave the brackets off in PySpark: <code>col("a") == 1 &amp; col("b") &gt; 2</code></td><td>An error, or a wrong result. <code>&amp;</code> is applied before <code>==</code> unless each part is bracketed.</td></tr>
+    <tr><td>Use Python's <code>and</code> / <code>or</code> between column conditions</td><td>An error. Those words do not work on columns. Use <code>&amp;</code> and <code>|</code>.</td></tr>
+    <tr><td>Filter on a column that has NULLs</td><td>Rows with NULL there are dropped, because the test is not true for them.</td></tr>
+    <tr><td>Negate the test with NOT</td><td>The NULL rows are still dropped. NOT of "unknown" is still "unknown".</td></tr>
+    <tr><td><code>BETWEEN 2 AND 4</code></td><td>Both ends are included: 2 and 4 pass.</td></tr>
+    <tr><td><code>LIKE 'b%'</code> on "Bagel"</td><td>No match. Text comparison is case sensitive. Use <code>ILIKE</code> in SQL, or lower-case both sides.</td></tr>
+    <tr><td>Mix AND and OR without brackets</td><td>AND is applied first. <code>a OR b AND c</code> means <code>a OR (b AND c)</code>. Add brackets to say what you mean.</td></tr>
+    <tr><td>Filter after a big join instead of before</td><td>The same result, but the join had to process rows that were about to be thrown away.</td></tr>
+  </table></div>
+</section>
+
+<section id="compare">
+  <div class="sec-num">Compare</div>
+  <h2>The same condition in both languages</h2>
+  <div class="tbl"><table>
+    <tr><th>Meaning</th><th>PySpark</th><th>SQL</th></tr>
+    <tr><td>Equals</td><td><code>col("shop") == "North"</code></td><td><code>shop = 'North'</code></td></tr>
+    <tr><td>Not equal</td><td><code>col("shop") != "North"</code></td><td><code>shop &lt;&gt; 'North'</code></td></tr>
+    <tr><td>And / or / not</td><td><code>&amp;</code> &nbsp; <code>|</code> &nbsp; <code>~</code></td><td><code>AND</code> &nbsp; <code>OR</code> &nbsp; <code>NOT</code></td></tr>
+    <tr><td>In a list</td><td><code>col("shop").isin("N", "E")</code></td><td><code>shop IN ('N', 'E')</code></td></tr>
+    <tr><td>In a range</td><td><code>col("price").between(2, 4)</code></td><td><code>price BETWEEN 2 AND 4</code></td></tr>
+    <tr><td>Pattern</td><td><code>col("item").like("B%")</code></td><td><code>item LIKE 'B%'</code></td></tr>
+    <tr><td>Missing</td><td><code>col("price").isNull()</code></td><td><code>price IS NULL</code></td></tr>
+  </table></div>
+  <h3>WHERE or HAVING?</h3>
+  <div class="grid2">
+    <div class="card"><span class="tag">WHERE</span><p>Filters individual rows, before any grouping. "Orders above 3 pounds."</p></div>
+    <div class="card"><span class="tag">HAVING</span><p>Filters groups, after totals are worked out. "Shops whose total is above 1,000." Lesson 03-11.</p></div>
+  </div>
+</section>
+
+<section id="scenarios">
+  <div class="sec-num">Real life</div>
+  <h2>Filters that lose rows</h2>
+  <div class="tbl"><table>
+    <tr><th>Scenario</th><th>What happens</th><th>Fix</th></tr>
+    <tr><td>"Cancelled" plus "not cancelled" does not add up to all orders</td><td>Orders with a NULL status are in neither group</td><td>Add <code>OR status IS NULL</code> to one of them, or fill the status</td></tr>
+    <tr><td>A filter for North shops returns nothing</td><td>The data says <code>"north"</code>, and comparison is case sensitive</td><td>Standardise in silver, or compare on <code>lower(shop)</code></td></tr>
+    <tr><td>A PySpark filter with two conditions throws a confusing error</td><td>The brackets round each condition are missing</td><td>Bracket each part: <code>(a) &amp; (b)</code></td></tr>
+    <tr><td>A daily job reads three years of data and then keeps one day</td><td>The date filter comes late, after expensive steps</td><td>Filter on the date first</td></tr>
+    <tr><td>A query meant to find "North, and either large or dear" returns South orders too</td><td>Written as <code>shop = 'North' AND qty &gt; 10 OR price &gt; 5</code>, the OR part escapes the shop test</td><td>Bracket it: <code>shop = 'North' AND (qty &gt; 10 OR price &gt; 5)</code></td></tr>
+  </table></div>
+</section>
+
+<section id="traps">
+  <div class="sec-num">Don't confuse these</div>
+  <h2>Filter traps</h2>
+  <div class="grid2">
+    <div class="card trap"><span class="tag">filter vs select</span><p><code>filter</code> chooses rows. <code>select</code> chooses columns.</p></div>
+    <div class="card trap"><span class="tag">&amp; | ~ vs and or not</span><p>On columns, only the symbols work. And every condition needs its own brackets.</p></div>
+    <div class="card trap"><span class="tag">NOT and NULL</span><p>A filter and its opposite do not always cover every row. Rows where the tested column is NULL fall through both.</p></div>
+    <div class="card trap"><span class="tag">WHERE vs HAVING</span><p>WHERE acts on rows before grouping. HAVING acts on groups after it.</p></div>
+  </div>
+</section>
+
+<section id="quiz">
+  <div class="sec-num">Check yourself</div>
+  <h2>Quiz</h2>
+  <div class="quiz">
+    <fieldset>
+      <legend>1. A table has 10 rows. Three have a NULL price. Four have a price above 3. How many rows does <code>WHERE NOT (price &gt; 3)</code> return?</legend>
+      <label><input type="radio" data-correct> 3</label>
+      <label><input type="radio"> 6</label>
+      <label><input type="radio"> 7</label>
+      <p class="explain" hidden>Three rows have a price of 3 or less. The three NULL rows are not returned by the filter or by its opposite.</p>
+    </fieldset>
+    <fieldset>
+      <legend>2. Which PySpark filter is written correctly?</legend>
+      <label><input type="radio"> <code>df.filter(F.col("a") == 1 and F.col("b") &gt; 2)</code></label>
+      <label><input type="radio"> <code>df.filter(F.col("a") == 1 &amp; F.col("b") &gt; 2)</code></label>
+      <label><input type="radio" data-correct> <code>df.filter((F.col("a") == 1) &amp; (F.col("b") &gt; 2))</code></label>
+      <p class="explain" hidden>Use <code>&amp;</code>, not <code>and</code>, and put each condition in its own brackets.</p>
+    </fieldset>
+    <fieldset>
+      <legend>3. Does <code>price BETWEEN 2 AND 4</code> keep a row with price exactly 4?</legend>
+      <label><input type="radio" data-correct> Yes</label>
+      <label><input type="radio"> No</label>
+      <label><input type="radio"> Only if price is a whole number</label>
+      <p class="explain" hidden>BETWEEN includes both ends of the range.</p>
+    </fieldset>
+    <fieldset>
+      <legend>4. In the demo, what was the verdict on the Roll (price NULL) for "price &gt; 3", and for NOT "price &gt; 3"?</legend>
+      <label><input type="radio"> Dropped, then kept</label>
+      <label><input type="radio" data-correct> Dropped both times</label>
+      <label><input type="radio"> Kept both times</label>
+      <p class="explain" hidden>The test on NULL is unknown, and so is its opposite. Only true is kept.</p>
+    </fieldset>
+    <fieldset>
+      <legend>5. Why put a filter before a join where possible?</legend>
+      <label><input type="radio"> It changes the result</label>
+      <label><input type="radio" data-correct> The join then has fewer rows to process</label>
+      <label><input type="radio"> Joins cannot run on unfiltered data</label>
+      <p class="explain" hidden>The result is the same, but less data moves through the expensive step.</p>
+    </fieldset>
+  </div>
+</section>
+
+<section id="wrap">
+  <div class="sec-num">Wrap up</div>
+  <h2>Key takeaways</h2>
+  <ul>
+    <li>A filter keeps the rows where a condition is true.</li>
+    <li>PySpark: <code>&amp;</code>, <code>|</code>, <code>~</code>, with brackets round each condition. SQL: AND, OR, NOT.</li>
+    <li>Rows with NULL in the tested column are dropped, by a filter and by its opposite.</li>
+    <li><code>isin</code>, <code>between</code> and <code>like</code> cover lists, ranges and patterns.</li>
+    <li>Filter as early as possible so later steps handle less data.</li>
+  </ul>
+  <h3>Glossary terms used</h3>
+  <p><a href="../../glossary.html#filter">filter</a> · <a href="../../glossary.html#condition">condition</a> · <a href="../../glossary.html#null">NULL</a> · <a href="../../glossary.html#row">row</a></p>
+  <h3>Official docs</h3>
+  <ul>
+    <li><a href="https://docs.databricks.com/aws/en/sql/language-manual/sql-ref-syntax-qry-select-where">WHERE clause</a></li>
+    <li><a href="https://docs.databricks.com/aws/en/sql/language-manual/sql-ref-null-semantics">NULL semantics</a></li>
+    <li><a href="https://docs.databricks.com/aws/en/pyspark/basics">PySpark basics</a></li>
+  </ul>
+  <p class="cap">Last verified: 16 November 2026</p>
+</section>
+
+</main>
+
+<script>
+(function () {
+  var C = window.Course, $ = function (id) { return document.getElementById(id); }, L = $('dLog');
+  var DATA = [{ item: 'Loaf', shop: 'North', price: 4.5 }, { item: 'Bun', shop: 'South', price: 1 }, { item: 'Cake', shop: 'East', price: 6 }, { item: 'Bagel', shop: 'North', price: 1.8 }, { item: 'Roll', shop: 'South', price: null }];
+  /* Each condition: test(row) returns true, false or null (unknown), plus its text in both languages. */
+  var COND = {
+    'price>3':    { t: function (r) { return r.price === null ? null : r.price > 3; }, py: 'F.col("price") > 3', sql: 'price > 3' },
+    'shop=North': { t: function (r) { return r.shop === 'North'; }, py: 'F.col("shop") == "North"', sql: "shop = 'North'" },
+    'item^B':     { t: function (r) { return r.item.charAt(0) === 'B'; }, py: 'F.col("item").startswith("B")', sql: "item LIKE 'B%'" },
+    'shop@':      { t: function (r) { return r.shop === 'North' || r.shop === 'East'; }, py: 'F.col("shop").isin("North", "East")', sql: "shop IN ('North', 'East')" },
+    'price?':     { t: function (r) { return r.price === null; }, py: 'F.col("price").isNull()', sql: 'price IS NULL' }
+  };
+  function not3(v) { return v === null ? null : !v; }
+  function and3(a, b) { return a === false || b === false ? false : a === null || b === null ? null : true; }
+  function or3(a, b) { return a === true || b === true ? true : a === null || b === null ? null : false; }
+  function run() {
+    var A = COND[$('dA').value], B = COND[$('dB').value], j = $('dJoin').value, neg = $('dNot').checked;
+    var py = '(' + A.py + ')', sql = A.sql;
+    if (neg) { py = '~' + py; sql = 'NOT (' + sql + ')'; }
+    if (j) { py += (j === 'and' ? ' & ' : ' | ') + '(' + B.py + ')'; sql += (j === 'and' ? '\n  AND ' : '\n  OR ') + B.sql; }
+    $('pPy').textContent = 'orders.filter(' + py + ')'; $('pSql').textContent = 'SELECT * FROM orders\nWHERE ' + sql;
+    var kept = 0, unknown = 0;
+    $('pOut').innerHTML = C.table(DATA.map(function (r) {
+      var v = A.t(r); if (neg) v = not3(v); if (j) v = j === 'and' ? and3(v, B.t(r)) : or3(v, B.t(r));
+      if (v === true) kept++; if (v === null) unknown++;
+      return { item: r.item, shop: r.shop, price: r.price, test: v === null ? 'unknown' : String(v), verdict: v === true ? 'KEPT' : 'dropped' };
+    }));
+    $('pSum').textContent = kept + ' of ' + DATA.length + ' rows kept.' + (unknown ? ' ' + unknown + ' dropped because the answer was unknown (NULL).' : '');
+    C.log(L, unknown ? 'bad' : 'ok', sql.replace(/\n\s+/g, ' ') + ' -> ' + kept + ' row(s)' + (unknown ? ', ' + unknown + ' lost to NULL' : '') + '.');
+  }
+  ['dA', 'dB', 'dJoin', 'dNot'].forEach(function (id) { $(id).onchange = run; });
+  run();
+})();
+</script>
+</body>
+</html>

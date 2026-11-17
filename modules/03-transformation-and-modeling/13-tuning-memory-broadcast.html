@@ -1,0 +1,291 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>03-13 Tuning: memory and the auto-broadcast threshold · DE Associate course</title>
+<link rel="stylesheet" href="../../assets/course.css">
+<script src="../../assets/course.js"></script>
+</head>
+<body data-lesson="03-13">
+
+<aside class="disclaimer" aria-label="Disclaimer"><strong>Learning resource only.</strong> This is an independent, unofficial study guide made for learning purposes. It is not affiliated with, endorsed by or sponsored by Databricks. Databricks features change often, so always check the details in the <a href="https://docs.databricks.com">official Databricks documentation</a> and the official exam guide on databricks.com before relying on anything here. Databricks and related names are trademarks of their respective owners.</aside>
+
+<main class="wrap">
+
+<header class="hero">
+  <div class="eyebrow">Module 03 · Data Transformation and Modeling · Lesson 13 of 16</div>
+  <h1>Tuning: memory and the auto-broadcast threshold, then measure again</h1>
+  <p class="lede">Three more settings from the exam objective. Two say how much memory Spark's machines may use. One decides when Spark switches to the fast broadcast join by itself.</p>
+  <dl class="where">
+    <div><dt>Module</dt><dd>03 Data Transformation and Modeling (22% of the exam)</dd></div>
+    <div><dt>Exam objective</dt><dd>3.5 Know the basic Spark tuning settings (shuffle partitions, default parallelism, executor and driver memory, automatic broadcast threshold) and check whether a change helped. This lesson covers memory and the broadcast threshold.</dd></div>
+    <div><dt>Time to read</dt><dd>About 13 minutes</dd></div>
+    <div><dt>Before this</dt><dd><a href="05-joins-multi-key-cross-broadcast.html">03-05 Broadcast join</a> · <a href="12-tuning-partitions.html">03-12 Tuning: shuffle partitions</a></dd></div>
+  </dl>
+</header>
+
+<section id="idea">
+  <div class="sec-num">The idea</div>
+  <h2>How much room, and when to broadcast</h2>
+  <p>Spark runs on a <a href="../../glossary.html#driver">driver</a> and a number of <a href="../../glossary.html#executor">executors</a> (lesson 00-05). Each is a program with a fixed amount of working memory.</p>
+  <ul>
+    <li><code>spark.executor.memory</code> is how much memory each executor has. Executors hold the partitions they are working on. Too little, and big partitions must be written to disk and read back, or the task fails.</li>
+    <li><code>spark.driver.memory</code> is how much the driver has. The driver holds the plan, results you pull back to it, and tables that are about to be broadcast. Too little, and collecting a large result or broadcasting a large table crashes it.</li>
+  </ul>
+  <p>Running out of memory is called an <a href="../../glossary.html#oom">out-of-memory error</a>, often shortened to OOM.</p>
+  <p>The third setting is about joins:</p>
+  <ul>
+    <li><code>spark.sql.autoBroadcastJoinThreshold</code> is a size limit. If Spark estimates that one side of a join is smaller than this, it uses a broadcast join automatically. The default is <strong>10 MB</strong>. Setting it to <strong>-1</strong> turns automatic broadcasting off.</li>
+  </ul>
+  <p>These three are linked. A broadcast table is first gathered on the driver, then copied to every executor. Raise the threshold, and bigger tables get broadcast, which needs more driver and executor memory. Tuning one without thinking of the others is how jobs start to fail.</p>
+  <div class="analogy">
+    <span class="tag">Everyday analogy</span>
+    <p><strong>Desks and handouts.</strong> Each worker has a desk (executor memory) and the manager has one too (driver memory). A rule says: "any reference sheet under ten pages gets photocopied for everyone" (the threshold). Raise it to "under a thousand pages" and suddenly the manager's desk is buried under a thousand-page original, and every worker's desk is buried under a copy. Either get bigger desks, or keep the rule sensible.</p>
+  </div>
+</section>
+
+<section id="how">
+  <div class="sec-num">How it works</div>
+  <h2>Where the memory is used</h2>
+  <div class="stage">
+    <svg class="tall" viewBox="0 0 360 380" role="img" aria-label="The driver holds the plan, collected results and the table being broadcast. Each executor holds its partitions and a copy of the broadcast table. A threshold check decides whether a table is broadcast.">
+      <defs><path id="z1" d="M180 132 C 180 160, 70 160, 70 184"/><path id="z2" d="M180 132 V184"/><path id="z3" d="M180 132 C 180 160, 290 160, 290 184"/></defs>
+      <g class="wire"><use href="#z1"/><use href="#z2"/><use href="#z3"/></g>
+      <g class="mover">
+        <circle r="5" class="dot-ok"><animateMotion dur="1.8s" repeatCount="indefinite"><mpath href="#z1"/></animateMotion></circle>
+        <circle r="5" class="dot-ok"><animateMotion dur="1.8s" begin="-0.6s" repeatCount="indefinite"><mpath href="#z2"/></animateMotion></circle>
+        <circle r="5" class="dot-ok"><animateMotion dur="1.8s" begin="-1.2s" repeatCount="indefinite"><mpath href="#z3"/></animateMotion></circle>
+      </g>
+      <rect class="box-acc" x="50" y="8" width="260" height="124" rx="8"/>
+      <text class="t-b" x="180" y="28" text-anchor="middle">Driver</text><text class="mono" x="180" y="46" text-anchor="middle">spark.driver.memory</text>
+      <g class="box-soft"><rect x="62" y="58" width="76" height="62" rx="4"/><rect x="142" y="58" width="76" height="62" rx="4"/><rect x="222" y="58" width="76" height="62" rx="4"/></g>
+      <text class="t-m" x="100" y="84" text-anchor="middle">the plan</text>
+      <text class="t-m" x="180" y="80" text-anchor="middle">results you</text><text class="t-m" x="180" y="96" text-anchor="middle">collect()</text>
+      <text class="t-m" x="260" y="80" text-anchor="middle">table being</text><text class="t-m" x="260" y="96" text-anchor="middle">broadcast</text>
+      <text class="t-m" x="180" y="160" text-anchor="middle">copies sent out</text>
+      <g class="box"><rect x="10" y="184" width="110" height="110" rx="8"/><rect x="125" y="184" width="110" height="110" rx="8"/><rect x="240" y="184" width="110" height="110" rx="8"/></g>
+      <text class="t-b" x="65" y="204" text-anchor="middle">Executor</text><text class="t-b" x="180" y="204" text-anchor="middle">Executor</text><text class="t-b" x="295" y="204" text-anchor="middle">Executor</text>
+      <g class="box-soft"><rect x="18" y="214" width="94" height="30" rx="4"/><rect x="133" y="214" width="94" height="30" rx="4"/><rect x="248" y="214" width="94" height="30" rx="4"/></g>
+      <text class="t-m" x="65" y="234" text-anchor="middle">its partitions</text><text class="t-m" x="180" y="234" text-anchor="middle">its partitions</text><text class="t-m" x="295" y="234" text-anchor="middle">its partitions</text>
+      <g class="box-acc"><rect x="18" y="250" width="94" height="30" rx="4"/><rect x="133" y="250" width="94" height="30" rx="4"/><rect x="248" y="250" width="94" height="30" rx="4"/></g>
+      <text class="t-m" x="65" y="270" text-anchor="middle">broadcast copy</text><text class="t-m" x="180" y="270" text-anchor="middle">broadcast copy</text><text class="t-m" x="295" y="270" text-anchor="middle">broadcast copy</text>
+      <text class="mono" x="180" y="318" text-anchor="middle">spark.executor.memory (each)</text>
+      <text class="t-m" x="180" y="346" text-anchor="middle">A table is broadcast automatically when its estimated size</text>
+      <text class="t-m" x="180" y="362" text-anchor="middle">is under spark.sql.autoBroadcastJoinThreshold.</text>
+    </svg>
+  </div>
+  <h3>How you set memory on Databricks</h3>
+  <p>The memory settings are fixed when compute starts. You cannot change them from a running notebook. And in practice you rarely type them at all. On Databricks you choose a <strong>machine type</strong> for the driver and for the workers, and Databricks sets the memory to suit that machine. Its advice is not to hard-code <code>spark.executor.memory</code> or <code>spark.driver.memory</code>, because that can undo its own tuning. To give Spark more memory, pick a larger machine type.</p>
+  <p>On serverless compute you cannot set them at all. Databricks sizes everything.</p>
+  <h3>A second threshold</h3>
+  <p>Spark's first size estimate is made before the query runs and can be wrong. Adaptive query execution (lesson 03-12) checks again while the query runs, using real sizes. On Databricks that run-time check has its own limit, 30 MB by default. So a join can be switched to a broadcast partway through, even if it was not planned as one.</p>
+</section>
+
+<section id="demo">
+  <div class="sec-num">Try it</div>
+  <h2>Tune a join, one change at a time</h2>
+  <p>A 200 GB orders table is joined to a products table. Run it as it is to get a baseline. Then change <strong>one</strong> setting and run again. The log keeps every measurement. Try to make it fast, then try to break it.</p>
+  <div class="stage">
+    <div class="ctrls">
+      <label class="tog">Products table size: <select id="dSmall"><option value="5">5 MB</option><option value="80" selected>80 MB</option><option value="6000">6 GB</option></select></label>
+      <label class="tog">autoBroadcastJoinThreshold: <select id="dThr"><option value="-1">-1 (off)</option><option value="10" selected>10 MB (default)</option><option value="100">100 MB</option><option value="10000">10 GB</option></select></label>
+      <label class="tog">Driver machine memory: <select id="dDrv"><option value="8" selected>8 GB</option><option value="64">64 GB</option></select></label>
+      <button id="dRun" type="button" class="primary">Run and measure</button>
+      <button id="dReset" type="button">Clear</button>
+    </div>
+    <div class="panes">
+      <div class="pane"><h4>This run</h4><div class="big" id="pTime">-</div><div class="item"><span>join method</span><span id="pHow">-</span></div><p class="cap" id="pWhy"></p></div>
+      <div class="pane"><h4>Measurement log</h4><div id="pLog"></div></div>
+    </div>
+    <div class="log" id="dLog" role="log" aria-label="What happened"></div>
+    <p class="cap">A simple model, not a benchmark. A broadcast table needs roughly four times its size in driver memory in this model.</p>
+  </div>
+</section>
+
+<section id="code">
+  <div class="sec-num">Code</div>
+  <h2>Reading, setting and checking</h2>
+<pre><code><span class="c-c"># The broadcast threshold can be read and changed in a running session.</span>
+print(spark.conf.get(<span class="c-s">"spark.sql.autoBroadcastJoinThreshold"</span>))     <span class="c-c"># 10485760b = 10 MB</span>
+
+spark.conf.set(<span class="c-s">"spark.sql.autoBroadcastJoinThreshold"</span>, <span class="c-s">"100MB"</span>)  <span class="c-c"># broadcast tables up to 100 MB</span>
+spark.conf.set(<span class="c-s">"spark.sql.autoBroadcastJoinThreshold"</span>, <span class="c-s">"-1"</span>)     <span class="c-c"># never broadcast automatically</span>
+
+<span class="c-c"># Memory can be READ in a session, but not changed. It was fixed when the compute started.</span>
+print(spark.conf.get(<span class="c-s">"spark.executor.memory"</span>))
+print(spark.conf.get(<span class="c-s">"spark.driver.memory"</span>))</code></pre>
+  <p>How do you know which join Spark chose? Ask for the plan. <code>explain()</code> prints it without running anything.</p>
+<pre><code>orders   = spark.table(<span class="c-s">"bakery.silver.orders"</span>)
+products = spark.table(<span class="c-s">"bakery.silver.products"</span>)
+
+joined = orders.join(products, on=<span class="c-s">"product_id"</span>)
+joined.explain()
+<span class="c-c"># Look for one of these words in the output:</span>
+<span class="c-c">#   BroadcastHashJoin   -&gt; a broadcast join</span>
+<span class="c-c">#   SortMergeJoin       -&gt; a shuffle join</span></code></pre>
+<pre><code><span class="c-c">-- The same check in SQL.</span>
+<span class="c-k">EXPLAIN</span>
+<span class="c-k">SELECT</span> * <span class="c-k">FROM</span> bakery.silver.orders <span class="c-k">AS</span> o
+<span class="c-k">JOIN</span> bakery.silver.products <span class="c-k">AS</span> p <span class="c-k">ON</span> o.product_id = p.product_id;</code></pre>
+  <p>If memory really must be set by hand on classic compute, it goes in the compute's Spark configuration box before it starts, one setting per line:</p>
+<pre><code>spark.driver.memory 16g
+spark.executor.memory 32g</code></pre>
+  <p class="note">Prefer choosing a bigger machine type to writing those two lines. And do the measuring loop from lesson 03-12 around any change you make here too.</p>
+</section>
+
+<section id="whatif">
+  <div class="sec-num">What if I change this?</div>
+  <h2>Each setting, up and down</h2>
+  <div class="tbl"><table class="whatif">
+    <tr><th>Change</th><th>Effect</th></tr>
+    <tr><td>Raise <code>autoBroadcastJoinThreshold</code> a little, so a 50 MB lookup table qualifies</td><td>That join becomes a broadcast join and avoids shuffling the large table. Often a big speed-up.</td></tr>
+    <tr><td>Raise it to several gigabytes</td><td>Spark tries to broadcast very large tables. The driver runs out of memory collecting them.</td></tr>
+    <tr><td>Set it to <code>-1</code></td><td>No automatic broadcast joins. Every join shuffles, unless you add a broadcast hint yourself.</td></tr>
+    <tr><td>Spark's size estimate for a table is wrong</td><td>It may broadcast something too big, or fail to broadcast something small. A hint (lesson 03-05) or the run-time check corrects it.</td></tr>
+    <tr><td>More executor memory, by choosing a larger worker machine</td><td>Bigger partitions fit without spilling to disk. Shuffles and aggregations get faster and more reliable.</td></tr>
+    <tr><td>More driver memory, by choosing a larger driver machine</td><td>Larger results can be collected and larger tables broadcast without a crash.</td></tr>
+    <tr><td>Set <code>spark.executor.memory</code> with <code>spark.conf.set</code> in a notebook</td><td>No effect, or an error. It can only be set before the compute starts.</td></tr>
+    <tr><td>Fix a driver OOM by raising executor memory</td><td>No help. They are separate. Find out which one ran out first.</td></tr>
+    <tr><td>Call <code>collect()</code> on a very large DataFrame</td><td>All rows are pulled to the driver. A common cause of driver OOM that no setting should be used to paper over.</td></tr>
+  </table></div>
+</section>
+
+<section id="compare">
+  <div class="sec-num">Compare</div>
+  <h2>All five tuning settings from the objective</h2>
+  <div class="tbl"><table>
+    <tr><th>Setting</th><th>Controls</th><th>Default</th><th>Change at run time?</th></tr>
+    <tr><td><code>spark.sql.shuffle.partitions</code></td><td>Partitions after a DataFrame or SQL shuffle</td><td>200, or <code>auto</code> on serverless</td><td>Yes</td></tr>
+    <tr><td><code>spark.default.parallelism</code></td><td>Default partitions for RDD operations</td><td>Depends on cores</td><td>No</td></tr>
+    <tr><td><code>spark.executor.memory</code></td><td>Memory of each executor</td><td>Set from the worker machine type</td><td>No</td></tr>
+    <tr><td><code>spark.driver.memory</code></td><td>Memory of the driver</td><td>Set from the driver machine type</td><td>No</td></tr>
+    <tr><td><code>spark.sql.autoBroadcastJoinThreshold</code></td><td>Largest table size broadcast automatically</td><td>10 MB. <code>-1</code> turns it off.</td><td>Yes</td></tr>
+  </table></div>
+  <h3>Driver or executor: who ran out?</h3>
+  <div class="grid2">
+    <div class="card"><span class="tag">Driver OOM</span><p>Typical causes: <code>collect()</code> or <code>toPandas()</code> on a large result, or broadcasting a table that is too big. The whole job stops.</p></div>
+    <div class="card"><span class="tag">Executor OOM</span><p>Typical causes: partitions that are too large, or one key with far more rows than the rest (skew). A task fails and is retried.</p></div>
+  </div>
+</section>
+
+<section id="scenarios">
+  <div class="sec-num">Real life</div>
+  <h2>Memory and broadcast in practice</h2>
+  <div class="tbl"><table>
+    <tr><th>Scenario</th><th>What happens</th><th>Fix</th></tr>
+    <tr><td>A join to a 60 MB products table is slow</td><td>It is above the 10 MB default, so Spark shuffles both sides</td><td>Raise the threshold to 100 MB, or add a broadcast hint. Re-measure.</td></tr>
+    <tr><td>After someone set the threshold to 5 GB, jobs crash with driver OOM</td><td>Large tables are being gathered on the driver for broadcast</td><td>Put the threshold back. Broadcast is for small tables.</td></tr>
+    <tr><td>A notebook dies on <code>df.collect()</code></td><td>Millions of rows are being pulled to the driver</td><td>Write the result to a table, or use <code>limit</code> before collecting</td></tr>
+    <tr><td>A stage shows heavy "spill" and long tasks</td><td>Partitions do not fit in executor memory</td><td>More shuffle partitions first (lesson 03-12), then larger worker machines if needed</td></tr>
+    <tr><td>A config line <code>spark.executor.memory 4g</code> was copied onto large machines</td><td>Executors use 4 GB of machines that have far more</td><td>Remove the line and let Databricks size memory from the machine</td></tr>
+  </table></div>
+</section>
+
+<section id="traps">
+  <div class="sec-num">Don't confuse these</div>
+  <h2>Memory and broadcast traps</h2>
+  <div class="grid2">
+    <div class="card trap"><span class="tag">Driver vs executor memory</span><p>Separate settings for separate machines. Collecting and broadcasting stress the driver. Big partitions stress executors.</p></div>
+    <div class="card trap"><span class="tag">Threshold vs hint</span><p>The threshold lets Spark decide by size. A hint is you deciding for one particular join.</p></div>
+    <div class="card trap"><span class="tag">-1 does not mean unlimited</span><p>For the broadcast threshold, <code>-1</code> means "off": never broadcast automatically.</p></div>
+    <div class="card trap"><span class="tag">Run-time vs start-up settings</span><p>Shuffle partitions and the broadcast threshold can change in a session. Memory and default parallelism cannot.</p></div>
+  </div>
+</section>
+
+<section id="quiz">
+  <div class="sec-num">Check yourself</div>
+  <h2>Quiz</h2>
+  <div class="quiz">
+    <fieldset>
+      <legend>1. What is the default value of <code>spark.sql.autoBroadcastJoinThreshold</code>?</legend>
+      <label><input type="radio" data-correct> 10 MB</label>
+      <label><input type="radio"> 200</label>
+      <label><input type="radio"> 1 GB</label>
+      <p class="explain" hidden>Tables estimated to be under 10 MB are broadcast automatically. 200 is the default for shuffle partitions.</p>
+    </fieldset>
+    <fieldset>
+      <legend>2. What does setting that threshold to <code>-1</code> do?</legend>
+      <label><input type="radio"> Broadcasts every table</label>
+      <label><input type="radio" data-correct> Turns automatic broadcast joins off</label>
+      <label><input type="radio"> Removes the memory limit</label>
+      <p class="explain" hidden><code>-1</code> disables automatic broadcasting. A hint can still request one.</p>
+    </fieldset>
+    <fieldset>
+      <legend>3. A notebook crashes when it calls <code>collect()</code> on a huge DataFrame. Which memory ran out?</legend>
+      <label><input type="radio" data-correct> The driver's</label>
+      <label><input type="radio"> An executor's</label>
+      <label><input type="radio"> The SQL warehouse's</label>
+      <p class="explain" hidden><code>collect()</code> brings every row to the driver, which is a single machine.</p>
+    </fieldset>
+    <fieldset>
+      <legend>4. How do you give executors more memory on Databricks classic compute, in the recommended way?</legend>
+      <label><input type="radio"> <code>spark.conf.set("spark.executor.memory", ...)</code> in a notebook</label>
+      <label><input type="radio" data-correct> Choose a larger worker machine type</label>
+      <label><input type="radio"> Raise the broadcast threshold</label>
+      <p class="explain" hidden>Memory is fixed at start-up and sized from the machine type. It cannot be changed in a running session.</p>
+    </fieldset>
+    <fieldset>
+      <legend>5. In the demo, what happened when the threshold was raised to 10 GB with a 6 GB products table and an 8 GB driver?</legend>
+      <label><input type="radio"> The join became very fast</label>
+      <label><input type="radio" data-correct> The driver ran out of memory trying to broadcast it</label>
+      <label><input type="radio"> Spark ignored the setting</label>
+      <p class="explain" hidden>The table qualified for broadcast under the new threshold, but was far too large for the driver to hold.</p>
+    </fieldset>
+  </div>
+</section>
+
+<section id="wrap">
+  <div class="sec-num">Wrap up</div>
+  <h2>Key takeaways</h2>
+  <ul>
+    <li>Executor memory holds partitions being processed. Driver memory holds collected results and tables being broadcast.</li>
+    <li>On Databricks, memory follows the machine type. Pick a bigger machine instead of hard-coding it.</li>
+    <li><code>spark.sql.autoBroadcastJoinThreshold</code> defaults to 10 MB. <code>-1</code> switches automatic broadcasting off.</li>
+    <li>Raising the threshold helps with small tables and breaks things with large ones.</li>
+    <li>Use <code>explain()</code> to see which join was chosen, and always measure before and after.</li>
+  </ul>
+  <h3>Glossary terms used</h3>
+  <p><a href="../../glossary.html#driver">driver</a> · <a href="../../glossary.html#executor">executor</a> · <a href="../../glossary.html#oom">out-of-memory error</a> · <a href="../../glossary.html#broadcast-join">broadcast join</a> · <a href="../../glossary.html#aqe">adaptive query execution</a></p>
+  <h3>Official docs</h3>
+  <ul>
+    <li><a href="https://docs.databricks.com/aws/en/optimizations/aqe">Adaptive query execution</a></li>
+    <li><a href="https://docs.databricks.com/aws/en/spark/conf">Set Spark configuration properties</a></li>
+    <li><a href="https://docs.databricks.com/aws/en/compute/configure">Compute configuration reference</a></li>
+    <li><a href="https://spark.apache.org/docs/latest/sql-performance-tuning.html">Apache Spark: performance tuning</a></li>
+  </ul>
+  <p class="cap">Last verified: 16 November 2026</p>
+</section>
+
+</main>
+
+<script>
+(function () {
+  var C = window.Course, $ = function (id) { return document.getElementById(id); }, L = $('dLog');
+  var BIG_GB = 200, runs = [];
+  function label(mb) { return mb >= 1000 ? (mb / 1000) + ' GB' : mb + ' MB'; }
+  function draw() {
+    $('pLog').innerHTML = runs.length ? C.table(runs.map(function (r, i) {
+      return { run: i + 1, products: label(r.small), threshold: r.thr < 0 ? 'off' : label(r.thr), driver: r.drv + ' GB', method: r.how, result: r.fail ? 'FAILED' : r.secs + ' s' };
+    })) : '<p class="cap">No runs yet. Run once to get a baseline.</p>';
+  }
+  $('dRun').onclick = function () {
+    var small = +$('dSmall').value, thr = +$('dThr').value, drv = +$('dDrv').value;
+    var broadcast = thr >= 0 && small <= thr, need = small * 4 / 1000, fail = broadcast && need > drv, secs, why;
+    /* Shuffle join: both sides move. Broadcast join: only the small side is copied. */
+    if (!broadcast) { secs = Math.round(BIG_GB * 4 + small / 100); why = 'The products table is ' + (thr < 0 ? 'not broadcast because automatic broadcasting is off' : 'over the threshold') + ', so both tables were shuffled.'; }
+    else if (fail) { secs = null; why = 'Broadcasting ' + label(small) + ' needs about ' + need.toFixed(0) + ' GB on the driver, which has ' + drv + ' GB. Driver out of memory.'; }
+    else { secs = Math.round(BIG_GB * 1.2 + small / 50); why = 'The products table is under the threshold: it was broadcast and the 200 GB table did not move.'; }
+    var how = broadcast ? 'broadcast' : 'shuffle';
+    $('pTime').textContent = fail ? 'FAILED' : secs + ' s'; $('pHow').textContent = how; $('pWhy').textContent = why;
+    var prev = runs[runs.length - 1]; runs.push({ small: small, thr: thr, drv: drv, how: how, secs: secs, fail: fail });
+    var changed = prev ? ['small', 'thr', 'drv'].filter(function (k) { return prev[k] !== runs[runs.length - 1][k]; }).length : 0;
+    C.log(L, fail ? 'bad' : broadcast ? 'ok' : 'skip', 'Run ' + runs.length + ': ' + how + ', ' + (fail ? 'FAILED' : secs + ' s') + '. ' + why + (changed > 1 ? ' You changed ' + changed + ' things since the last run, so you cannot tell which one mattered.' : ''));
+    draw(); C.bump($('pTime'));
+  };
+  $('dReset').onclick = function () { runs = []; L.innerHTML = ''; draw(); };
+  draw();
+})();
+</script>
+</body>
+</html>

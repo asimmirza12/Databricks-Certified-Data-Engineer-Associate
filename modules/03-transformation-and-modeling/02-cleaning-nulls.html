@@ -1,0 +1,294 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>03-02 Cleaning nulls · DE Associate course</title>
+<link rel="stylesheet" href="../../assets/course.css">
+<script src="../../assets/course.js"></script>
+</head>
+<body data-lesson="03-02">
+
+<aside class="disclaimer" aria-label="Disclaimer"><strong>Learning resource only.</strong> This is an independent, unofficial study guide made for learning purposes. It is not affiliated with, endorsed by or sponsored by Databricks. Databricks features change often, so always check the details in the <a href="https://docs.databricks.com">official Databricks documentation</a> and the official exam guide on databricks.com before relying on anything here. Databricks and related names are trademarks of their respective owners.</aside>
+
+<main class="wrap">
+
+<header class="hero">
+  <div class="eyebrow">Module 03 · Data Transformation and Modeling · Lesson 2 of 16</div>
+  <h1>Cleaning nulls</h1>
+  <p class="lede">Raw data is full of holes. A missing price, an empty shop name, the text "n/a" where a number should be. Before anything else can be trusted, you must decide what to do with each hole.</p>
+  <dl class="where">
+    <div><dt>Module</dt><dd>03 Data Transformation and Modeling (22% of the exam)</dd></div>
+    <div><dt>Exam objective</dt><dd>3.1 Read raw (bronze) tables with PySpark or SQL, deal with missing values, fix data types and save the result as silver tables. This lesson covers missing values.</dd></div>
+    <div><dt>Time to read</dt><dd>About 13 minutes</dd></div>
+    <div><dt>Before this</dt><dd><a href="01-dataframes-and-sql.html">03-01 DataFrames and SQL</a></dd></div>
+  </dl>
+</header>
+
+<section id="idea">
+  <div class="sec-num">The idea</div>
+  <h2>Three things you can do with a missing value</h2>
+  <p><a href="../../glossary.html#null">NULL</a> is the marker for "no value here". It does not mean zero and it does not mean empty text. It means "unknown".</p>
+  <p>When a column has NULLs you have three honest choices.</p>
+  <ul>
+    <li><strong>Drop the row.</strong> If an order has no order ID, the row is useless. Remove it.</li>
+    <li><strong>Fill in a value.</strong> If a delivery note is missing, an empty note is a fair replacement. Put a stand-in value there.</li>
+    <li><strong>Leave it.</strong> If a price is unknown, it is unknown. Inventing a number would be a lie. Keep the NULL and let later steps handle it knowingly.</li>
+  </ul>
+  <p>The skill is choosing per column. There is no single rule for a whole table.</p>
+  <p>One more job comes first. Sources often disguise a missing value as real text: <code>"n/a"</code>, <code>"-"</code>, <code>"unknown"</code>, or just spaces. Spark does not know these mean "missing". You have to turn them into proper NULLs before any of the three choices can work.</p>
+  <div class="analogy">
+    <span class="tag">Everyday analogy</span>
+    <p><strong>A class register with blanks.</strong> A pupil with no name on the sheet cannot be marked at all: strike the line. A blank in "packed lunch or school dinner" can safely default to "school dinner". But a blank in "exam score" must stay blank. Writing 0 would drag the class average down for a pupil who was simply absent.</p>
+  </div>
+</section>
+
+<section id="how">
+  <div class="sec-num">How it works</div>
+  <h2>NULL does not behave like a value</h2>
+  <div class="stage">
+    <svg class="tall" viewBox="0 0 360 330" role="img" aria-label="Rows flow into a cleaning step. Rows missing a required key are dropped, rows with a missing optional value are filled, rows with an unknown measurement keep their NULL.">
+      <defs><path id="c0" d="M180 46 V78"/><path id="c1" d="M130 130 C 80 150, 62 170, 62 196"/><path id="c2" d="M180 130 V196"/><path id="c3" d="M230 130 C 280 150, 298 170, 298 196"/></defs>
+      <g class="wire"><use href="#c0"/><use href="#c1"/><use href="#c2"/><use href="#c3"/></g>
+      <g class="mover">
+        <circle r="5" class="dot"><animateMotion dur="1.4s" repeatCount="indefinite"><mpath href="#c0"/></animateMotion></circle>
+        <circle r="5" class="dot"><animateMotion dur="2s" begin="-0.5s" repeatCount="indefinite"><mpath href="#c1"/></animateMotion></circle>
+        <circle r="5" class="dot-ok"><animateMotion dur="2s" begin="-1s" repeatCount="indefinite"><mpath href="#c2"/></animateMotion></circle>
+        <circle r="5" class="dot-ok"><animateMotion dur="2s" begin="-1.5s" repeatCount="indefinite"><mpath href="#c3"/></animateMotion></circle>
+      </g>
+      <rect class="box-soft" x="80" y="8" width="200" height="38" rx="8"/><text x="180" y="32" text-anchor="middle">Bronze rows, with holes</text>
+      <rect class="box-acc" x="70" y="78" width="220" height="52" rx="8"/><text class="t-b" x="180" y="100" text-anchor="middle">Decide per column</text><text class="t-m" x="180" y="118" text-anchor="middle">what does a missing value mean here?</text>
+      <rect class="box" x="6" y="196" width="112" height="96" rx="8"/>
+      <text class="t-b" x="62" y="216" text-anchor="middle">Drop</text><text class="t-m" x="62" y="236" text-anchor="middle">order_id missing:</text><text class="t-m" x="62" y="252" text-anchor="middle">the row cannot</text><text class="t-m" x="62" y="268" text-anchor="middle">be used</text>
+      <rect class="box" x="124" y="196" width="112" height="96" rx="8"/>
+      <text class="t-b" x="180" y="216" text-anchor="middle">Fill</text><text class="t-m" x="180" y="236" text-anchor="middle">note missing:</text><text class="t-m" x="180" y="252" text-anchor="middle">a default is</text><text class="t-m" x="180" y="268" text-anchor="middle">truthful</text>
+      <rect class="box" x="242" y="196" width="112" height="96" rx="8"/>
+      <text class="t-b" x="298" y="216" text-anchor="middle">Leave</text><text class="t-m" x="298" y="236" text-anchor="middle">price missing:</text><text class="t-m" x="298" y="252" text-anchor="middle">unknown is the</text><text class="t-m" x="298" y="268" text-anchor="middle">honest answer</text>
+      <text class="t-m" x="180" y="316" text-anchor="middle">One table, three different treatments.</text>
+    </svg>
+  </div>
+  <p>NULL follows its own rules, and they surprise people.</p>
+  <ul>
+    <li><strong>Any comparison with NULL gives NULL, not true or false.</strong> <code>price = NULL</code> is never true, even when price is NULL. To test for it, use <code>IS NULL</code> and <code>IS NOT NULL</code>, or in PySpark <code>.isNull()</code> and <code>.isNotNull()</code>.</li>
+    <li><strong>Filters keep only rows where the condition is true.</strong> So <code>WHERE price &gt; 3</code> silently leaves out rows with a NULL price. So does <code>WHERE NOT (price &gt; 3)</code>.</li>
+    <li><strong>Sums and averages skip NULLs.</strong> The average of 4, 2 and NULL is 3, not 2.</li>
+    <li><strong>Arithmetic with NULL gives NULL.</strong> <code>price * qty</code> is NULL if either one is NULL.</li>
+  </ul>
+</section>
+
+<section id="demo">
+  <div class="sec-num">Try it</div>
+  <h2>Clean the same table five ways</h2>
+  <p>Six orders, with holes in different columns and one disguised as "n/a". Choose a treatment and watch the row count and the average price. Notice how filling prices with 0 changes the average.</p>
+  <div class="stage">
+    <div class="ctrls">
+      <label class="tog"><input type="checkbox" id="dFake" checked> First turn "n/a" into a real NULL</label>
+      <label class="tog">Treatment: <select id="dHow">
+        <option value="none">(none: leave everything)</option>
+        <option value="any">dropna(): drop rows with any NULL</option>
+        <option value="key">dropna(subset=["order_id"])</option>
+        <option value="zero">fillna(0, subset=["price"])</option>
+        <option value="map">fillna({"shop": "Unknown", "note": ""})</option>
+      </select></label>
+      <button id="dGo" type="button" class="primary">Apply</button>
+    </div>
+    <div class="panes">
+      <div class="pane"><h4>Before</h4><div id="pIn"></div></div>
+      <div class="pane"><h4>After</h4><div id="pOut"></div></div>
+      <div class="pane"><h4>Rows kept</h4><div class="big" id="pN">-</div><h4>Average price</h4><div class="big" id="pAvg">-</div><p class="cap" id="pAvgN"></p></div>
+    </div>
+    <div class="log" id="dLog" role="log" aria-label="What happened"></div>
+  </div>
+</section>
+
+<section id="code">
+  <div class="sec-num">Code</div>
+  <h2>Finding and treating NULLs</h2>
+<pre><code><span class="c-k">from</span> pyspark.sql <span class="c-k">import</span> functions <span class="c-k">as</span> F
+
+orders = spark.table(<span class="c-s">"bakery.bronze.orders_raw"</span>)
+
+<span class="c-c"># 1. Measure first: how many NULLs in each column?</span>
+display(orders.select([
+    F.sum(F.col(c).isNull().cast(<span class="c-s">"int"</span>)).alias(c) <span class="c-k">for</span> c <span class="c-k">in</span> orders.columns
+]))
+
+<span class="c-c"># 2. Turn disguised missing values into real NULLs.</span>
+orders = orders.replace([<span class="c-s">"n/a"</span>, <span class="c-s">"-"</span>, <span class="c-s">""</span>], <span class="c-k">None</span>, subset=[<span class="c-s">"price"</span>, <span class="c-s">"shop"</span>])
+
+<span class="c-c"># 3. Drop rows that cannot be used without their key.</span>
+orders = orders.dropna(subset=[<span class="c-s">"order_id"</span>])
+
+<span class="c-c"># 4. Fill where a default is truthful. A dictionary gives each column its own value.</span>
+orders = orders.fillna({<span class="c-s">"shop"</span>: <span class="c-s">"Unknown"</span>, <span class="c-s">"note"</span>: <span class="c-s">""</span>})
+
+<span class="c-c"># 5. Take the first non-NULL of several columns.</span>
+orders = orders.withColumn(<span class="c-s">"contact"</span>, F.coalesce(<span class="c-s">"email"</span>, <span class="c-s">"phone"</span>, F.lit(<span class="c-s">"none given"</span>)))
+
+<span class="c-c"># price is left alone: an unknown price stays NULL.</span></code></pre>
+<pre><code><span class="c-c">-- The same ideas in SQL.</span>
+<span class="c-k">SELECT</span>
+  order_id,
+  coalesce(shop, <span class="c-s">'Unknown'</span>)            <span class="c-k">AS</span> shop,       <span class="c-c">-- fill</span>
+  nullif(trim(price), <span class="c-s">'n/a'</span>)           <span class="c-k">AS</span> price,      <span class="c-c">-- "n/a" becomes NULL</span>
+  coalesce(email, phone, <span class="c-s">'none given'</span>) <span class="c-k">AS</span> contact     <span class="c-c">-- first value that is not NULL</span>
+<span class="c-k">FROM</span> bakery.bronze.orders_raw
+<span class="c-k">WHERE</span> order_id <span class="c-k">IS NOT NULL</span>;                         <span class="c-c">-- drop</span></code></pre>
+</section>
+
+<section id="whatif">
+  <div class="sec-num">What if I change this?</div>
+  <h2>Every option of dropna and fillna</h2>
+  <div class="tbl"><table class="whatif">
+    <tr><th>Change</th><th>Effect</th></tr>
+    <tr><td><code>dropna()</code> with no arguments</td><td>Drops a row if <em>any</em> column is NULL. On a wide table this can remove most of your data.</td></tr>
+    <tr><td><code>dropna(how="all")</code></td><td>Drops a row only if <em>every</em> column is NULL. Removes fully blank lines and nothing else.</td></tr>
+    <tr><td><code>dropna(subset=["order_id"])</code></td><td>Looks only at the listed columns. The usual, safe form.</td></tr>
+    <tr><td><code>dropna(thresh=3)</code></td><td>Keeps rows that have at least 3 non-NULL values.</td></tr>
+    <tr><td><code>fillna(0)</code></td><td>Fills NULLs with 0, but only in numeric columns. Text columns are untouched, because 0 is not text.</td></tr>
+    <tr><td><code>fillna("Unknown")</code></td><td>Fills only text columns, for the same reason.</td></tr>
+    <tr><td><code>fillna({"shop": "Unknown", "qty": 1})</code></td><td>Each named column gets its own replacement.</td></tr>
+    <tr><td>Fill a missing price with 0</td><td>Totals stay the same, but averages and minimums are now wrong. Zero says "it was free".</td></tr>
+    <tr><td>Test with <code>price == None</code> or <code>price = NULL</code></td><td>Never matches anything. Use <code>isNull()</code> or <code>IS NULL</code>.</td></tr>
+  </table></div>
+</section>
+
+<section id="compare">
+  <div class="sec-num">Compare</div>
+  <h2>Drop, fill or leave</h2>
+  <div class="tbl"><table>
+    <tr><th></th><th>Drop the row</th><th>Fill a value</th><th>Leave as NULL</th></tr>
+    <tr><td>Use when</td><td>The row is meaningless without that column</td><td>A default is true to life</td><td>The value is unknown and matters</td></tr>
+    <tr><td>Typical columns</td><td>IDs and keys</td><td>Optional notes, flags, categories</td><td>Prices, amounts, measurements, dates</td></tr>
+    <tr><td>Risk</td><td>Throwing away real records</td><td>Inventing data</td><td>Later steps forgetting NULLs exist</td></tr>
+    <tr><td>PySpark</td><td><code>dropna(subset=[...])</code></td><td><code>fillna({...})</code>, <code>coalesce</code></td><td>Do nothing</td></tr>
+    <tr><td>SQL</td><td><code>WHERE col IS NOT NULL</code></td><td><code>coalesce(col, default)</code></td><td>Do nothing</td></tr>
+  </table></div>
+  <h3>Useful helpers</h3>
+  <div class="grid3">
+    <div class="card"><span class="tag">coalesce(a, b, c)</span><p>Returns the first of its arguments that is not NULL. The general-purpose filler.</p></div>
+    <div class="card"><span class="tag">nullif(a, b)</span><p>Returns NULL when a equals b, otherwise a. Turns a stand-in such as "n/a" into a real NULL.</p></div>
+    <div class="card"><span class="tag">isNull() / IS NULL</span><p>The only correct way to ask whether a value is missing.</p></div>
+  </div>
+</section>
+
+<section id="scenarios">
+  <div class="sec-num">Real life</div>
+  <h2>Holes in real tables</h2>
+  <div class="tbl"><table>
+    <tr><th>Scenario</th><th>What happens</th><th>Fix</th></tr>
+    <tr><td>A cleaning step uses plain <code>dropna()</code> and silver has 4% of bronze's rows</td><td>Every row with any optional field empty was removed</td><td>Use <code>subset</code> with only the columns that must be present</td></tr>
+    <tr><td>Average order value drops after a "tidy-up"</td><td>Missing prices were filled with 0</td><td>Leave prices NULL. Averages skip NULLs by themselves.</td></tr>
+    <tr><td>A count of missing shops says 0, yet the column looks half empty</td><td>The "missing" values are empty text or "n/a", not NULL</td><td>Convert them to NULL first with <code>replace</code> or <code>nullif</code></td></tr>
+    <tr><td>A report filters <code>status &lt;&gt; 'cancelled'</code> and orders with no status vanish</td><td>The comparison with NULL is not true, so those rows are filtered out</td><td>Add <code>OR status IS NULL</code>, or fill status first</td></tr>
+    <tr><td>Order totals are NULL for some rows</td><td><code>price * qty</code> is NULL when either is NULL</td><td>Decide: <code>coalesce(qty, 1)</code> if one is a fair default, or keep the NULL</td></tr>
+  </table></div>
+</section>
+
+<section id="traps">
+  <div class="sec-num">Don't confuse these</div>
+  <h2>NULL traps</h2>
+  <div class="grid2">
+    <div class="card trap"><span class="tag">NULL vs 0 vs ""</span><p>Three different things. NULL is unknown. 0 is a number. "" is text with no characters. Only NULL is skipped by averages.</p></div>
+    <div class="card trap"><span class="tag">= NULL vs IS NULL</span><p><code>= NULL</code> never matches. <code>IS NULL</code> is the test. In PySpark, <code>.isNull()</code>.</p></div>
+    <div class="card trap"><span class="tag">dropna any vs all</span><p>The default is "any": one NULL anywhere removes the row. "all" removes only rows that are entirely NULL.</p></div>
+    <div class="card trap"><span class="tag">fillna and types</span><p><code>fillna(0)</code> touches only numeric columns and <code>fillna("x")</code> only text columns. A fill that seems to do nothing is usually a type mismatch.</p></div>
+  </div>
+</section>
+
+<section id="quiz">
+  <div class="sec-num">Check yourself</div>
+  <h2>Quiz</h2>
+  <div class="quiz">
+    <fieldset>
+      <legend>1. What does <code>orders.dropna()</code> with no arguments remove?</legend>
+      <label><input type="radio" data-correct> Every row that has a NULL in any column</label>
+      <label><input type="radio"> Only rows where all columns are NULL</label>
+      <label><input type="radio"> Every column that contains a NULL</label>
+      <p class="explain" hidden>The default is <code>how="any"</code>. It works on rows, not columns, and one NULL is enough.</p>
+    </fieldset>
+    <fieldset>
+      <legend>2. A column holds 4, 2 and NULL. What is its average?</legend>
+      <label><input type="radio"> 2</label>
+      <label><input type="radio" data-correct> 3</label>
+      <label><input type="radio"> NULL</label>
+      <p class="explain" hidden>Aggregates skip NULLs: (4 + 2) / 2 = 3. Filling the NULL with 0 would have given 2.</p>
+    </fieldset>
+    <fieldset>
+      <legend>3. Which SQL condition finds rows with no shop?</legend>
+      <label><input type="radio"> <code>WHERE shop = NULL</code></label>
+      <label><input type="radio" data-correct> <code>WHERE shop IS NULL</code></label>
+      <label><input type="radio"> <code>WHERE shop = ''</code></label>
+      <p class="explain" hidden>Comparing with <code>=</code> never matches NULL. An empty string is a different value from NULL.</p>
+    </fieldset>
+    <fieldset>
+      <legend>4. In the demo, what did filling missing prices with 0 do to the average?</legend>
+      <label><input type="radio"> Nothing</label>
+      <label><input type="radio" data-correct> Lowered it, because the zeros were counted as real prices</label>
+      <label><input type="radio"> Raised it</label>
+      <p class="explain" hidden>A NULL is skipped. A zero is a real value and pulls the average down.</p>
+    </fieldset>
+    <fieldset>
+      <legend>5. What does <code>coalesce(email, phone, 'none given')</code> return?</legend>
+      <label><input type="radio"> All three joined together</label>
+      <label><input type="radio" data-correct> The first of them that is not NULL</label>
+      <label><input type="radio"> NULL if any of them is NULL</label>
+      <p class="explain" hidden><code>coalesce</code> walks its arguments left to right and returns the first non-NULL one.</p>
+    </fieldset>
+  </div>
+</section>
+
+<section id="wrap">
+  <div class="sec-num">Wrap up</div>
+  <h2>Key takeaways</h2>
+  <ul>
+    <li>NULL means unknown. It is not zero and not empty text.</li>
+    <li>Decide per column: drop the row, fill a value, or leave the NULL.</li>
+    <li>Turn disguised values such as "n/a" into real NULLs first.</li>
+    <li>Test with <code>IS NULL</code> or <code>isNull()</code>. Comparisons with NULL are never true.</li>
+    <li><code>dropna</code> defaults to "any". Always consider <code>subset</code>.</li>
+  </ul>
+  <h3>Glossary terms used</h3>
+  <p><a href="../../glossary.html#null">NULL</a> · <a href="../../glossary.html#coalesce">coalesce</a> · <a href="../../glossary.html#dataframe">DataFrame</a> · <a href="../../glossary.html#silver">silver</a></p>
+  <h3>Official docs</h3>
+  <ul>
+    <li><a href="https://docs.databricks.com/aws/en/sql/language-manual/sql-ref-null-semantics">NULL semantics</a></li>
+    <li><a href="https://docs.databricks.com/aws/en/sql/language-manual/functions/coalesce">coalesce function</a></li>
+    <li><a href="https://spark.apache.org/docs/latest/api/python/reference/pyspark.sql/dataframe.html">PySpark DataFrame reference (dropna, fillna, replace)</a></li>
+  </ul>
+  <p class="cap">Last verified: 16 November 2026</p>
+</section>
+
+</main>
+
+<script>
+(function () {
+  var C = window.Course, $ = function (id) { return document.getElementById(id); }, L = $('dLog');
+  var RAW = [
+    { order_id: 101, shop: 'North', price: 4, note: 'gift' }, { order_id: 102, shop: null, price: 2, note: null },
+    { order_id: 103, shop: 'South', price: null, note: null }, { order_id: null, shop: 'South', price: 6, note: null },
+    { order_id: 105, shop: 'North', price: 'n/a', note: 'no nuts' }, { order_id: 106, shop: 'North', price: 8, note: null }
+  ];
+  $('pIn').innerHTML = C.table(RAW);
+  function hasNull(r, cols) { return cols.some(function (c) { return r[c] === null; }); }
+  $('dGo').onclick = function () {
+    var how = $('dHow').value, rows = RAW.map(function (r) { return { order_id: r.order_id, shop: r.shop, price: r.price, note: r.note }; }), all = ['order_id', 'shop', 'price', 'note'];
+    if ($('dFake').checked) rows.forEach(function (r) { if (r.price === 'n/a') r.price = null; });
+    if (how === 'any') rows = rows.filter(function (r) { return !hasNull(r, all); });
+    if (how === 'key') rows = rows.filter(function (r) { return r.order_id !== null; });
+    if (how === 'zero') rows.forEach(function (r) { if (r.price === null) r.price = 0; });
+    if (how === 'map') rows.forEach(function (r) { if (r.shop === null) r.shop = 'Unknown'; if (r.note === null) r.note = ''; });
+    /* The average skips NULLs. Text that is not a number cannot be averaged at all. */
+    var text = rows.filter(function (r) { return typeof r.price === 'string'; }).length;
+    var nums = rows.map(function (r) { return r.price; }).filter(function (p) { return typeof p === 'number'; });
+    $('pOut').innerHTML = C.table(rows); $('pN').textContent = rows.length + ' of ' + RAW.length;
+    $('pAvg').textContent = text ? 'error' : nums.length ? (nums.reduce(function (a, b) { return a + b; }, 0) / nums.length).toFixed(2) : '-';
+    $('pAvgN').textContent = text ? '"n/a" is text, so the column cannot be averaged' : 'over ' + nums.length + ' non-NULL price(s)';
+    C.log(L, text ? 'bad' : 'ok', $('dHow').selectedOptions[0].text + ': ' + rows.length + ' rows kept, average ' + $('pAvg').textContent + ' (' + $('pAvgN').textContent + ').');
+    C.bump($('pAvg'));
+  };
+  $('dGo').onclick();
+})();
+</script>
+</body>
+</html>

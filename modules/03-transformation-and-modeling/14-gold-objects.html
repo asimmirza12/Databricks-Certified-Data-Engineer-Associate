@@ -1,0 +1,290 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>03-14 Gold objects: tables, views, materialized views, streaming tables · DE Associate course</title>
+<link rel="stylesheet" href="../../assets/course.css">
+<script src="../../assets/course.js"></script>
+</head>
+<body data-lesson="03-14">
+
+<aside class="disclaimer" aria-label="Disclaimer"><strong>Learning resource only.</strong> This is an independent, unofficial study guide made for learning purposes. It is not affiliated with, endorsed by or sponsored by Databricks. Databricks features change often, so always check the details in the <a href="https://docs.databricks.com">official Databricks documentation</a> and the official exam guide on databricks.com before relying on anything here. Databricks and related names are trademarks of their respective owners.</aside>
+
+<main class="wrap">
+
+<header class="hero">
+  <div class="eyebrow">Module 03 · Data Transformation and Modeling · Lesson 14 of 16</div>
+  <h1>Gold objects: tables, views, materialized views, streaming tables</h1>
+  <p class="lede">The gold layer is what people actually read. Four kinds of Unity Catalog object can hold it, and each stores data differently and refreshes differently. Choosing well is an exam favourite.</p>
+  <dl class="where">
+    <div><dt>Module</dt><dd>03 Data Transformation and Modeling (22% of the exam)</dd></div>
+    <div><dt>Exam objective</dt><dd>3.6 Understand the difference between, and how to build, gold-layer objects such as materialized views, views, streaming tables, and tables for BI and analytics teams in Unity Catalog. This lesson covers the four kinds.</dd></div>
+    <div><dt>Time to read</dt><dd>About 14 minutes</dd></div>
+    <div><dt>Before this</dt><dd><a href="11-aggregations.html">03-11 Aggregations</a> · <a href="../00-foundations/10-medallion-architecture.html">00-10 Medallion architecture</a> · <a href="../01-databricks-platform/03-unity-catalog-object-model.html">01-03 Unity Catalog object model</a></dd></div>
+  </dl>
+</header>
+
+<section id="idea">
+  <div class="sec-num">The idea</div>
+  <h2>Four ways to hold the same answer</h2>
+  <p>A gold object answers a business question, such as "sales by shop by day". Unity Catalog offers four kinds, and the difference is in two questions: <strong>does it store its own data?</strong> and <strong>how does it catch up when the source changes?</strong></p>
+  <ul>
+    <li>A <a href="../../glossary.html#view">view</a> stores no data. It is a saved query. Every time someone reads it, the query runs against the current source.</li>
+    <li>A <a href="../../glossary.html#materialized-view">materialized view</a> stores its results. It is refreshed to match the source, on a schedule or on demand, so reads are fast but can be a little behind.</li>
+    <li>A <a href="../../glossary.html#streaming-table">streaming table</a> stores its results and processes each new source record once, as it arrives. It suits append-only sources such as new files or events.</li>
+    <li>A plain <a href="../../glossary.html#table">table</a> stores whatever you write into it, by any method, and changes only when you change it.</li>
+  </ul>
+  <div class="analogy">
+    <span class="tag">Everyday analogy</span>
+    <p><strong>Four ways to give someone the football score.</strong> A <em>view</em> is re-reading the match report every time someone asks: always current, but you pay the reading time each time. A <em>materialized view</em> is printing the scores on the noticeboard and reprinting at half time: quick to read, a little behind. A <em>streaming table</em> is a ticker that adds each goal the moment it happens and never adds the same goal twice. A <em>plain table</em> is a handwritten card you update when you feel like it.</p>
+  </div>
+</section>
+
+<section id="how">
+  <div class="sec-num">How it works</div>
+  <h2>Stored or computed, and how it catches up</h2>
+  <div class="stage">
+    <svg class="tall" viewBox="0 0 360 390" role="img" aria-label="Source rows feed four objects. A view runs its query on every read. A materialized view refreshes its stored results. A streaming table processes only new rows. A plain table is written only when you write it.">
+      <defs><path id="v0" d="M180 56 V80"/><path id="v1" d="M70 150 V188"/><path id="v2" d="M140 150 V188"/><path id="v3" d="M230 150 V188"/><path id="v4" d="M300 150 V188"/></defs>
+      <g class="wire"><use href="#v0"/><use href="#v1"/><use href="#v2"/><use href="#v3"/><use href="#v4"/></g>
+      <g class="mover">
+        <circle r="5" class="dot"><animateMotion dur="1.6s" repeatCount="indefinite"><mpath href="#v0"/></animateMotion></circle>
+        <circle r="5" class="dot-ok"><animateMotion dur="1.2s" repeatCount="indefinite"><mpath href="#v1"/></animateMotion></circle>
+        <circle r="5" class="dot"><animateMotion dur="2.4s" repeatCount="indefinite"><mpath href="#v2"/></animateMotion></circle>
+        <circle r="5" class="dot-ok"><animateMotion dur="1.6s" begin="-0.5s" repeatCount="indefinite"><mpath href="#v3"/></animateMotion></circle>
+      </g>
+      <rect class="box-soft" x="60" y="8" width="240" height="48" rx="8"/><text class="t-b" x="180" y="28" text-anchor="middle">silver: orders</text><text class="t-m" x="180" y="46" text-anchor="middle">the source every gold object reads</text>
+      <rect class="box" x="6" y="80" width="100" height="70" rx="8"/><text class="t-b" x="56" y="104" text-anchor="middle">View</text><text class="t-m" x="56" y="122" text-anchor="middle">stores nothing</text><text class="t-m" x="56" y="138" text-anchor="middle">runs on read</text>
+      <rect class="box-acc" x="122" y="80" width="100" height="70" rx="8"/><text class="t-b" x="172" y="104" text-anchor="middle">Materialized</text><text class="t-b" x="172" y="120" text-anchor="middle">view</text><text class="t-m" x="172" y="138" text-anchor="middle">stores results</text>
+      <rect class="box-acc" x="238" y="80" width="116" height="70" rx="8"/><text class="t-b" x="296" y="104" text-anchor="middle">Streaming</text><text class="t-b" x="296" y="120" text-anchor="middle">table</text><text class="t-m" x="296" y="138" text-anchor="middle">new rows only</text>
+      <rect class="box" x="6" y="188" width="100" height="92" rx="8"/><text class="t-m" x="56" y="212" text-anchor="middle">re-reads</text><text class="t-m" x="56" y="228" text-anchor="middle">the source</text><text class="t-m" x="56" y="250" text-anchor="middle">each time</text><text class="t-m" x="56" y="266" text-anchor="middle">someone asks</text>
+      <rect class="box-acc" x="122" y="188" width="100" height="92" rx="8"/><text class="t-m" x="172" y="212" text-anchor="middle">refresh: full</text><text class="t-m" x="172" y="228" text-anchor="middle">or incremental,</text><text class="t-m" x="172" y="244" text-anchor="middle">then reads are</text><text class="t-m" x="172" y="260" text-anchor="middle">fast</text>
+      <rect class="box-acc" x="238" y="188" width="116" height="92" rx="8"/><text class="t-m" x="296" y="212" text-anchor="middle">each record</text><text class="t-m" x="296" y="228" text-anchor="middle">processed once,</text><text class="t-m" x="296" y="244" text-anchor="middle">append-only</text><text class="t-m" x="296" y="260" text-anchor="middle">source</text>
+      <rect class="box" x="6" y="300" width="348" height="60" rx="8"/><text class="t-b" x="180" y="322" text-anchor="middle">Plain table</text><text class="t-m" x="180" y="342" text-anchor="middle">written only by the statement that writes it (CREATE TABLE AS, INSERT, MERGE)</text>
+      <text class="t-m" x="180" y="380" text-anchor="middle">Green dots: data moves when the object is refreshed or read.</text>
+    </svg>
+  </div>
+  <p>On Databricks, the three that are declared with SQL are created with <code>CREATE VIEW</code>, <code>CREATE MATERIALIZED VIEW</code> and <code>CREATE STREAMING TABLE</code>. A plain table comes from <code>CREATE TABLE</code> or <code>CREATE TABLE ... AS SELECT</code>.</p>
+</section>
+
+<section id="demo">
+  <div class="sec-num">Try it</div>
+  <h2>Add sales, then read each object</h2>
+  <p>New sales arrive in the source. Read each gold object without refreshing, then refresh the materialized view and read again. Notice which objects are current, and how much work each read costs.</p>
+  <div class="stage">
+    <div class="ctrls">
+      <button id="dAdd" type="button" class="primary">New sales arrive (3 rows)</button>
+      <button id="dView" type="button">Read the view</button>
+      <button id="dMv" type="button">Read the materialized view</button>
+      <button id="dSt" type="button">Read the streaming table</button>
+      <button id="dTbl" type="button">Read the plain table</button>
+      <button id="dRefresh" type="button" class="primary">Refresh the materialized view</button>
+      <button id="dReset" type="button">Reset</button>
+    </div>
+    <div class="panes">
+      <div class="pane"><h4>Source: silver orders</h4><div class="big" id="pSrc"></div></div>
+      <div class="pane"><h4>Total sales as each object reports it</h4><div id="pOut"></div></div>
+      <div class="pane"><h4>Work done so far</h4><div class="big" id="pWork"></div><p class="cap" id="pWhy"></p></div>
+    </div>
+    <div class="log" id="dLog" role="log" aria-label="What happened"></div>
+  </div>
+</section>
+
+<section id="code">
+  <div class="sec-num">Code</div>
+  <h2>Creating each kind</h2>
+<pre><code><span class="c-c">-- VIEW: a saved query. Nothing is stored; each read runs the query.</span>
+<span class="c-k">CREATE OR REPLACE VIEW</span> bakery.gold.sales_by_shop_v <span class="c-k">AS</span>
+<span class="c-k">SELECT</span> shop, <span class="c-k">SUM</span>(price) <span class="c-k">AS</span> total_sales
+<span class="c-k">FROM</span> bakery.silver.orders
+<span class="c-k">GROUP BY</span> shop;
+
+<span class="c-c">-- MATERIALIZED VIEW: results are stored and refreshed to match the source.</span>
+<span class="c-k">CREATE OR REPLACE MATERIALIZED VIEW</span> bakery.gold.sales_by_shop_mv <span class="c-k">AS</span>
+<span class="c-k">SELECT</span> shop, <span class="c-k">SUM</span>(price) <span class="c-k">AS</span> total_sales
+<span class="c-k">FROM</span> bakery.silver.orders
+<span class="c-k">GROUP BY</span> shop;
+
+<span class="c-c">-- Bring it up to date now. Standalone materialized views refresh on a serverless pipeline.</span>
+<span class="c-k">REFRESH MATERIALIZED VIEW</span> bakery.gold.sales_by_shop_mv;
+
+<span class="c-c">-- STREAMING TABLE: processes new rows of an append-only source, once each.</span>
+<span class="c-k">CREATE OR REFRESH STREAMING TABLE</span> bakery.bronze.web_orders
+<span class="c-k">AS SELECT</span> * <span class="c-k">FROM STREAM</span> read_files(<span class="c-s">'/Volumes/bakery/landing/web_orders/'</span>, format =&gt; <span class="c-s">'json'</span>);
+
+<span class="c-c">-- PLAIN TABLE: whatever the statement writes, nothing more.</span>
+<span class="c-k">CREATE OR REPLACE TABLE</span> bakery.gold.sales_by_shop_t <span class="c-k">AS</span>
+<span class="c-k">SELECT</span> shop, <span class="c-k">SUM</span>(price) <span class="c-k">AS</span> total_sales
+<span class="c-k">FROM</span> bakery.silver.orders
+<span class="c-k">GROUP BY</span> shop;</code></pre>
+  <p class="note">The exam expects you to know the purpose of each, not every option. Check the syntax for your runtime in the docs; the pipeline-based forms are often written with the pipeline's own SQL dialect.</p>
+</section>
+
+<section id="whatif">
+  <div class="sec-num">What if I change this?</div>
+  <h2>Consequences of each choice</h2>
+  <div class="tbl"><table class="whatif">
+    <tr><th>Change</th><th>Effect</th></tr>
+    <tr><td>Replace a materialized view with a view</td><td>Results are always current, but every dashboard refresh re-runs the aggregation. Slower for busy BI.</td></tr>
+    <tr><td>Replace a view with a materialized view</td><td>Reads are fast, but the results are only as fresh as the last refresh. Someone must schedule it.</td></tr>
+    <tr><td>Source rows are updated or deleted, and the gold object is a streaming table</td><td>Streaming tables assume append-only input. Changes to old rows are not reflected the way a materialized view would reflect them. Use a materialized view.</td></tr>
+    <tr><td>Source only ever receives new files</td><td>A streaming table is the efficient choice: each new file is processed once.</td></tr>
+    <tr><td>Use a plain table and forget to rebuild it</td><td>It silently goes stale. Nothing refreshes it for you.</td></tr>
+    <tr><td>Create a view on top of a view on top of a view</td><td>Each read runs the whole chain. Deep chains are slow and hard to change.</td></tr>
+    <tr><td>Refresh a materialized view on a schedule that is slower than the source changes</td><td>Users see yesterday's figures. Match the refresh schedule to how fresh BI users need the data.</td></tr>
+  </table></div>
+</section>
+
+<section id="compare">
+  <div class="sec-num">Compare</div>
+  <h2>The four objects, side by side</h2>
+  <div class="tbl"><table>
+    <tr><th></th><th>View</th><th>Materialized view</th><th>Streaming table</th><th>Plain table</th></tr>
+    <tr><td>Stores data?</td><td>No</td><td>Yes, results</td><td>Yes, results</td><td>Yes</td></tr>
+    <tr><td>When work happens</td><td>At each read</td><td>At each refresh</td><td>At each refresh, for new rows</td><td>When you write</td></tr>
+    <tr><td>Source rows updated or deleted</td><td>Reflected at the next read</td><td>Reflected at the next refresh</td><td>Designed for append-only input</td><td>Only if you change it</td></tr>
+    <tr><td>Freshness</td><td>Always current</td><td>As of the last refresh</td><td>As of the last refresh</td><td>As of the last write</td></tr>
+    <tr><td>Good for</td><td>Reusable logic, a stable interface, small data</td><td>Gold aggregates for BI</td><td>Bronze ingestion, event feeds, large fact tables</td><td>Anything you need full control over</td></tr>
+  </table></div>
+  <h3>Where each usually sits</h3>
+  <div class="grid3">
+    <div class="card"><span class="tag">Bronze</span><p>Streaming tables for arriving files and events.</p></div>
+    <div class="card"><span class="tag">Silver</span><p>Tables written by pipelines and jobs, cleaned and typed.</p></div>
+    <div class="card"><span class="tag">Gold</span><p>Materialized views for summaries. Views for simple shared logic. Plain tables where full control matters.</p></div>
+  </div>
+  <h3>Metric views</h3>
+  <p>A newer kind of object defines business measures, such as revenue or conversion rate, once, in one place, so every dashboard and report computes them the same way. It is built on top of gold tables or views, and it does not replace them.</p>
+</section>
+
+<section id="scenarios">
+  <div class="sec-num">Real life</div>
+  <h2>Choosing a gold object</h2>
+  <div class="tbl"><table>
+    <tr><th>Scenario</th><th>What happens</th><th>Fix</th></tr>
+    <tr><td>Dashboards are slow because every page re-adds three years of orders</td><td>A view is doing the aggregation on each read</td><td>Materialized view refreshed on a schedule</td></tr>
+    <tr><td>Finance sees yesterday's total after a late correction</td><td>The materialized view has not been refreshed since the correction</td><td>Refresh after corrections, or on a tighter schedule</td></tr>
+    <tr><td>A bronze feed of new event files is loaded into a materialized view</td><td>The design re-reads all history on each refresh</td><td>Use a streaming table for the append-only feed</td></tr>
+    <tr><td>Five gold reports all need the same "net sales" rule</td><td>Each copy of the rule can drift apart</td><td>Put the rule in one view, or in a metric view, and build the reports on it</td></tr>
+    <tr><td>An analyst wants to try a new calculation without touching the team's table</td><td>A plain table would be changed for everyone</td><td>Create a view for the experiment</td></tr>
+  </table></div>
+</section>
+
+<section id="traps">
+  <div class="sec-num">Don't confuse these</div>
+  <h2>Gold object traps</h2>
+  <div class="grid2">
+    <div class="card trap"><span class="tag">View vs materialized view</span><p>A view stores no data and is always current. A materialized view stores results and is current only as of its last refresh.</p></div>
+    <div class="card trap"><span class="tag">Streaming table vs materialized view</span><p>A streaming table processes new rows once. A materialized view recomputes results to match the source, including changes to old rows.</p></div>
+    <div class="card trap"><span class="tag">Table vs view</span><p>A plain table holds data. A view holds only a query. Dropping a view leaves the data it read from untouched.</p></div>
+    <div class="card trap"><span class="tag">Metric view vs view</span><p>A metric view holds business measures and their definitions. A view holds a query. Both are read with SQL.</p></div>
+  </div>
+</section>
+
+<section id="quiz">
+  <div class="sec-num">Check yourself</div>
+  <h2>Quiz</h2>
+  <div class="quiz">
+    <fieldset>
+      <legend>1. Which gold object stores no data of its own?</legend>
+      <label><input type="radio"> A materialized view</label>
+      <label><input type="radio"> A streaming table</label>
+      <label><input type="radio" data-correct> A view</label>
+      <p class="explain" hidden>A view is a saved query. Each read runs it against the current source.</p>
+    </fieldset>
+    <fieldset>
+      <legend>2. A dashboard needs fast reads of an aggregate that is refreshed nightly. Which object fits?</legend>
+      <label><input type="radio"> A view</label>
+      <label><input type="radio" data-correct> A materialized view</label>
+      <label><input type="radio"> A streaming table on the aggregate</label>
+      <p class="explain" hidden>The results are stored and read quickly, and the nightly refresh keeps them up to date enough.</p>
+    </fieldset>
+    <fieldset>
+      <legend>3. Which object is designed for new files arriving continuously, with each processed once?</legend>
+      <label><input type="radio"> A plain table</label>
+      <label><input type="radio"> A view</label>
+      <label><input type="radio" data-correct> A streaming table</label>
+      <p class="explain" hidden>Streaming tables process each new record of an append-only source exactly once.</p>
+    </fieldset>
+    <fieldset>
+      <legend>4. In the demo, a new sale arrived. What did reading the view show straight away?</legend>
+      <label><input type="radio"> The old total</label>
+      <label><input type="radio" data-correct> The new total, because the view runs its query each time</label>
+      <label><input type="radio"> An error</label>
+      <p class="explain" hidden>A view is always as current as its source at the moment it is read.</p>
+    </fieldset>
+    <fieldset>
+      <legend>5. In the demo, why did the materialized view not show the new sale until it was refreshed?</legend>
+      <label><input type="radio" data-correct> It is a copy of the results, updated only at refresh</label>
+      <label><input type="radio"> It cannot read silver tables</label>
+      <label><input type="radio"> Views are always refreshed, materialized views never are</label>
+      <p class="explain" hidden>A materialized view keeps stored results. They change when it is refreshed, not when the source changes.</p>
+    </fieldset>
+  </div>
+</section>
+
+<section id="wrap">
+  <div class="sec-num">Wrap up</div>
+  <h2>Key takeaways</h2>
+  <ul>
+    <li>Gold objects differ in whether they store data and how they catch up with the source.</li>
+    <li>A view runs its query on every read. A materialized view stores results and refreshes.</li>
+    <li>A streaming table processes each new record of an append-only source once.</li>
+    <li>A plain table changes only when you write to it.</li>
+    <li>Summaries for BI are usually materialized views. Shared logic is often a view.</li>
+  </ul>
+  <h3>Glossary terms used</h3>
+  <p><a href="../../glossary.html#view">view</a> · <a href="../../glossary.html#materialized-view">materialized view</a> · <a href="../../glossary.html#streaming-table">streaming table</a> · <a href="../../glossary.html#table">table</a> · <a href="../../glossary.html#gold">gold</a> · <a href="../../glossary.html#metric-view">metric view</a></p>
+  <h3>Official docs</h3>
+  <ul>
+    <li><a href="https://docs.databricks.com/aws/en/data-engineering/tables-views">Tables and views in Databricks</a></li>
+    <li><a href="https://docs.databricks.com/aws/en/ldp/concepts/materialized-views">Materialized views</a></li>
+    <li><a href="https://docs.databricks.com/aws/en/ldp/dbsql/streaming">Streaming tables in Databricks SQL</a></li>
+    <li><a href="https://docs.databricks.com/aws/en/optimizations/incremental-refresh">Incremental refresh for materialized views</a></li>
+  </ul>
+  <p class="cap">Last verified: 16 November 2026</p>
+</section>
+
+</main>
+
+<script>
+(function () {
+  var C = window.Course, $ = function (id) { return document.getElementById(id); }, L = $('dLog');
+  var src, mv, st, tbl, work, view;
+  function sum(rows) { return rows.reduce(function (a, r) { return a + r.price; }, 0); }
+  function draw(note) {
+    $('pSrc').textContent = src.length + ' rows, total ' + sum(src);
+    var rowsOut = [
+      { object: 'view', total: sum(src), current: 'yes' },
+      { object: 'materialized view', total: mv.total, current: mv.total === sum(src) ? 'yes' : 'no, as of last refresh' },
+      { object: 'streaming table', total: st.total, current: st.total === sum(src) ? 'yes' : 'no, as of last refresh' },
+      { object: 'plain table', total: tbl.total, current: tbl.total === sum(src) ? 'yes' : 'no, as of last write' }
+    ];
+    $('pOut').innerHTML = C.table(rowsOut);
+    $('pWork').textContent = work;
+    $('pWhy').textContent = note || '';
+  }
+  function price() { return 2 + Math.floor(Math.random() * 4); }
+  $('dAdd').onclick = function () {
+    for (var i = 0; i < 3; i++) src.push({ id: src.length + 1, price: price() });
+    C.log(L, 'skip', 'Three sales arrived in silver. Nothing else has been told yet.'); draw('Sources change first. Each gold object learns about it in its own way.');
+  };
+  $('dView').onclick = function () { work += src.length; C.log(L, 'ok', 'Read the view: it re-ran its query over all ' + src.length + ' rows. Current.'); draw('A view reads the source every time: no staleness, but the work is repeated on every read.'); };
+  $('dMv').onclick = function () { work += 1; C.log(L, mv.total === sum(src) ? 'ok' : 'skip', 'Read the materialized view: one stored result, nothing recomputed.'); draw('Fast to read. Its answer is only as fresh as its last refresh.'); };
+  $('dSt').onclick = function () { work += 1; C.log(L, 'skip', 'Read the streaming table: its stored result, as of its last refresh.'); draw(''); };
+  $('dTbl').onclick = function () { work += 1; C.log(L, 'skip', 'Read the plain table: whatever was last written to it.'); draw(''); };
+  $('dRefresh').onclick = function () {
+    var fresh = src.length - mv.seen; mv.total = sum(src); mv.seen = src.length; work += fresh; st.total = sum(src); st.seen = src.length;
+    C.log(L, 'ok', 'Refresh: the materialized view re-computed to match the source (' + fresh + ' new row(s) added to the work). The streaming table processed only those ' + fresh + ' new rows.');
+    draw('The plain table is not touched by a refresh: only a write changes it.');
+  };
+  $('dReset').onclick = function () {
+    src = [{ id: 1, price: 4 }, { id: 2, price: 3 }, { id: 3, price: 5 }]; work = 0; L.innerHTML = '';
+    mv = { total: sum(src), seen: 3 }; st = { total: sum(src), seen: 3 }; tbl = { total: sum(src) };
+    C.log(L, 'skip', 'All four objects agree: total 12.'); draw('');
+  };
+  $('dReset').onclick();
+})();
+</script>
+</body>
+</html>

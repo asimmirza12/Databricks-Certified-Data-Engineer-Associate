@@ -1,0 +1,302 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>03-07 Columns: add, drop, rename, split · DE Associate course</title>
+<link rel="stylesheet" href="../../assets/course.css">
+<script src="../../assets/course.js"></script>
+</head>
+<body data-lesson="03-07">
+
+<aside class="disclaimer" aria-label="Disclaimer"><strong>Learning resource only.</strong> This is an independent, unofficial study guide made for learning purposes. It is not affiliated with, endorsed by or sponsored by Databricks. Databricks features change often, so always check the details in the <a href="https://docs.databricks.com">official Databricks documentation</a> and the official exam guide on databricks.com before relying on anything here. Databricks and related names are trademarks of their respective owners.</aside>
+
+<main class="wrap">
+
+<header class="hero">
+  <div class="eyebrow">Module 03 · Data Transformation and Modeling · Lesson 7 of 16</div>
+  <h1>Columns: add, drop, rename, split</h1>
+  <p class="lede">Most of the work in a silver table is reshaping columns. Work out a total, throw away what nobody needs, give things sensible names, and break one overloaded column into several.</p>
+  <dl class="where">
+    <div><dt>Module</dt><dd>03 Data Transformation and Modeling (22% of the exam)</dd></div>
+    <div><dt>Exam objective</dt><dd>3.3 Reshape data: add, drop, split and rename columns, filter rows, and turn arrays into rows. This lesson covers columns.</dd></div>
+    <div><dt>Time to read</dt><dd>About 12 minutes</dd></div>
+    <div><dt>Before this</dt><dd><a href="01-dataframes-and-sql.html">03-01 DataFrames and SQL</a></dd></div>
+  </dl>
+</header>
+
+<section id="idea">
+  <div class="sec-num">The idea</div>
+  <h2>Four everyday moves</h2>
+  <ul>
+    <li><strong>Add</strong> a column whose value is worked out from others. <code>amount</code> is <code>price</code> times <code>qty</code>.</li>
+    <li><strong>Drop</strong> a column you do not want to carry forward, such as an internal code or a personal detail.</li>
+    <li><strong>Rename</strong> a column so its name says what it holds. <code>c_nm</code> becomes <code>customer_name</code>.</li>
+    <li><strong>Split</strong> one column that holds several facts into separate columns. <code>"Ana Lopez"</code> becomes a first name and a surname.</li>
+  </ul>
+  <p>In PySpark each move is one method. In SQL they all happen in the <code>SELECT</code> list: you write out the columns you want the result to have, calculated and named as you wish.</p>
+  <p>Remember from lesson 03-01 that none of this changes the original DataFrame or table. Each step gives a new DataFrame. The stored table only changes when you write the result back.</p>
+  <div class="analogy">
+    <span class="tag">Everyday analogy</span>
+    <p><strong>Tidying a spreadsheet someone else made.</strong> You add a "total" column with a formula. You delete the column of scribbled notes. You retype the header "Col7" as "Delivery date". And you use "text to columns" to break "Leeds, LS1 4AB" into a city and a postcode. Four moves, and the sheet is usable.</p>
+  </div>
+</section>
+
+<section id="how">
+  <div class="sec-num">How it works</div>
+  <h2>A chain of small steps</h2>
+  <div class="stage">
+    <svg class="tall" viewBox="0 0 360 400" role="img" aria-label="A DataFrame passes through four steps in turn: add a column, split a column, rename a column, drop a column. Each step produces a new DataFrame.">
+      <defs><path id="s1" d="M180 48 V76"/><path id="s2" d="M180 124 V152"/><path id="s3" d="M180 200 V228"/><path id="s4" d="M180 276 V304"/></defs>
+      <g class="wire"><use href="#s1"/><use href="#s2"/><use href="#s3"/><use href="#s4"/></g>
+      <g class="mover">
+        <circle r="5" class="dot"><animateMotion dur="1.2s" repeatCount="indefinite"><mpath href="#s1"/></animateMotion></circle>
+        <circle r="5" class="dot"><animateMotion dur="1.2s" begin="-0.3s" repeatCount="indefinite"><mpath href="#s2"/></animateMotion></circle>
+        <circle r="5" class="dot"><animateMotion dur="1.2s" begin="-0.6s" repeatCount="indefinite"><mpath href="#s3"/></animateMotion></circle>
+        <circle r="5" class="dot-ok"><animateMotion dur="1.2s" begin="-0.9s" repeatCount="indefinite"><mpath href="#s4"/></animateMotion></circle>
+      </g>
+      <rect class="box-soft" x="20" y="8" width="320" height="40" rx="8"/><text class="mono" x="180" y="33" text-anchor="middle">cust | price | qty | tmp_code</text>
+      <rect class="box" x="20" y="76" width="320" height="48" rx="8"/><text class="t-b" x="34" y="96">1. Add</text><text class="mono" x="34" y="114">.withColumn("amount", price * qty)</text>
+      <rect class="box" x="20" y="152" width="320" height="48" rx="8"/><text class="t-b" x="34" y="172">2. Split</text><text class="mono" x="34" y="190">split(cust, " ") into first, last</text>
+      <rect class="box" x="20" y="228" width="320" height="48" rx="8"/><text class="t-b" x="34" y="248">3. Rename</text><text class="mono" x="34" y="266">.withColumnRenamed("qty", "quantity")</text>
+      <rect class="box" x="20" y="304" width="320" height="48" rx="8"/><text class="t-b" x="34" y="324">4. Drop</text><text class="mono" x="34" y="342">.drop("tmp_code", "cust")</text>
+      <rect class="box-acc" x="20" y="364" width="320" height="30" rx="8"/><text class="mono" x="180" y="384" text-anchor="middle">first | last | price | quantity | amount</text>
+    </svg>
+    <p class="cap">The order of steps matters. You cannot use a column after dropping it, or by its old name after renaming it.</p>
+  </div>
+  <h3>How splitting works</h3>
+  <p>The <code>split</code> function cuts a piece of text wherever it finds a separator, and gives back a list of the pieces. A list in a column is an <a href="../../glossary.html#array">array</a>. You then take the pieces you want by position, counting from 0. <code>split("Ana Lopez", " ")</code> gives <code>["Ana", "Lopez"]</code>. Piece 0 is "Ana" and piece 1 is "Lopez".</p>
+</section>
+
+<section id="demo">
+  <div class="sec-num">Try it</div>
+  <h2>Reshape a table step by step</h2>
+  <p>Press the steps in any order and watch the table change. Then try a step that depends on a column you have already dropped or renamed.</p>
+  <div class="stage">
+    <div class="ctrls">
+      <button type="button" data-step="add">Add amount = price * qty</button>
+      <button type="button" data-step="split">Split customer into first, last</button>
+      <button type="button" data-step="rename">Rename qty to quantity</button>
+      <button type="button" data-step="drop">Drop tmp_code</button>
+      <button type="button" data-step="dropc">Drop customer</button>
+      <button id="dReset" type="button">Reset</button>
+    </div>
+    <div class="panes">
+      <div class="pane"><h4>Steps so far</h4><pre class="filetext" id="pSteps"></pre></div>
+      <div class="pane"><h4>Current DataFrame</h4><div id="pOut"></div></div>
+    </div>
+    <div class="log" id="dLog" role="log" aria-label="What happened"></div>
+  </div>
+</section>
+
+<section id="code">
+  <div class="sec-num">Code</div>
+  <h2>Each move in PySpark and SQL</h2>
+<pre><code><span class="c-k">from</span> pyspark.sql <span class="c-k">import</span> functions <span class="c-k">as</span> F
+
+orders = spark.table(<span class="c-s">"bakery.silver.orders"</span>)
+
+shaped = (orders
+    <span class="c-c"># ADD: a new column from a calculation. An existing name would be replaced.</span>
+    .withColumn(<span class="c-s">"amount"</span>, F.col(<span class="c-s">"price"</span>) * F.col(<span class="c-s">"qty"</span>))
+
+    <span class="c-c"># ADD a fixed value: lit() turns a plain value into a column.</span>
+    .withColumn(<span class="c-s">"currency"</span>, F.lit(<span class="c-s">"GBP"</span>))
+
+    <span class="c-c"># SPLIT: cut on the space, then pick pieces by position (0 is the first).</span>
+    .withColumn(<span class="c-s">"first_name"</span>, F.split(<span class="c-s">"customer"</span>, <span class="c-s">" "</span>).getItem(0))
+    .withColumn(<span class="c-s">"last_name"</span>,  F.split(<span class="c-s">"customer"</span>, <span class="c-s">" "</span>).getItem(1))
+
+    <span class="c-c"># RENAME: old name first, new name second.</span>
+    .withColumnRenamed(<span class="c-s">"qty"</span>, <span class="c-s">"quantity"</span>)
+
+    <span class="c-c"># DROP: one or more columns. Dropping a name that does not exist is not an error.</span>
+    .drop(<span class="c-s">"tmp_code"</span>, <span class="c-s">"customer"</span>))
+
+<span class="c-c"># Several at once.</span>
+shaped = orders.withColumns({<span class="c-s">"amount"</span>: F.col(<span class="c-s">"price"</span>) * F.col(<span class="c-s">"qty"</span>), <span class="c-s">"currency"</span>: F.lit(<span class="c-s">"GBP"</span>)})
+shaped = orders.withColumnsRenamed({<span class="c-s">"qty"</span>: <span class="c-s">"quantity"</span>, <span class="c-s">"c_nm"</span>: <span class="c-s">"customer_name"</span>})</code></pre>
+<pre><code><span class="c-c">-- In SQL the SELECT list does all four jobs.</span>
+<span class="c-k">SELECT</span>
+  order_id,
+  split(customer, <span class="c-s">' '</span>)[0]   <span class="c-k">AS</span> first_name,     <span class="c-c">-- split, then take piece 0</span>
+  split(customer, <span class="c-s">' '</span>)[1]   <span class="c-k">AS</span> last_name,
+  price,
+  qty                       <span class="c-k">AS</span> quantity,       <span class="c-c">-- rename with AS</span>
+  price * qty               <span class="c-k">AS</span> amount,         <span class="c-c">-- add</span>
+  <span class="c-s">'GBP'</span>                     <span class="c-k">AS</span> currency
+  <span class="c-c">-- tmp_code and customer are dropped simply by not listing them</span>
+<span class="c-k">FROM</span> bakery.silver.orders;
+
+<span class="c-c">-- Keep everything except a couple of columns.</span>
+<span class="c-k">SELECT</span> * <span class="c-k">EXCEPT</span> (tmp_code, customer) <span class="c-k">FROM</span> bakery.silver.orders;</code></pre>
+  <p>Those statements change the <em>result of a query</em>. To change the structure of a stored table itself, use <code>ALTER TABLE</code>:</p>
+<pre><code><span class="c-k">ALTER TABLE</span> bakery.silver.orders <span class="c-k">ADD COLUMN</span> currency <span class="c-k">STRING</span>;
+<span class="c-k">ALTER TABLE</span> bakery.silver.orders <span class="c-k">RENAME COLUMN</span> qty <span class="c-k">TO</span> quantity;
+<span class="c-k">ALTER TABLE</span> bakery.silver.orders <span class="c-k">DROP COLUMN</span> tmp_code;</code></pre>
+  <p class="note">Renaming and dropping columns of a stored Delta table needs a table feature called column mapping to be enabled. Verify the requirement in the docs before relying on it.</p>
+</section>
+
+<section id="whatif">
+  <div class="sec-num">What if I change this?</div>
+  <h2>Behaviours worth knowing</h2>
+  <div class="tbl"><table class="whatif">
+    <tr><th>Change</th><th>Effect</th></tr>
+    <tr><td><code>withColumn</code> with a name that already exists</td><td>The existing column is replaced, not duplicated. This is how you change a column in place.</td></tr>
+    <tr><td><code>withColumn("currency", "GBP")</code> without <code>lit</code></td><td>An error. The second argument must be a column expression. Wrap plain values in <code>F.lit()</code>.</td></tr>
+    <tr><td><code>drop</code> a column that does not exist</td><td>Nothing happens and no error is raised. A typo in a drop goes unnoticed.</td></tr>
+    <tr><td><code>withColumnRenamed</code> with an old name that does not exist</td><td>Nothing happens and no error is raised.</td></tr>
+    <tr><td>Use a column after dropping it</td><td>An error when the plan runs: the column cannot be found.</td></tr>
+    <tr><td><code>getItem(1)</code> on a split that produced only one piece</td><td>Splitting "Madonna" on a space gives one piece, so there is no piece 1. You get NULL, or an error where the strict ANSI mode is on. The function <code>get(array, 1)</code> gives NULL in both cases.</td></tr>
+    <tr><td>Split on a character that has a special meaning, such as <code>.</code> or <code>|</code></td><td>The separator is a pattern, not plain text, so these need a backslash: <code>"\\."</code>.</td></tr>
+    <tr><td>Call <code>withColumn</code> hundreds of times in a loop</td><td>The plan grows very large and slow to prepare. Use one <code>select</code> or <code>withColumns</code>.</td></tr>
+  </table></div>
+</section>
+
+<section id="compare">
+  <div class="sec-num">Compare</div>
+  <h2>The same move in each style</h2>
+  <div class="tbl"><table>
+    <tr><th>Move</th><th>PySpark</th><th>SQL query</th><th>Stored table</th></tr>
+    <tr><td>Add</td><td><code>withColumn("c", expr)</code></td><td><code>expr AS c</code></td><td><code>ALTER TABLE ... ADD COLUMN</code></td></tr>
+    <tr><td>Drop</td><td><code>drop("c")</code></td><td>Leave it out, or <code>* EXCEPT (c)</code></td><td><code>ALTER TABLE ... DROP COLUMN</code></td></tr>
+    <tr><td>Rename</td><td><code>withColumnRenamed("a", "b")</code></td><td><code>a AS b</code></td><td><code>ALTER TABLE ... RENAME COLUMN</code></td></tr>
+    <tr><td>Split</td><td><code>split(col, sep).getItem(n)</code></td><td><code>split(col, sep)[n]</code></td><td>Not applicable</td></tr>
+  </table></div>
+  <h3>Handy column helpers</h3>
+  <div class="grid3">
+    <div class="card"><span class="tag">lit(value)</span><p>A column holding the same fixed value in every row.</p></div>
+    <div class="card"><span class="tag">concat / concat_ws</span><p>The opposite of split: join text columns together. <code>concat_ws(" ", first, last)</code>.</p></div>
+    <div class="card"><span class="tag">alias(name)</span><p>Name the result of an expression inside a <code>select</code>.</p></div>
+  </div>
+</section>
+
+<section id="scenarios">
+  <div class="sec-num">Real life</div>
+  <h2>Column work in practice</h2>
+  <div class="tbl"><table>
+    <tr><th>Scenario</th><th>What happens</th><th>Fix</th></tr>
+    <tr><td>A silver table still exposes customers' phone numbers</td><td>The column was carried over from bronze by default</td><td><code>drop</code> it, or select only the columns silver should have</td></tr>
+    <tr><td>A drop "did nothing" and the column is still there</td><td>The name was misspelt, and <code>drop</code> ignores unknown names</td><td>Check the spelling against <code>printSchema()</code></td></tr>
+    <tr><td>An address column holds "Leeds, LS1 4AB" and reports need the city</td><td>One column holds two facts</td><td><code>split</code> on the comma and trim the pieces</td></tr>
+    <tr><td>Column names from the source are <code>c1</code>, <code>c2</code>, <code>c3</code></td><td>Nobody can read the queries</td><td>Rename them once, in silver, with a dictionary</td></tr>
+    <tr><td>Some customers have NULL surnames after a split</td><td>They have a single name, or a double space in it</td><td>Decide a rule for those cases. Do not assume every name has two parts.</td></tr>
+  </table></div>
+</section>
+
+<section id="traps">
+  <div class="sec-num">Don't confuse these</div>
+  <h2>Column traps</h2>
+  <div class="grid2">
+    <div class="card trap"><span class="tag">withColumn vs withColumnRenamed</span><p><code>withColumn</code> adds or replaces a column's <em>values</em>. <code>withColumnRenamed</code> changes only its <em>name</em>.</p></div>
+    <div class="card trap"><span class="tag">select vs drop</span><p><code>select</code> names what to keep. <code>drop</code> names what to remove. Use whichever list is shorter and safer.</p></div>
+    <div class="card trap"><span class="tag">Query vs table</span><p><code>SELECT ... AS</code> shapes the output of one query. <code>ALTER TABLE</code> changes the stored table for everyone.</p></div>
+    <div class="card trap"><span class="tag">split gives an array</span><p><code>split</code> does not create columns by itself. It returns an array, and you pick elements out of it.</p></div>
+  </div>
+</section>
+
+<section id="quiz">
+  <div class="sec-num">Check yourself</div>
+  <h2>Quiz</h2>
+  <div class="quiz">
+    <fieldset>
+      <legend>1. What does <code>df.withColumn("price", F.col("price") * 2)</code> do when <code>price</code> already exists?</legend>
+      <label><input type="radio"> Adds a second column called price</label>
+      <label><input type="radio" data-correct> Replaces the price column with the doubled values</label>
+      <label><input type="radio"> Raises an error</label>
+      <p class="explain" hidden><code>withColumn</code> with an existing name overwrites that column.</p>
+    </fieldset>
+    <fieldset>
+      <legend>2. What does <code>F.split("Ana Lopez", " ").getItem(1)</code> return?</legend>
+      <label><input type="radio"> Ana</label>
+      <label><input type="radio" data-correct> Lopez</label>
+      <label><input type="radio"> Ana Lopez</label>
+      <p class="explain" hidden>Positions count from 0. Item 0 is "Ana" and item 1 is "Lopez".</p>
+    </fieldset>
+    <fieldset>
+      <legend>3. What happens if you <code>drop("tmp_cod")</code> when the column is really called <code>tmp_code</code>?</legend>
+      <label><input type="radio"> An error is raised</label>
+      <label><input type="radio" data-correct> Nothing. The DataFrame is unchanged and no error appears.</label>
+      <label><input type="radio"> All columns starting with "tmp" are dropped</label>
+      <p class="explain" hidden><code>drop</code> silently ignores names it cannot find, so typos pass unnoticed.</p>
+    </fieldset>
+    <fieldset>
+      <legend>4. In the demo, what happened when you added <code>amount</code> after renaming <code>qty</code>?</legend>
+      <label><input type="radio"> It worked as before</label>
+      <label><input type="radio" data-correct> It failed, because the column <code>qty</code> no longer existed under that name</label>
+      <label><input type="radio"> The rename was undone</label>
+      <p class="explain" hidden>Steps apply in order. After the rename, the expression must use the new name.</p>
+    </fieldset>
+    <fieldset>
+      <legend>5. Which adds a column with the same text in every row?</legend>
+      <label><input type="radio"> <code>withColumn("currency", "GBP")</code></label>
+      <label><input type="radio" data-correct> <code>withColumn("currency", F.lit("GBP"))</code></label>
+      <label><input type="radio"> <code>withColumnRenamed("currency", "GBP")</code></label>
+      <p class="explain" hidden>A plain value must be wrapped in <code>lit</code> to become a column expression.</p>
+    </fieldset>
+  </div>
+</section>
+
+<section id="wrap">
+  <div class="sec-num">Wrap up</div>
+  <h2>Key takeaways</h2>
+  <ul>
+    <li><code>withColumn</code> adds or replaces. <code>drop</code> removes. <code>withColumnRenamed</code> renames.</li>
+    <li><code>split</code> returns an array. Pick pieces by position, starting at 0.</li>
+    <li>In SQL, the <code>SELECT</code> list does all of it with expressions and <code>AS</code>.</li>
+    <li><code>drop</code> and <code>withColumnRenamed</code> ignore names that do not exist.</li>
+    <li>Steps run in order: a dropped or renamed column is gone for later steps.</li>
+  </ul>
+  <h3>Glossary terms used</h3>
+  <p><a href="../../glossary.html#column">column</a> · <a href="../../glossary.html#dataframe">DataFrame</a> · <a href="../../glossary.html#array">array</a> · <a href="../../glossary.html#silver">silver</a></p>
+  <h3>Official docs</h3>
+  <ul>
+    <li><a href="https://docs.databricks.com/aws/en/pyspark/basics">PySpark basics</a></li>
+    <li><a href="https://docs.databricks.com/aws/en/sql/language-manual/functions/split">split function</a></li>
+    <li><a href="https://spark.apache.org/docs/latest/api/python/reference/pyspark.sql/dataframe.html">PySpark DataFrame reference</a></li>
+  </ul>
+  <p class="cap">Last verified: 16 November 2026</p>
+</section>
+
+</main>
+
+<script>
+(function () {
+  var C = window.Course, $ = function (id) { return document.getElementById(id); }, L = $('dLog');
+  var START = [{ customer: 'Ana Lopez', price: 4, qty: 2, tmp_code: 'x1' }, { customer: 'Raj Shah', price: 3, qty: 1, tmp_code: 'x2' }, { customer: 'Madonna', price: 2, qty: 5, tmp_code: 'x3' }];
+  var rows, steps;
+  function has(c) { return rows.length && c in rows[0]; }
+  function draw() { $('pOut').innerHTML = C.table(rows); $('pSteps').textContent = 'orders' + steps.map(function (s) { return '\n  ' + s; }).join(''); }
+  var STEP = {
+    add: function () {
+      if (!has('price') || !has('qty')) return 'withColumn("amount", price * qty): ERROR, column ' + (has('qty') ? 'price' : 'qty') + ' cannot be found. It was renamed or dropped earlier.';
+      rows.forEach(function (r) { r.amount = r.price * r.qty; }); steps.push('.withColumn("amount", F.col("price") * F.col("qty"))');
+    },
+    split: function () {
+      if (!has('customer')) return 'split(customer): ERROR, column customer cannot be found. It was dropped earlier.';
+      rows.forEach(function (r) { var p = r.customer.split(' '); r.first = p[0]; r.last = p.length > 1 ? p[1] : null; });
+      steps.push('.withColumn("first", F.split("customer", " ").getItem(0))'); steps.push('.withColumn("last", F.split("customer", " ").getItem(1))');
+    },
+    rename: function () {
+      if (!has('qty')) { steps.push('.withColumnRenamed("qty", "quantity")   # no such column: nothing happened'); return 'skip'; }
+      rows = rows.map(function (r) { var o = {}; Object.keys(r).forEach(function (k) { o[k === 'qty' ? 'quantity' : k] = r[k]; }); return o; }); steps.push('.withColumnRenamed("qty", "quantity")');
+    },
+    drop: function () { if (!has('tmp_code')) { steps.push('.drop("tmp_code")   # no such column: nothing happened'); return 'skip'; } rows.forEach(function (r) { delete r.tmp_code; }); steps.push('.drop("tmp_code")'); },
+    dropc: function () { if (!has('customer')) { steps.push('.drop("customer")   # no such column: nothing happened'); return 'skip'; } rows.forEach(function (r) { delete r.customer; }); steps.push('.drop("customer")'); }
+  };
+  document.querySelectorAll('[data-step]').forEach(function (b) {
+    b.onclick = function () {
+      var r = STEP[b.getAttribute('data-step')]();
+      if (r === 'skip') C.log(L, 'skip', b.textContent + ': the column was not there, so nothing changed. No error is raised.');
+      else if (r) C.log(L, 'bad', r);
+      else C.log(L, 'ok', b.textContent + ': done. Columns are now ' + Object.keys(rows[0]).join(', ') + '.');
+      draw();
+    };
+  });
+  function reset() { rows = START.map(function (r) { return { customer: r.customer, price: r.price, qty: r.qty, tmp_code: r.tmp_code }; }); steps = []; L.innerHTML = ''; C.log(L, 'skip', 'A fresh DataFrame with four columns.'); draw(); }
+  $('dReset').onclick = reset;
+  reset();
+})();
+</script>
+</body>
+</html>
