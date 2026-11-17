@@ -6,8 +6,8 @@
   color-scheme:light;
   --bg:#F2F4F6; --surface:#FFFFFF; --ink:#16202A; --muted:#566370; --line:#D3DAE1;
   --accent:#1F5FBF; --accent-soft:#E3ECFA;
-  --bronze:#A8622B; --silver:#73838F; --gold:#B38A12;
-  --ok:#23845A; --warn:#B8382B; --code-bg:#EAEEF2;
+  --bronze:#93541F; --silver:#5A6873; --gold:#86650A; /* darkened so text passes 4.5:1 on light surfaces */
+  --ok:#1B7349; --warn:#B8382B; --code-bg:#EAEEF2;
   --notice-bg:#FFF4D6; --notice-line:#B38A12;
   --f-display:"Archivo","Helvetica Neue",Arial,sans-serif;
   --f-body:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
@@ -140,7 +140,7 @@ input[type=search]{font:inherit;width:100%;padding:10px 12px;border:1px solid va
 .pane{border:1px dashed var(--line);border-radius:10px;padding:10px;display:grid;gap:6px;align-content:start;min-height:120px;min-width:0;overflow-x:auto}
 .pane h4{margin:0;font-family:var(--f-mono);font-size:.72rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:600}
 .item{font-family:var(--f-mono);font-size:.78rem;padding:5px 8px;border-radius:6px;background:var(--code-bg);display:flex;justify-content:space-between;gap:8px;overflow-wrap:anywhere}
-.item.off{opacity:.5;text-decoration:line-through}
+.item.off{color:var(--muted);text-decoration:line-through} /* muted colour, not opacity, keeps contrast readable */
 .item.hot{outline:1px solid var(--accent)}
 .chips{display:flex;flex-wrap:wrap;gap:4px}
 .filetext{font-family:var(--f-mono);font-size:.76rem;white-space:pre-wrap;overflow-wrap:anywhere;background:var(--code-bg);border-radius:6px;padding:8px;margin:0}
