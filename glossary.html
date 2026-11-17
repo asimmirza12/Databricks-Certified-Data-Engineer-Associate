@@ -91,10 +91,12 @@
     <div id="external-volume"><dt>External volume</dt><dd>A volume that points at an existing folder in cloud storage. Dropping it leaves the files in place. <span class="cap">First used in 02-02.</span></dd></div>
     <div id="fact-table"><dt>Fact table</dt><dd>A table of events, one row each, holding numbers to add up and keys to descriptive tables. <span class="cap">First used in 03-15.</span></dd></div>
     <div id="file"><dt>File</dt><dd>A named lump of data in storage. Nothing checks what is inside it. <span class="cap">First used in 00-02.</span></dd></div>
+    <div id="file-arrival-trigger"><dt>File arrival trigger</dt><dd>A job trigger that starts a run when new files appear in a watched external location or volume path. Settings include wait after last change and minimum time between triggers. <span class="cap">First used in 04-09.</span></dd></div>
     <div id="file-events"><dt>File events</dt><dd>The recommended form of file notification, enabled once on a Unity Catalog external location and shared by all streams reading from it. <span class="cap">First used in 02-06.</span></dd></div>
     <div id="file-format"><dt>File format</dt><dd>The rules for how data is laid out inside a file, such as CSV, JSON or Parquet. <span class="cap">First used in 00-03.</span></dd></div>
     <div id="file-notification"><dt>File notification</dt><dd>A way for Auto Loader to find new files from messages sent by cloud storage, without listing the folder. <span class="cap">First used in 02-06.</span></dd></div>
     <div id="filter"><dt>Filter</dt><dd>A transformation that keeps only the rows for which a condition is true. <span class="cap">First used in 03-08.</span></dd></div>
+    <div id="for-each-task"><dt>For each task</dt><dd>A job task that runs one nested task once for each item in a list. Each run is an iteration. <span class="cap">First used in 04-07.</span></dd></div>
     <div id="gold"><dt>Gold</dt><dd>The layer that holds data shaped for one particular use, usually summaries for reports and dashboards. <span class="cap">First used in 00-10.</span></dd></div>
     <div id="governance"><dt>Governance</dt><dd>The rules and tools that control who can see or change which data, and that keep a record of it. <span class="cap">First used in 00-01.</span></dd></div>
     <div id="grain"><dt>Grain</dt><dd>What one row of a table represents, such as one sale line or one shop per day. <span class="cap">First used in 03-15.</span></dd></div>
@@ -134,6 +136,7 @@
     <div id="metric-view"><dt>Metric view</dt><dd>A Unity Catalog object that defines business measures once, for consistent use in reports and dashboards. <span class="cap">First used in 03-14.</span></dd></div>
     <div id="micro-batch"><dt>Micro-batch</dt><dd>A very small batch. By default Spark streams by running many micro-batches one after another. <span class="cap">First used in 00-04.</span></dd></div>
     <div id="nested"><dt>Nested data</dt><dd>Data inside other data, such as a customer record inside an order record. <span class="cap">First used in 02-11.</span></dd></div>
+    <div id="nested-task"><dt>Nested task</dt><dd>The task inside a For each task, run once per iteration with the current item available as {{input}}. <span class="cap">First used in 04-07.</span></dd></div>
     <div id="not-null"><dt>NOT NULL</dt><dd>A table constraint that refuses any write where the column has no value. <span class="cap">First used in 03-16.</span></dd></div>
     <div id="notebook"><dt>Notebook</dt><dd>A document made of cells of code and notes. You run a cell and see its result directly underneath. <span class="cap">First used in 00-07.</span></dd></div>
     <div id="notebook-task"><dt>Notebook task</dt><dd>A job task that runs a notebook. <span class="cap">First used in 04-02.</span></dd></div>
@@ -158,6 +161,7 @@
     <div id="primary-key"><dt>Primary key</dt><dd>A column or set of columns that is meant to identify each row. On Unity Catalog tables it is informational and not enforced. <span class="cap">First used in 03-16.</span></dd></div>
     <div id="privilege"><dt>Privilege</dt><dd>A permission to do one kind of thing to one object, such as <code>SELECT</code> on a table. Given with <code>GRANT</code>, removed with <code>REVOKE</code>. <span class="cap">First used in 00-09.</span></dd></div>
     <div id="pyspark"><dt>PySpark</dt><dd>The Python way of using Apache Spark. <span class="cap">First used in 00-01.</span></dd></div>
+    <div id="quartz-cron"><dt>Quartz cron expression</dt><dd>A six-field timetable notation (seconds, minutes, hours, day-of-month, month, day-of-week) used for job schedules. Day-of-month and day-of-week cannot both be set; one uses ?. <span class="cap">First used in 04-08.</span></dd></div>
     <div id="rate-limit"><dt>Rate limit</dt><dd>A cap on how many requests an API accepts in a period. Exceeding it brings a "slow down" response. <span class="cap">First used in 02-10.</span></dd></div>
     <div id="read-files"><dt>read_files</dt><dd>A SQL function that reads files from a path and returns them as rows, so files can be queried or loaded into a table. <span class="cap">First used in 02-02.</span></dd></div>
     <div id="rescued-data"><dt>Rescued data column</dt><dd>A spare column, <code>_rescued_data</code>, where Auto Loader keeps data that did not fit the schema: new columns, wrong types, wrong letter case. <span class="cap">First used in 02-07.</span></dd></div>
@@ -166,6 +170,7 @@
     <div id="row"><dt>Row</dt><dd>One record in a table: one order, one customer, one event. <span class="cap">First used in 00-02.</span></dd></div>
     <div id="run"><dt>Run</dt><dd>One execution of a job, with a record of the status and timing of each task. <span class="cap">First used in 04-01.</span></dd></div>
     <div id="run-if"><dt>Run if</dt><dd>The rule that decides whether a task runs, based on how its upstream tasks finished. The default is All succeeded. <span class="cap">First used in 04-03.</span></dd></div>
+    <div id="scheduled-trigger"><dt>Scheduled trigger</dt><dd>A job trigger that starts runs at times set by a Quartz cron expression and a timezone. <span class="cap">First used in 04-08.</span></dd></div>
     <div id="schema"><dt>Schema</dt><dd>Two meanings. (1) The list of column names and data types of one table. (2) In Unity Catalog, a container inside a catalog that holds tables, views and volumes. Also called a database. <span class="cap">First used in 00-02.</span></dd></div>
     <div id="schema-enforcement"><dt>Schema enforcement</dt><dd>The default behaviour of a Delta table: a write whose columns or types do not match the table is refused. <span class="cap">First used in 01-02.</span></dd></div>
     <div id="schema-evolution"><dt>Schema evolution</dt><dd>Deliberately letting a table's schema change during a write, for example adding a new column with the <code>mergeSchema</code> option. <span class="cap">First used in 01-02.</span></dd></div>

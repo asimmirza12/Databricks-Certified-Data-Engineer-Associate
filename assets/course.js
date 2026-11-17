@@ -66,9 +66,9 @@
     ["04", "retries", "Retries", 1],
     ["05", "parameters-and-task-values", "Parameters and task values", 1],
     ["06", "branching", "Branching: if/else and run-if conditions", 1],
-    ["07", "looping", "Looping: for each", 0],
-    ["08", "scheduled-triggers", "Scheduled triggers", 0],
-    ["09", "file-arrival-triggers", "File arrival triggers", 0],
+    ["07", "looping", "Looping: for each", 1],
+    ["08", "scheduled-triggers", "Scheduled triggers", 1],
+    ["09", "file-arrival-triggers", "File arrival triggers", 1],
     ["10", "table-update-triggers", "Table update triggers", 0],
     ["11", "choosing-triggers", "Time-based or data-driven? Choosing a trigger", 0]
   ]},

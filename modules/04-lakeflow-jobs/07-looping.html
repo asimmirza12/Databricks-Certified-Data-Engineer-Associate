@@ -1,0 +1,238 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>04-07 Looping with For each · DE Associate course</title>
+<link rel="stylesheet" href="../../assets/course.css">
+<script src="../../assets/course.js"></script>
+</head>
+<body data-lesson="04-07">
+
+<aside class="disclaimer" aria-label="Disclaimer"><strong>Learning resource only.</strong> This is an independent, unofficial study guide made for learning purposes. It is not affiliated with, endorsed by or sponsored by Databricks. Databricks features change often, so always check the details in the <a href="https://docs.databricks.com">official Databricks documentation</a> and the official exam guide on databricks.com before relying on anything here. Databricks and related names are trademarks of their respective owners.</aside>
+
+<main class="wrap">
+
+<header class="hero">
+  <div class="eyebrow">Module 04 · Working with Lakeflow Jobs · Lesson 7 of 11</div>
+  <h1>Looping with For each</h1>
+  <p class="lede">The same task often has to run for many things: one load per source table, one report per shop. Writing a task for each would be tedious. A For each task runs one nested task once per item in a list.</p>
+  <dl class="where">
+    <div><dt>Module</dt><dd>04 Working with Lakeflow Jobs (16% of the exam)</dd></div>
+    <div><dt>Exam objective</dt><dd>4.1 Implement control flows (retries and conditional tasks such as branching and looping) using Lakeflow Jobs. This lesson covers looping.</dd></div>
+    <div><dt>Time to read</dt><dd>About 12 minutes</dd></div>
+    <div><dt>Before this</dt><dd><a href="05-parameters-and-task-values.html">04-05 Parameters and task values</a> · <a href="06-branching.html">04-06 Branching</a></dd></div>
+  </dl>
+</header>
+
+<section id="idea">
+  <div class="sec-num">The idea</div>
+  <h2>One task definition, many runs</h2>
+  <p>A <a href="../../glossary.html#for-each-task">For each task</a> holds a list of inputs and one <a href="../../glossary.html#nested-task">nested task</a>. It runs the nested task once for each item. Each run is called an iteration.</p>
+  <p>Inside the nested task, the current item is available as <code>{{input}}</code>. If the item is an object, its fields are <code>{{input.field_name}}</code>. So one notebook can load every table, using a different table name each time.</p>
+  <p>Two settings control the loop:</p>
+  <ul>
+    <li><strong>Inputs</strong>: the list. It can be a JSON array typed into the task, or a reference to a value from an earlier task, such as a list a previous task produced.</li>
+    <li><strong>Concurrency</strong>: how many iterations may run at the same time. The default is 1, which runs them one after another.</li>
+  </ul>
+  <p>Typed JSON inputs are limited to about 5,000 characters. For a long list, store the list in a table and read it with a lookup, as the docs describe for large parameter arrays.</p>
+  <div class="analogy">
+    <span class="tag">Everyday analogy</span>
+    <p><strong>A teacher marking a pile of papers with one rubric.</strong> The rubric is the nested task: the same steps for every paper. The pile is the input list. The teacher picks up one paper at a time (concurrency 1), or puts several markers at separate desks (concurrency higher). Each paper is marked, and the marking is recorded per paper.</p>
+  </div>
+</section>
+
+<section id="how">
+  <div class="sec-num">How it works</div>
+  <h2>A list in, one run per item out</h2>
+  <div class="stage">
+    <svg class="tall" viewBox="0 0 360 330" role="img" aria-label="A list of three tables goes into a For each task. The nested load task runs once per table, with input set to each name in turn.">
+      <defs><path id="fe1" d="M180 110 V134"/><path id="fe2" d="M120 218 V244"/><path id="fe3" d="M240 218 V244"/></defs>
+      <g class="wire"><use href="#fe1"/><use href="#fe2"/><use href="#fe3"/></g>
+      <g class="mover">
+        <circle r="5" class="dot"><animateMotion dur="1.4s" repeatCount="indefinite"><mpath href="#fe1"/></animateMotion></circle>
+        <circle r="5" class="dot-ok"><animateMotion dur="1.4s" begin="-0.5s" repeatCount="indefinite"><mpath href="#fe2"/></animateMotion></circle>
+        <circle r="5" class="dot-ok"><animateMotion dur="1.4s" begin="-0.5s" repeatCount="indefinite"><mpath href="#fe3"/></animateMotion></circle>
+      </g>
+      <rect class="box-soft" x="20" y="8" width="320" height="52" rx="8"/><text class="t-b" x="180" y="30" text-anchor="middle">Inputs: ["orders", "shops", "prices"]</text><text class="t-m" x="180" y="48" text-anchor="middle">a list the job can read</text>
+      <rect class="box-acc" x="60" y="134" width="240" height="84" rx="8"/><text class="t-b" x="180" y="156" text-anchor="middle">For each task</text><text class="t-m" x="180" y="176" text-anchor="middle">runs the nested task once per item</text><text class="t-m" x="180" y="196" text-anchor="middle">concurrency: 1 (default)</text>
+      <rect class="box" x="10" y="244" width="110" height="78" rx="8"/><text class="t-b" x="65" y="266" text-anchor="middle">iteration 1</text><text class="mono" x="65" y="290" text-anchor="middle">input=orders</text>
+      <rect class="box" x="125" y="244" width="110" height="78" rx="8"/><text class="t-b" x="180" y="266" text-anchor="middle">iteration 2</text><text class="mono" x="180" y="290" text-anchor="middle">input=shops</text>
+      <rect class="box" x="240" y="244" width="110" height="78" rx="8"/><text class="t-b" x="295" y="266" text-anchor="middle">iteration 3</text><text class="mono" x="295" y="290" text-anchor="middle">input=prices</text>
+    </svg>
+    <p class="cap">The nested task is the same in every iteration. Only the value of input changes.</p>
+  </div>
+  <h3>Sequential or parallel</h3>
+  <p>With concurrency 1, iterations run one after another, which is slower but gentle on a shared source. A higher number runs several at once, subject to the limits of the compute and the workspace. If you leave concurrency out of a bundle definition, the iterations may all run in parallel within those limits.</p>
+</section>
+
+<section id="demo">
+  <div class="sec-num">Try it</div>
+  <h2>Load six tables with different concurrency</h2>
+  <p>Six tables, each load taking two minutes. Choose the concurrency and see how long the whole loop takes, and which tables run together.</p>
+  <div class="stage">
+    <div class="ctrls">
+      <label class="tog">Concurrency: <select id="cc"><option value="1" selected>1 (one at a time)</option><option value="2">2</option><option value="3">3</option><option value="6">6 (all at once)</option></select></label>
+      <button id="dRun" type="button" class="primary">Run the loop</button>
+      <button id="dReset" type="button">Clear</button>
+    </div>
+    <div class="panes">
+      <div class="pane"><h4>Nested task text, per iteration</h4><pre class="filetext" id="pNested"></pre></div>
+      <div class="pane"><h4>Batches</h4><div id="pBatch"></div><p class="cap" id="pTotal"></p></div>
+    </div>
+    <div class="log" id="dLog" role="log" aria-label="What happened"></div>
+    <p class="cap">Model: each iteration takes two minutes and the workspace has no other limit. Real limits depend on compute and workspace settings.</p>
+  </div>
+</section>
+
+<section id="code">
+  <div class="sec-num">Code</div>
+  <h2>A For each task in a job</h2>
+<pre><code><span class="c-k">tasks</span>:
+  - <span class="c-k">task_key</span>: load_each_table
+    <span class="c-k">for_each_task</span>:
+      <span class="c-k">inputs</span>: <span class="c-s">'["orders", "shops", "prices"]'</span>   <span class="c-c"># the list to loop over</span>
+      <span class="c-k">concurrency</span>: 2                                   <span class="c-c"># at most two iterations at once</span>
+      <span class="c-k">task</span>:
+        <span class="c-k">task_key</span>: load_one
+        <span class="c-k">notebook_task</span>:
+          <span class="c-k">notebook_path</span>: /Workspace/bakery/load_table
+          <span class="c-k">base_parameters</span>:
+            <span class="c-k">table_name</span>: <span class="c-s">"{{input}}"</span>               <span class="c-c"># the current item</span></code></pre>
+<pre><code><span class="c-c"># load_table notebook: read the table name passed in by the loop.</span>
+table = dbutils.widgets.get(<span class="c-s">"table_name"</span>)
+(spark.read.table(<span class="c-s">f"bakery.landing.{table}"</span>)
+    .write.mode(<span class="c-s">"overwrite"</span>)
+    .saveAsTable(<span class="c-s">f"bakery.bronze.{table}"</span>))</code></pre>
+  <p class="note">Check the exact field names of the for-each block in the bundle reference, and the notebook widget name, before use. The pattern is what matters: a list in, one nested task, and a reference to the current item.</p>
+</section>
+
+<section id="whatif">
+  <div class="sec-num">What if I change this?</div>
+  <h2>The loop settings and what they do</h2>
+  <div class="tbl"><table class="whatif">
+    <tr><th>Change</th><th>Effect</th></tr>
+    <tr><td>Concurrency from 1 to 6</td><td>The loop finishes sooner, but six loads hit the source at once.</td></tr>
+    <tr><td>Use <code>{{input}}</code> in a notebook path</td><td>Each iteration can run a different notebook. Usually one notebook with a parameter is simpler.</td></tr>
+    <tr><td>Use <code>{{input.field}}</code> with a list of objects</td><td>Each iteration gets one field of its object, so one loop can carry several values.</td></tr>
+    <tr><td>Type a list longer than about 5,000 characters</td><td>Too long to type. Store the list in a table and read it instead.</td></tr>
+    <tr><td>An empty list</td><td>Nothing runs. Check that upstream work produced items before the loop.</td></tr>
+    <tr><td>Put a pipeline task inside the loop</td><td>Iterations of a pipeline task run one at a time, whatever the concurrency setting.</td></tr>
+  </table></div>
+</section>
+
+<section id="compare">
+  <div class="sec-num">Compare</div>
+  <h2>Looping, branching and separate tasks</h2>
+  <div class="tbl"><table>
+    <tr><th></th><th>For each</th><th>Branching (04-06)</th><th>Separate tasks</th></tr>
+    <tr><td>Purpose</td><td>Repeat one step over a list</td><td>Choose one path</td><td>Different steps, each written out</td></tr>
+    <tr><td>Defined</td><td>Once, with a list</td><td>Once, with a condition</td><td>Once per step</td></tr>
+    <tr><td>Best when</td><td>Many similar items</td><td>Two outcomes</td><td>Few steps, all different</td></tr>
+    <tr><td>Runs per item</td><td>One run per item</td><td>One path only</td><td>One run each</td></tr>
+  </table></div>
+</section>
+
+<section id="scenarios">
+  <div class="sec-num">Real life</div>
+  <h2>Loops at work</h2>
+  <div class="tbl"><table>
+    <tr><th>Scenario</th><th>What happens</th><th>Fix</th></tr>
+    <tr><td>Forty source tables each need the same load, copied into forty tasks</td><td>Forty copies to maintain, and any change must be made forty times</td><td>One For each task over a list of table names</td></tr>
+    <tr><td>The loop hammers a database that is already busy</td><td>Concurrency is too high</td><td>Lower concurrency to one or two</td></tr>
+    <tr><td>The list of tables grows each month and the job is edited each time</td><td>The list is typed into the job</td><td>Read the list from a control table, filled by an earlier task</td></tr>
+    <tr><td>A loop over ten shops finishes in a time that makes the next task late</td><td>Iterations run one at a time</td><td>Raise concurrency, if the source can cope</td></tr>
+  </table></div>
+</section>
+
+<section id="traps">
+  <div class="sec-num">Don't confuse these</div>
+  <h2>Loop traps</h2>
+  <div class="grid2">
+    <div class="card trap"><span class="tag">Concurrency vs number of items</span><p>Concurrency is how many run at once. The number of items is how many runs there are in all.</p></div>
+    <div class="card trap"><span class="tag">{{input}} vs a parameter</span><p><code>{{input}}</code> is the current item. A job parameter is the same for every iteration.</p></div>
+    <div class="card trap"><span class="tag">For each vs a loop in code</span><p>A For each task creates tracked iterations in the job's run history. A loop in a notebook is one task, with no per-item record.</p></div>
+    <div class="card trap"><span class="tag">Loops and retries</span><p>Each iteration is its own run of the nested task. Check how retries apply to iterations before relying on them.</p></div>
+  </div>
+</section>
+
+<section id="quiz">
+  <div class="sec-num">Check yourself</div>
+  <h2>Quiz</h2>
+  <div class="quiz">
+    <fieldset>
+      <legend>1. A For each task has no concurrency set in a bundle definition. What is the default?</legend>
+      <label><input type="radio"> Always one at a time</label>
+      <label><input type="radio" data-correct> Iterations may run in parallel, within the limits of compute and the workspace</label>
+      <label><input type="radio"> The loop is not allowed</label>
+      <p class="explain" hidden>In a bundle definition, leaving concurrency out lets iterations run in parallel within the platform's limits.</p>
+    </fieldset>
+    <fieldset>
+      <legend>2. What does <code>{{input}}</code> refer to inside the nested task?</legend>
+      <label><input type="radio"> The whole list</label>
+      <label><input type="radio" data-correct> The current item of the list</label>
+      <label><input type="radio"> The number of iterations</label>
+      <p class="explain" hidden><code>{{input}}</code> is the item for the iteration that is running.</p>
+    </fieldset>
+    <fieldset>
+      <legend>3. In the demo, six loads each take two minutes. What is the total time at concurrency 2?</legend>
+      <label><input type="radio"> 2 minutes</label>
+      <label><input type="radio" data-correct> 6 minutes</label>
+      <label><input type="radio"> 12 minutes</label>
+      <p class="explain" hidden>Six items at two at a time make three batches of two minutes: six minutes.</p>
+    </fieldset>
+    <fieldset>
+      <legend>4. Why store a long list in a table rather than type it into the job?</legend>
+      <label><input type="radio"> Tables are faster to run</label>
+      <label><input type="radio" data-correct> Typed inputs are limited in length, and the list changes without editing the job</label>
+      <label><input type="radio"> Lists cannot be typed at all</label>
+      <p class="explain" hidden>Typed JSON has a size limit, and a list kept in a table can change without editing the job.</p>
+    </fieldset>
+  </div>
+</section>
+
+<section id="wrap">
+  <div class="sec-num">Wrap up</div>
+  <h2>Key takeaways</h2>
+  <ul>
+    <li>A For each task runs one nested task once per item in its list.</li>
+    <li><code>{{input}}</code> carries the current item; <code>{{input.field}}</code> carries one field of an object.</li>
+    <li>Concurrency sets how many iterations run at once. The default is one at a time in the UI.</li>
+    <li>For long or changing lists, read the items from a table.</li>
+  </ul>
+  <h3>Glossary terms used</h3>
+  <p><a href="../../glossary.html#for-each-task">For each task</a> · <a href="../../glossary.html#nested-task">nested task</a> · <a href="../../glossary.html#task">task</a> · <a href="../../glossary.html#task-value">task value</a></p>
+  <h3>Official docs</h3>
+  <ul>
+    <li><a href="https://docs.databricks.com/aws/en/jobs/tasks/for-each">Use a For each task to run another task in a loop</a></li>
+    <li><a href="https://docs.databricks.com/aws/en/jobs/tasks/for-each-lookup-example">Use a lookup table for large parameter arrays</a></li>
+  </ul>
+  <p class="cap">Last verified: 16 November 2026</p>
+</section>
+
+</main>
+
+<script>
+(function () {
+  var C = window.Course, $ = function (id) { return document.getElementById(id); }, L = $('dLog');
+  var TABLES = ['orders', 'shops', 'prices', 'stock', 'customers', 'returns'], MIN = 2;
+  $('pNested').textContent = 'notebook: load_table\ntable_name = "{{input}}"\n\nfor example, for input = "' + TABLES[0] + '":\n  table_name = "' + TABLES[0] + '"';
+  function run() {
+    var c = +$('cc').value, batches = [], t = 0;
+    for (var i = 0; i < TABLES.length; i += c) batches.push(TABLES.slice(i, i + c));
+    $('pBatch').innerHTML = batches.map(function (b, k) {
+      return '<div class="item"><span>minutes ' + (k * MIN) + '-' + ((k + 1) * MIN) + '</span><span>' + b.join(', ') + '</span></div>';
+    }).join('');
+    var total = batches.length * MIN;
+    $('pTotal').textContent = TABLES.length + ' iterations at concurrency ' + c + ': ' + batches.length + ' batch(es), about ' + total + ' minutes in all.';
+    C.log(L, 'ok', 'Concurrency ' + c + ': ' + total + ' minutes for ' + TABLES.length + ' tables.');
+    C.bump($('pBatch'));
+  }
+  $('cc').onchange = run;
+  $('dRun').onclick = run;
+  $('dReset').onclick = function () { L.innerHTML = ''; };
+  run();
+})();
+</script>
+</body>
+</html>

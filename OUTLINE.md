@@ -128,9 +128,9 @@ Objectives:
 | [x] | 04-04 Retries | `04-retries.html` | 4.1 | 04-03 |
 | [x] | 04-05 Parameters and task values | `05-parameters-and-task-values.html` | 4.1 | 04-03 |
 | [x] | 04-06 Branching: if/else and run-if conditions | `06-branching.html` | 4.1 | 04-05 |
-| [ ] | 04-07 Looping: for each | `07-looping.html` | 4.1 | 04-05 |
-| [ ] | 04-08 Scheduled triggers | `08-scheduled-triggers.html` | 4.3 | 04-01 |
-| [ ] | 04-09 File arrival triggers | `09-file-arrival-triggers.html` | 4.3 | 04-08, 02-02 |
+| [x] | 04-07 Looping: for each | `07-looping.html` | 4.1 | 04-05 |
+| [x] | 04-08 Scheduled triggers | `08-scheduled-triggers.html` | 4.3 | 04-01 |
+| [x] | 04-09 File arrival triggers | `09-file-arrival-triggers.html` | 4.3 | 04-08, 02-02 |
 | [ ] | 04-10 Table update triggers | `10-table-update-triggers.html` | 4.3 | 04-08 |
 | [ ] | 04-11 Time-based or data-driven? Choosing a trigger | `11-choosing-triggers.html` | 4.4 | 04-08 to 04-10 |
 

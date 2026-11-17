@@ -1,0 +1,257 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>04-08 Scheduled triggers · DE Associate course</title>
+<link rel="stylesheet" href="../../assets/course.css">
+<script src="../../assets/course.js"></script>
+</head>
+<body data-lesson="04-08">
+
+<aside class="disclaimer" aria-label="Disclaimer"><strong>Learning resource only.</strong> This is an independent, unofficial study guide made for learning purposes. It is not affiliated with, endorsed by or sponsored by Databricks. Databricks features change often, so always check the details in the <a href="https://docs.databricks.com">official Databricks documentation</a> and the official exam guide on databricks.com before relying on anything here. Databricks and related names are trademarks of their respective owners.</aside>
+
+<main class="wrap">
+
+<header class="hero">
+  <div class="eyebrow">Module 04 · Working with Lakeflow Jobs · Lesson 8 of 11</div>
+  <h1>Scheduled triggers</h1>
+  <p class="lede">The simplest reason for a job to run is the clock: at two in the morning, every weekday at half past seven, once a month. A scheduled trigger starts a run at the times you set, written as a Quartz cron expression.</p>
+  <dl class="where">
+    <div><dt>Module</dt><dd>04 Working with Lakeflow Jobs (16% of the exam)</dd></div>
+    <div><dt>Exam objective</dt><dd>4.3 Implement job schedules using Lakeflow Jobs with an understanding of trigger types (scheduled, file arrival, and table update). This lesson covers scheduled triggers.</dd></div>
+    <div><dt>Time to read</dt><dd>About 12 minutes</dd></div>
+    <div><dt>Before this</dt><dd><a href="01-jobs-tasks-runs.html">04-01 Jobs, tasks and runs</a></dd></div>
+  </dl>
+</header>
+
+<section id="idea">
+  <div class="sec-num">The idea</div>
+  <h2>A timetable for the job</h2>
+  <p>A <a href="../../glossary.html#scheduled-trigger">scheduled trigger</a> starts a job's run at times you choose. You do not press Run; the clock does.</p>
+  <p>The times are written as a <a href="../../glossary.html#quartz-cron">Quartz cron expression</a>. It has six fields, separated by spaces, and they are read left to right:</p>
+  <p class="note"><code>seconds minutes hours day-of-month month day-of-week</code></p>
+  <p>Two rules trip people up. First, Quartz starts with <strong>seconds</strong>, unlike the five-field cron on many Unix systems. Second, <strong>day-of-month and day-of-week cannot both be set</strong>: one of them must be a question mark <code>?</code>, which means "no value".</p>
+  <p>A schedule also has a <strong>timezone</strong>. The times are interpreted in that zone, so the same expression can mean different moments for a team in another country.</p>
+  <div class="analogy">
+    <span class="tag">Everyday analogy</span>
+    <p><strong>A bin collection timetable.</strong> "Every Tuesday at 7 am" is written once, and the lorry comes without anyone asking. Quartz is the timetable's notation: seconds, minutes, hours, then the date parts. The question mark is the timetable saying "not this part": the bins go on Tuesday, whatever the day of the month.</p>
+  </div>
+</section>
+
+<section id="how">
+  <div class="sec-num">How it works</div>
+  <h2>Reading the six fields</h2>
+  <div class="stage">
+    <svg class="tall" viewBox="0 0 360 330" role="img" aria-label="The six fields of a Quartz expression with an example: 0 30 7 ? * MON-FRI means 07:30 at zero seconds on weekdays.">
+      <text class="t-b" x="180" y="22" text-anchor="middle">0  30  7  ?  *  MON-FRI</text>
+      <g class="box-soft">
+        <rect x="6" y="36" width="50" height="62" rx="6"/><rect x="62" y="36" width="50" height="62" rx="6"/><rect x="118" y="36" width="50" height="62" rx="6"/><rect x="174" y="36" width="50" height="62" rx="6"/><rect x="230" y="36" width="50" height="62" rx="6"/><rect x="286" y="36" width="68" height="62" rx="6"/>
+      </g>
+      <text class="t-m" x="31" y="62" text-anchor="middle">seconds</text><text class="mono" x="31" y="86" text-anchor="middle">0</text>
+      <text class="t-m" x="87" y="62" text-anchor="middle">minutes</text><text class="mono" x="87" y="86" text-anchor="middle">30</text>
+      <text class="t-m" x="143" y="62" text-anchor="middle">hours</text><text class="mono" x="143" y="86" text-anchor="middle">7</text>
+      <text class="t-m" x="199" y="62" text-anchor="middle">day</text><text class="mono" x="199" y="86" text-anchor="middle">?</text>
+      <text class="t-m" x="255" y="62" text-anchor="middle">month</text><text class="mono" x="255" y="86" text-anchor="middle">*</text>
+      <text class="t-m" x="320" y="62" text-anchor="middle">weekday</text><text class="mono" x="320" y="86" text-anchor="middle">MON-FRI</text>
+      <rect class="box-acc" x="20" y="124" width="320" height="78" rx="8"/>
+      <text class="t-b" x="180" y="148" text-anchor="middle">Read it: at 07:30:00, every month,</text><text class="t-b" x="180" y="168" text-anchor="middle">on Monday to Friday</text><text class="t-m" x="180" y="188" text-anchor="middle">"?" means the day-of-month is not used</text>
+      <rect class="box" x="20" y="218" width="320" height="94" rx="8"/>
+      <text class="t-b" x="180" y="240" text-anchor="middle">Common patterns</text>
+      <text class="mono" x="30" y="262">0 0 2 * * ?          02:00 every day</text>
+      <text class="mono" x="30" y="280">0 0 6 1 * ?          06:00 on the 1st of each month</text>
+      <text class="mono" x="30" y="298">0 0/15 * * * ?       every 15 minutes</text>
+    </svg>
+    <p class="cap">The fields are read as one moment: the schedule runs when all six match.</p>
+  </div>
+  <h3>Choosing the timezone</h3>
+  <p>The timezone is part of the schedule. "07:30" in London is a different moment from "07:30" in Los Angeles. Set it to the zone where the business runs, so reports are ready when people arrive, and remember that clocks change with daylight saving.</p>
+  <h3>Pausing and starting</h3>
+  <p>A schedule can be paused without being deleted. A paused schedule starts no runs until it is resumed. Manual runs still work while the schedule is paused.</p>
+</section>
+
+<section id="demo">
+  <div class="sec-num">Try it</div>
+  <h2>Pick a timetable and see the next runs</h2>
+  <p>Choose a pattern. The checker lists the next four run times after Monday 16 November 2026, 10:00, in the timezone you choose. Try weekdays, then the monthly one.</p>
+  <div class="stage">
+    <div class="ctrls">
+      <label class="tog">Pattern: <select id="sPat">
+        <option value="daily">0 0 2 * * ? (02:00 every day)</option>
+        <option value="weekdays">0 30 7 ? * MON-FRI (07:30 on weekdays)</option>
+        <option value="every15">0 0/15 * * * ? (every 15 minutes)</option>
+        <option value="monthly">0 0 6 1 * ? (06:00 on the 1st)</option>
+      </select></label>
+      <label class="tog">Timezone: <select id="sTz"><option value="London">Europe/London</option><option value="LA">America/Los_Angeles</option></select></label>
+      <button id="dRun" type="button" class="primary">Show next runs</button>
+      <button id="dReset" type="button">Clear</button>
+    </div>
+    <div class="panes">
+      <div class="pane"><h4>Expression</h4><pre class="filetext" id="sExpr"></pre></div>
+      <div class="pane"><h4>Next four runs</h4><div id="sNext"></div><p class="cap" id="sNote"></p></div>
+    </div>
+    <div class="log" id="dLog" role="log" aria-label="What happened"></div>
+    <p class="cap">Model: winter time only, so daylight saving changes are ignored. The UTC column shows the same run on a common clock.</p>
+  </div>
+</section>
+
+<section id="code">
+  <div class="sec-num">Code</div>
+  <h2>A schedule in a job</h2>
+<pre><code><span class="c-k">name</span>: ingest_bakery_nightly
+<span class="c-k">schedule</span>:
+  <span class="c-k">quartz_cron_expression</span>: <span class="c-s">"0 0 2 * * ?"</span>      <span class="c-c"># 02:00 every day</span>
+  <span class="c-k">timezone_id</span>: <span class="c-s">"Europe/London"</span>            <span class="c-c"># read the time in London</span>
+  <span class="c-k">pause_status</span>: <span class="c-s">"UNPAUSED"</span>                 <span class="c-c"># set to PAUSED to stop scheduled runs</span>
+<span class="c-k">tasks</span>:
+  - <span class="c-k">task_key</span>: load_orders
+    <span class="c-k">notebook_task</span>: {notebook_path: /Workspace/bakery/load_orders}</code></pre>
+  <p class="note">The field names above are the bundle form as the docs show them. Check the exact names, and whether your workspace uses a different schedule form, in the job reference before use.</p>
+</section>
+
+<section id="whatif">
+  <div class="sec-num">What if I change this?</div>
+  <h2>Each part of the schedule</h2>
+  <div class="tbl"><table class="whatif">
+    <tr><th>Change</th><th>Effect</th></tr>
+    <tr><td>Use five fields, as in a Unix crontab</td><td>Rejected or misread. Quartz needs six, starting with seconds.</td></tr>
+    <tr><td>Set both day-of-month and day-of-week to values</td><td>Invalid. Put <code>?</code> in one of them.</td></tr>
+    <tr><td>Change the timezone from London to Los Angeles</td><td>Every run moves eight hours. Reports may be late for London readers.</td></tr>
+    <tr><td>Pause the schedule</td><td>No scheduled runs start. Manual runs still work.</td></tr>
+    <tr><td><code>0 0/15 * * * ?</code> instead of daily</td><td>Four times an hour, all day. Much more compute, and possibly overlapping runs.</td></tr>
+    <tr><td>Clocks go forward for daylight saving</td><td>A run set for a missing hour may not happen on that night, or may happen at a different time. Check the behaviour for critical jobs.</td></tr>
+  </table></div>
+</section>
+
+<section id="compare">
+  <div class="sec-num">Compare</div>
+  <h2>Scheduled, manual and triggered runs</h2>
+  <div class="tbl"><table>
+    <tr><th></th><th>Scheduled</th><th>Manual</th><th>File arrival or table update</th></tr>
+    <tr><td>Starts when</td><td>The timetable says</td><td>A person presses Run</td><td>Something changes in the data</td></tr>
+    <tr><td>Predictable?</td><td>Yes</td><td>No</td><td>Depends on the data</td></tr>
+    <tr><td>Pause</td><td>Pause the schedule</td><td>Not applicable</td><td>Pause the trigger</td></tr>
+    <tr><td>Typical use</td><td>Nightly and monthly loads</td><td>Backfills, fixes, tests</td><td>Work that should follow the data</td></tr>
+  </table></div>
+</section>
+
+<section id="scenarios">
+  <div class="sec-num">Real life</div>
+  <h2>Schedules in practice</h2>
+  <div class="tbl"><table>
+    <tr><th>Scenario</th><th>What happens</th><th>Fix</th></tr>
+    <tr><td>The nightly report is ready at 9 am for London but at 2 am in the wrong zone</td><td>The timezone was left at the default or set to another zone</td><td>Set timezone_id to Europe/London</td></tr>
+    <tr><td>A job scheduled every 5 minutes starts overlapping runs</td><td>A run takes longer than the interval</td><td>Lengthen the interval, or set the job so a new run does not overlap</td></tr>
+    <tr><td>Scheduled runs stopped during a holiday and nobody noticed</td><td>The schedule was paused and not resumed</td><td>Check pause status, and add a monitor for missed runs</td></tr>
+    <tr><td>A monthly job expression was written as a five-field Unix cron</td><td>The fields are misread</td><td>Write six Quartz fields, starting with seconds</td></tr>
+  </table></div>
+</section>
+
+<section id="traps">
+  <div class="sec-num">Don't confuse these</div>
+  <h2>Schedule traps</h2>
+  <div class="grid2">
+    <div class="card trap"><span class="tag">Quartz vs Unix cron</span><p>Quartz has six fields, with seconds first. Unix cron has five, with minutes first.</p></div>
+    <div class="card trap"><span class="tag">? vs *</span><p><code>*</code> means every value. <code>?</code> means no value, and is used in whichever of day-of-month or day-of-week is not set.</p></div>
+    <div class="card trap"><span class="tag">Paused vs deleted</span><p>A paused schedule keeps its settings and can be resumed. A deleted one is gone.</p></div>
+    <div class="card trap"><span class="tag">Scheduled vs triggered</span><p>A scheduled trigger runs on the clock. A file arrival or table update trigger runs on the data (lessons 04-09 and 04-10).</p></div>
+  </div>
+</section>
+
+<section id="quiz">
+  <div class="sec-num">Check yourself</div>
+  <h2>Quiz</h2>
+  <div class="quiz">
+    <fieldset>
+      <legend>1. How many fields does a Quartz cron expression have, and which comes first?</legend>
+      <label><input type="radio"> Five, starting with minutes</label>
+      <label><input type="radio" data-correct> Six, starting with seconds</label>
+      <label><input type="radio"> Seven, starting with the year</label>
+      <p class="explain" hidden>Quartz uses six fields: seconds, minutes, hours, day-of-month, month and day-of-week.</p>
+    </fieldset>
+    <fieldset>
+      <legend>2. Which expression runs at 07:30 on weekdays only?</legend>
+      <label><input type="radio"> <code>0 30 7 * * *</code></label>
+      <label><input type="radio" data-correct> <code>0 30 7 ? * MON-FRI</code></label>
+      <label><input type="radio"> <code>30 7 * * MON-FRI</code></label>
+      <p class="explain" hidden>Day-of-month is <code>?</code> because weekday is used. The minute, hour and seconds give 07:30:00.</p>
+    </fieldset>
+    <fieldset>
+      <legend>3. In the demo, the same expression was shown in two timezones. What does the timezone change?</legend>
+      <label><input type="radio"> The expression itself</label>
+      <label><input type="radio" data-correct> The actual moment each run starts</label>
+      <label><input type="radio"> Nothing</label>
+      <p class="explain" hidden>The fields are the same. The timezone decides which clock they are read against.</p>
+    </fieldset>
+    <fieldset>
+      <legend>4. What does pausing a schedule do?</legend>
+      <label><input type="radio"> Deletes the job</label>
+      <label><input type="radio" data-correct> Stops scheduled runs until it is resumed; manual runs still work</label>
+      <label><input type="radio"> Cancels the current run</label>
+      <p class="explain" hidden>Pausing keeps the schedule's settings and stops only the automatic starts.</p>
+    </fieldset>
+  </div>
+</section>
+
+<section id="wrap">
+  <div class="sec-num">Wrap up</div>
+  <h2>Key takeaways</h2>
+  <ul>
+    <li>A scheduled trigger starts runs on a Quartz cron timetable.</li>
+    <li>Quartz has six fields, seconds first. Use <code>?</code> for whichever day field is not used.</li>
+    <li>Set the timezone. The same fields mean different moments in different zones.</li>
+    <li>Pausing stops scheduled runs, and keeps the schedule.</li>
+  </ul>
+  <h3>Glossary terms used</h3>
+  <p><a href="../../glossary.html#scheduled-trigger">scheduled trigger</a> · <a href="../../glossary.html#quartz-cron">Quartz cron</a> · <a href="../../glossary.html#job">job</a> · <a href="../../glossary.html#run">run</a></p>
+  <h3>Official docs</h3>
+  <ul>
+    <li><a href="https://docs.databricks.com/aws/en/jobs/triggers">Automate jobs with schedules and triggers</a></li>
+    <li><a href="https://docs.databricks.com/api/jobs/v2/job">Job API reference</a></li>
+  </ul>
+  <p class="cap">Last verified: 16 November 2026</p>
+</section>
+
+</main>
+
+<script>
+(function () {
+  var C = window.Course, $ = function (id) { return document.getElementById(id); }, L = $('dLog');
+  var PATS = {
+    daily: { expr: '0 0 2 * * ?', match: function (d) { return d.getUTCHours() === 2 && d.getUTCMinutes() === 0; } },
+    weekdays: { expr: '0 30 7 ? * MON-FRI', match: function (d) { var w = d.getUTCDay(); return w >= 1 && w <= 5 && d.getUTCHours() === 7 && d.getUTCMinutes() === 30; } },
+    every15: { expr: '0 0/15 * * * ?', match: function (d) { return d.getUTCMinutes() % 15 === 0; } },
+    monthly: { expr: '0 0 6 1 * ?', match: function (d) { return d.getUTCDate() === 1 && d.getUTCHours() === 6 && d.getUTCMinutes() === 0; } }
+  };
+  var TZ = { London: 'Europe/London', LA: 'America/Los_Angeles' };
+  function nextRuns(pat, count) {
+    var d = new Date(Date.UTC(2026, 10, 16, 10, 0)), out = [];
+    for (var i = 0; i < 60 * 24 * 40 && out.length < count; i++) {
+      d = new Date(d.getTime() + 60000);
+      if (pat.match(d)) out.push(new Date(d.getTime()));
+    }
+    return out;
+  }
+  function fmt(d) { return d.toLocaleString('en-GB', { timeZone: 'UTC', weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }); }
+  /* The fields are read on the job's own clock. Offsets used: London 0 (GMT), Los Angeles -8 (PST), winter time. */
+  var OFFSET = { London: 0, LA: -8 };
+  function run() {
+    var key = $('sPat').value, pat = PATS[key], zoneKey = $('sTz').value, zone = TZ[zoneKey], runs = nextRuns(pat, 4), off = OFFSET[zoneKey];
+    $('sExpr').textContent = pat.expr + '\ntimezone_id: ' + zone;
+    $('sNext').innerHTML = C.table(runs.map(function (d, i) {
+      var utc = new Date(d.getTime() - off * 3600000);
+      return { run: i + 1, job_clock: fmt(d), utc: utc.toISOString().slice(5, 16).replace('T', ' ') + ' UTC' };
+    }));
+    $('sNote').textContent = 'The fields are the same for both zones. Only the UTC column changes, because the job clock is ' + zone + '.';
+    C.log(L, 'ok', pat.expr + ' in ' + zone + ': first run at ' + (runs[0] ? fmt(runs[0]) : 'none in the window') + ' job time.');
+    C.bump($('sNext'));
+  }
+  $('dRun').onclick = run;
+  $('sPat').onchange = run;
+  $('sTz').onchange = run;
+  $('dReset').onclick = function () { L.innerHTML = ''; };
+  run();
+})();
+</script>
+</body>
+</html>

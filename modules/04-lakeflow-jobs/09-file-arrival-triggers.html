@@ -1,0 +1,246 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>04-09 File arrival triggers · DE Associate course</title>
+<link rel="stylesheet" href="../../assets/course.css">
+<script src="../../assets/course.js"></script>
+</head>
+<body data-lesson="04-09">
+
+<aside class="disclaimer" aria-label="Disclaimer"><strong>Learning resource only.</strong> This is an independent, unofficial study guide made for learning purposes. It is not affiliated with, endorsed by or sponsored by Databricks. Databricks features change often, so always check the details in the <a href="https://docs.databricks.com">official Databricks documentation</a> and the official exam guide on databricks.com before relying on anything here. Databricks and related names are trademarks of their respective owners.</aside>
+
+<main class="wrap">
+
+<header class="hero">
+  <div class="eyebrow">Module 04 · Working with Lakeflow Jobs · Lesson 9 of 11</div>
+  <h1>File arrival triggers</h1>
+  <p class="lede">Often the right moment to run is not a fixed time, but the moment the data lands. A file arrival trigger watches a folder and starts the job when new files appear. It can also wait for a quiet period, so a batch of files is processed once, not file by file.</p>
+  <dl class="where">
+    <div><dt>Module</dt><dd>04 Working with Lakeflow Jobs (16% of the exam)</dd></div>
+    <div><dt>Exam objective</dt><dd>4.3 Implement job schedules using trigger types (scheduled, file arrival and table update), and 4.4 choose between time-based and data-driven triggers. This lesson covers file arrival.</dd></div>
+    <div><dt>Time to read</dt><dd>About 13 minutes</dd></div>
+    <div><dt>Before this</dt><dd><a href="08-scheduled-triggers.html">04-08 Scheduled triggers</a> · <a href="../02-data-ingestion/06-auto-loader-file-detection.html">02-06 Auto Loader file detection</a></dd></div>
+  </dl>
+</header>
+
+<section id="idea">
+  <div class="sec-num">The idea</div>
+  <h2>Run when the files arrive</h2>
+  <p>A <a href="../../glossary.html#file-arrival-trigger">file arrival trigger</a> watches a location: a Unity Catalog external location or a volume path. When new files appear there, it starts a run of the job.</p>
+  <p>Two settings stop it running too often:</p>
+  <ul>
+    <li><strong>Wait after last change</strong> (a debounce). Each new file resets a timer. The run starts only after no new file has arrived for this long. A batch of ten files that land over five minutes triggers one run, not ten.</li>
+    <li><strong>Minimum time between triggers</strong> (a cooldown). After a run starts, no other run starts until this much time has passed. It caps how often the job can run, whatever the arrivals.</li>
+  </ul>
+  <p>Both are measured in seconds, and the docs set a minimum of 60 seconds for each.</p>
+  <p>For better performance, the docs recommend turning on file events for the external location, so Databricks is told about new files rather than having to search for them. Lesson 02-06 explains the two detection methods.</p>
+  <div class="analogy">
+    <span class="tag">Everyday analogy</span>
+    <p><strong>A doorbell that waits for the delivery to finish.</strong> A courier drops parcels one at a time over ten minutes. A sensible household waits until the van has been gone for a few minutes before carrying everything in (the debounce). And it will not answer the door more than once an hour, however many vans come (the cooldown).</p>
+  </div>
+</section>
+
+<section id="how">
+  <div class="sec-num">How it works</div>
+  <h2>Arrivals, a quiet period, then one run</h2>
+  <div class="stage">
+    <svg class="tall" viewBox="0 0 360 330" role="img" aria-label="Three files arrive close together. Each arrival resets the wait timer. After the quiet period passes with no new file, one run starts and processes all three files.">
+      <defs><path id="fa1" d="M60 90 H300"/></defs>
+      <g class="wire"><use href="#fa1"/></g>
+      <text class="t-b" x="10" y="20">Time</text><text class="t-m" x="280" y="20" text-anchor="end">now</text>
+      <g class="box-soft"><rect x="52" y="60" width="26" height="22" rx="4"/><rect x="108" y="60" width="26" height="22" rx="4"/><rect x="150" y="60" width="26" height="22" rx="4"/></g>
+      <text class="t-m" x="65" y="54" text-anchor="middle">file 1</text><text class="t-m" x="121" y="54" text-anchor="middle">file 2</text><text class="t-m" x="163" y="54" text-anchor="middle">file 3</text>
+      <rect class="box" x="40" y="110" width="150" height="28" rx="6"/><text class="t-m" x="115" y="129" text-anchor="middle">timer reset at each arrival</text>
+      <rect class="box-acc" x="200" y="150" width="140" height="58" rx="8"/><text class="t-b" x="270" y="172" text-anchor="middle">Quiet period ends</text><text class="t-m" x="270" y="192" text-anchor="middle">wait after last change</text>
+      <rect class="box-acc" x="40" y="236" width="300" height="72" rx="8"/><text class="t-b" x="190" y="260" text-anchor="middle">One run starts</text><text class="t-m" x="190" y="280" text-anchor="middle">processes file 1, 2 and 3 together</text><text class="t-m" x="190" y="296" text-anchor="middle">unless the cooldown has not yet passed</text>
+      <g class="mover"><circle r="5" class="dot"><animateMotion dur="3s" repeatCount="indefinite"><mpath href="#fa1"/></animateMotion></circle></g>
+    </svg>
+    <p class="cap">The run waits for the quiet period, then starts once. If a run started recently, the cooldown holds the new run back until it has passed.</p>
+  </div>
+  <h3>Choosing the values</h3>
+  <p>The wait should be longer than the gap between files of one batch, so that a batch is not split. The cooldown should be no shorter than the time a run takes, so that runs do not pile up. Both are in seconds, with a 60-second floor.</p>
+</section>
+
+<section id="demo">
+  <div class="sec-num">Try it</div>
+  <h2>Drop files and watch the trigger</h2>
+  <p>Each click advances one minute. Drop a file whenever you like. Change the wait and the cooldown and see when runs start.</p>
+  <div class="stage">
+    <div class="ctrls">
+      <label class="tog">Wait after last change: <select id="fWait"><option value="2">2 min</option><option value="5" selected>5 min</option><option value="10">10 min</option></select></label>
+      <label class="tog">Minimum time between triggers: <select id="fCool"><option value="5">5 min</option><option value="15" selected>15 min</option><option value="60">60 min</option></select></label>
+      <button id="fFile" type="button" class="primary">A file arrives</button>
+      <button id="fTick" type="button">Advance 1 minute</button>
+      <button id="fReset" type="button">Reset</button>
+    </div>
+    <div class="panes">
+      <div class="pane"><h4>State</h4><div class="item"><span>minute</span><span id="sMin">0</span></div><div class="item"><span>files waiting</span><span id="sWait">0</span></div><div class="item"><span>last run started</span><span id="sLast">never</span></div><p class="cap" id="sWhy"></p></div>
+      <div class="pane"><h4>Runs started</h4><div id="sRuns"></div></div>
+    </div>
+    <div class="log" id="dLog" role="log" aria-label="What happened"></div>
+  </div>
+</section>
+
+<section id="code">
+  <div class="sec-num">Code</div>
+  <h2>A file arrival trigger in a job</h2>
+<pre><code><span class="c-k">name</span>: ingest_on_arrival
+<span class="c-k">trigger</span>:
+  <span class="c-k">pause_status</span>: <span class="c-s">"UNPAUSED"</span>
+  <span class="c-k">file_arrival</span>:
+    <span class="c-k">url</span>: <span class="c-s">"s3://bakery-landing/supplier_drop/"</span>   <span class="c-c"># an external location or volume path to watch</span>
+    <span class="c-k">min_time_between_triggers_seconds</span>: 900      <span class="c-c"># at most one run every 15 minutes</span>
+    <span class="c-k">wait_after_last_change_seconds</span>: 60         <span class="c-c"># start after a quiet minute</span>
+<span class="c-k">tasks</span>:
+  - <span class="c-k">task_key</span>: load_supplier_files
+    <span class="c-k">notebook_task</span>: {notebook_path: /Workspace/bakery/load_supplier}</code></pre>
+  <p class="note">The docs show 900 seconds between triggers and 60 seconds of wait as a combined example. Check the field names in the job reference, and whether your location needs file events enabled, before use.</p>
+</section>
+
+<section id="whatif">
+  <div class="sec-num">What if I change this?</div>
+  <h2>The two settings and their effects</h2>
+  <div class="tbl"><table class="whatif">
+    <tr><th>Change</th><th>Effect</th></tr>
+    <tr><td>Wait after last change set to 0 or very short</td><td>A batch that arrives over several minutes may start several runs, each with part of the data.</td></tr>
+    <tr><td>Wait after last change set too long</td><td>Runs start late after data lands. Fine for a nightly batch, poor for near-live data.</td></tr>
+    <tr><td>Minimum time between triggers set very short</td><td>Runs can start back to back, and may overlap if a run takes longer than the cooldown.</td></tr>
+    <tr><td>Minimum time between triggers set very long</td><td>Arrivals wait a long time for their run, even when the previous run finished quickly.</td></tr>
+    <tr><td>Files overwritten under the same name</td><td>They do not count as new arrivals in the usual way. Deliver new versions under new names.</td></tr>
+    <tr><td>Turn on file events for the location</td><td>Discovery is faster and cheaper, which suits frequent arrivals and large folders.</td></tr>
+  </table></div>
+</section>
+
+<section id="compare">
+  <div class="sec-num">Compare</div>
+  <h2>Wait, cooldown and schedule</h2>
+  <div class="tbl"><table>
+    <tr><th></th><th>Wait after last change</th><th>Minimum time between triggers</th><th>Scheduled trigger (04-08)</th></tr>
+    <tr><td>What it controls</td><td>How long after the last arrival a run may start</td><td>How often runs may start at most</td><td>When runs start, by the clock</td></tr>
+    <tr><td>Starts a run?</td><td>Yes, when the quiet period ends</td><td>No, it only holds runs back</td><td>Yes, at each time in the timetable</td></tr>
+    <tr><td>Unit</td><td>Seconds, minimum 60</td><td>Seconds, minimum 60</td><td>A Quartz cron expression</td></tr>
+  </table></div>
+  <h3>Time-based or data-driven?</h3>
+  <div class="grid2">
+    <div class="card"><span class="tag">Time-based</span><p>Runs at fixed times. Best when the data arrives on a known schedule, or when reports must be ready at a set hour.</p></div>
+    <div class="card"><span class="tag">Data-driven</span><p>Runs when data arrives. Best when arrival times vary, and the work should follow the data (lesson 04-11).</p></div>
+  </div>
+</section>
+
+<section id="scenarios">
+  <div class="sec-num">Real life</div>
+  <h2>Arrivals in practice</h2>
+  <div class="tbl"><table>
+    <tr><th>Scenario</th><th>What happens</th><th>Fix</th></tr>
+    <tr><td>A supplier drops twelve files over ten minutes, and the job runs twelve times</td><td>No quiet period is set</td><td>Set wait after last change to a few minutes</td></tr>
+    <tr><td>Files land at random times all day, and the job runs every few seconds</td><td>No cooldown is set</td><td>Set minimum time between triggers to the length of one run</td></tr>
+    <tr><td>Data arrives at 10 am, but the report is needed at 9 am every day</td><td>A data-driven trigger cannot promise a time</td><td>Use a scheduled trigger, or a file arrival trigger that is ready before 9</td></tr>
+    <tr><td>A trigger shows no runs after files were copied into the folder</td><td>The location is not an external location or volume that the trigger can watch, or the trigger is paused</td><td>Check the watched path and the pause status</td></tr>
+  </table></div>
+</section>
+
+<section id="traps">
+  <div class="sec-num">Don't confuse these</div>
+  <h2>Trigger traps</h2>
+  <div class="grid2">
+    <div class="card trap"><span class="tag">Wait vs cooldown</span><p>The wait is the quiet time after the last arrival. The cooldown is the gap between runs. They do different jobs, and you usually want both.</p></div>
+    <div class="card trap"><span class="tag">Trigger vs schedule</span><p>A file arrival trigger starts on data. A scheduled trigger starts on the clock. A job has one trigger setting.</p></div>
+    <div class="card trap"><span class="tag">Arrival vs processing</span><p>A trigger starts a run. Which files the run processes is decided by the loader, such as Auto Loader, and its checkpoint.</p></div>
+    <div class="card trap"><span class="tag">Floor of 60 seconds</span><p>Neither setting can go below 60 seconds. For faster reaction, use a different design.</p></div>
+  </div>
+</section>
+
+<section id="quiz">
+  <div class="sec-num">Check yourself</div>
+  <h2>Quiz</h2>
+  <div class="quiz">
+    <fieldset>
+      <legend>1. Ten files arrive over six minutes. The wait is five minutes. How many runs start from this batch?</legend>
+      <label><input type="radio"> Ten, one per file</label>
+      <label><input type="radio" data-correct> One, after the quiet period</label>
+      <label><input type="radio"> None, because the batch was too slow</label>
+      <p class="explain" hidden>Each arrival resets the timer, so the run waits until the files stop. Then one run starts.</p>
+    </fieldset>
+    <fieldset>
+      <legend>2. What does minimum time between triggers do?</legend>
+      <label><input type="radio"> Sets how long a run may take</label>
+      <label><input type="radio" data-correct> Limits how often runs can start</label>
+      <label><input type="radio"> Chooses the timezone</label>
+      <p class="explain" hidden>It is a cooldown: no new run starts until this much time has passed since the last one.</p>
+    </fieldset>
+    <fieldset>
+      <legend>3. In the demo, with a 5-minute wait, when did a run start after a file arrived at minute 1?</legend>
+      <label><input type="radio"> At minute 1</label>
+      <label><input type="radio" data-correct> At minute 6, once five quiet minutes had passed</label>
+      <label><input type="radio"> Never</label>
+      <p class="explain" hidden>The timer counts from the last arrival. Five quiet minutes after minute 1 is minute 6.</p>
+    </fieldset>
+    <fieldset>
+      <legend>4. Which trigger type would you choose for a job that must run at 9 am whatever the data does?</legend>
+      <label><input type="radio"> File arrival</label>
+      <label><input type="radio" data-correct> Scheduled</label>
+      <label><input type="radio"> Table update</label>
+      <p class="explain" hidden>A fixed time needs the clock. Data-driven triggers start when data changes, which cannot promise a time.</p>
+    </fieldset>
+  </div>
+</section>
+
+<section id="wrap">
+  <div class="sec-num">Wrap up</div>
+  <h2>Key takeaways</h2>
+  <ul>
+    <li>A file arrival trigger starts a run when new files appear in a watched location.</li>
+    <li>Wait after last change waits for a quiet period, so a batch runs once.</li>
+    <li>Minimum time between triggers caps how often runs start.</li>
+    <li>Both settings are in seconds, with a 60-second minimum. File events are recommended.</li>
+    <li>Choose time-based for fixed hours and data-driven for work that should follow the data.</li>
+  </ul>
+  <h3>Glossary terms used</h3>
+  <p><a href="../../glossary.html#file-arrival-trigger">file arrival trigger</a> · <a href="../../glossary.html#scheduled-trigger">scheduled trigger</a> · <a href="../../glossary.html#external-location">external location</a> · <a href="../../glossary.html#file-events">file events</a> · <a href="../../glossary.html#auto-loader">Auto Loader</a></p>
+  <h3>Official docs</h3>
+  <ul>
+    <li><a href="https://docs.databricks.com/aws/en/jobs/file-arrival-triggers">Trigger jobs when new files arrive</a></li>
+    <li><a href="https://docs.databricks.com/aws/en/jobs/triggers">Automate jobs with schedules and triggers</a></li>
+  </ul>
+  <p class="cap">Last verified: 16 November 2026</p>
+</section>
+
+</main>
+
+<script>
+(function () {
+  var C = window.Course, $ = function (id) { return document.getElementById(id); }, L = $('dLog');
+  var s;
+  function draw() {
+    $('sMin').textContent = s.t;
+    $('sWait').textContent = s.pending;
+    $('sLast').textContent = s.lastRun === null ? 'never' : 'minute ' + s.lastRun;
+    var msg = s.pending === 0 ? 'No files waiting.' : s.pending + ' file(s) waiting';
+    if (s.pending) msg += s.t - s.lastArrival < s.wait ? ': the quiet period is still running.' : ': quiet period over, the cooldown decides.';
+    $('sWhy').textContent = msg;
+    $('sRuns').innerHTML = s.runs.length ? C.table(s.runs.map(function (r, i) { return { run: i + 1, minute: r.at, files: r.files }; })) : '<p class="cap">No runs yet.</p>';
+  }
+  /* One minute of time: if files are waiting, the quiet period is over, and the cooldown has passed, a run starts. */
+  function tick() {
+    s.t++;
+    if (s.pending > 0 && s.t - s.lastArrival >= s.wait && (s.lastRun === null || s.t - s.lastRun >= s.cool)) {
+      s.runs.push({ at: s.t, files: s.pending }); s.lastRun = s.t; L_add('ok', 'minute ' + s.t + ': run started with ' + s.pending + ' file(s).'); s.pending = 0;
+    }
+  }
+  function L_add(cls, msg) { C.log(L, cls, msg); }
+  $('fFile').onclick = function () {
+    s.pending++; s.lastArrival = s.t; C.log(L, 'skip', 'minute ' + s.t + ': a file arrived. The wait timer restarts.'); draw();
+  };
+  $('fTick').onclick = function () { tick(); draw(); C.bump($('sRuns')); };
+  $('fWait').onchange = $('fCool').onchange = function () { s.wait = +$('fWait').value; s.cool = +$('fCool').value; C.log(L, 'skip', 'Settings changed: wait ' + s.wait + ' min, cooldown ' + s.cool + ' min.'); draw(); };
+  $('fReset').onclick = function () {
+    s = { t: 0, pending: 0, lastArrival: -999, lastRun: null, runs: [], wait: +$('fWait').value, cool: +$('fCool').value };
+    L.innerHTML = ''; C.log(L, 'skip', 'Nothing has arrived yet.'); draw();
+  };
+  $('fReset').onclick();
+})();
+</script>
+</body>
+</html>
